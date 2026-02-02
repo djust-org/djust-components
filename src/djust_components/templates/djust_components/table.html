@@ -1,0 +1,36 @@
+<div class="dj-table-wrapper">
+  <table class="dj-table">
+    <thead>
+      <tr>
+        {% for col in columns %}
+        <th class="dj-table__th" dj-click="{{ sort_event }}" data-value="{{ col.key }}">
+          {{ col.label }}
+          {% if sort_by == col.key %}
+            {% if sort_desc %}&#9660;{% else %}&#9650;{% endif %}
+          {% endif %}
+        </th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr class="dj-table__row">
+        {% for col in columns %}
+        <td class="dj-table__td">{{ row|dictsort:col.key|first }}</td>
+        {% endfor %}
+      </tr>
+      {% empty %}
+      <tr>
+        <td class="dj-table__td dj-table__td--empty" colspan="{{ columns|length }}">No data</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if total_pages > 1 %}
+  <div class="dj-table__pagination">
+    <button class="dj-table__page-btn" dj-click="{{ prev_event }}" {% if page <= 1 %}disabled{% endif %}>&larr; Prev</button>
+    <span class="dj-table__page-info">{{ page }} / {{ total_pages }}</span>
+    <button class="dj-table__page-btn" dj-click="{{ next_event }}" {% if page >= total_pages %}disabled{% endif %}>Next &rarr;</button>
+  </div>
+  {% endif %}
+</div>
