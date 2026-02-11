@@ -26,7 +26,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
-    "djust>=0.2.0",
+    "djust>=0.3.0rc4",
 ]
 
 [project.urls]
