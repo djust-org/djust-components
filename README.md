@@ -183,24 +183,52 @@ User avatar with initials fallback and status indicator.
 
 **Args:** `src`, `alt`, `initials`, `size` (xs/sm/md/lg/xl), `status` (online/offline/busy/away)
 
-## Customization
+## Theming
 
-All components use CSS custom properties. Override them to match your theme:
+**djust-components v0.2.0+** integrates with [djust-theming](https://github.com/djust-org/djust-theming) for automatic theme adaptation. All components use theme variables and design tokens, so they automatically adapt to your selected theme preset (Default, Shadcn, Blue, Green, Purple, Orange, Rose) and mode (light/dark/system).
 
-```css
-:root {
-  --dj-primary: #6366f1;
-  --dj-success: #22c55e;
-  --dj-warning: #eab308;
-  --dj-danger: #ef4444;
-  --dj-info: #3b82f6;
-  --dj-text: #e2e8f0;
-  --dj-bg: #0f172a;
-  --dj-bg-subtle: #1e293b;
-  --dj-border: rgba(99, 102, 241, 0.15);
-  --dj-radius: 8px;
-}
+### Setup with djust-theming
+
+Install djust-theming (required for v0.2.0+):
+
+```bash
+pip install djust-theming
 ```
+
+Add to `INSTALLED_APPS`:
+
+```python
+INSTALLED_APPS = [
+    # ...
+    "djust_theming",
+    "djust_components",
+]
+```
+
+Include both CSS files in your base template:
+
+```html
+{% load djust_theming %}
+{% theme_head %}  <!-- djust-theming CSS with theme variables -->
+<link rel="stylesheet" href="{% static 'djust_components/components.css' %}">
+```
+
+All components will now automatically adapt to theme changes. No additional configuration needed.
+
+### Design Tokens
+
+Components use djust-theming's design tokens for consistent spacing, typography, and styling:
+
+- **Colors**: `--primary`, `--success`, `--warning`, `--destructive`, `--info`, `--muted`, etc.
+- **Spacing**: `--space-1` (4px) through `--space-24` (96px)
+- **Typography**: `--text-xs`, `--text-sm`, `--text-base`, `--font-medium`, etc.
+- **Radius**: `--radius-sm`, `--radius-md`, `--radius-lg`, `--radius-xl`, `--radius-full`
+- **Transitions**: `--duration-fast`, `--duration-normal`
+- **Shadows**: `--shadow-sm`, `--shadow-md`, `--shadow-lg`
+
+### Custom Theming
+
+To create custom themes, use djust-theming's preset system. See [djust-theming documentation](https://github.com/djust-org/djust-theming) for details.
 
 ## Development
 
