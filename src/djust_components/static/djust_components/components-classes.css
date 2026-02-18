@@ -1,0 +1,175 @@
+/**
+ * djust-components Component Classes CSS
+ *
+ * Styles for Component class pattern (Badge, StatusDot, etc.)
+ * Uses CSS custom properties with sensible fallbacks.
+ */
+
+/* ============================================================================
+   Badge Component
+   ============================================================================ */
+
+.dj-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--dj-badge-padding, 0.25rem 0.5rem);
+  font-size: var(--dj-badge-font-size, 0.75rem);
+  font-weight: var(--dj-badge-font-weight, 500);
+  line-height: 1;
+  border-radius: var(--dj-badge-radius, 0.25rem);
+  background: var(--dj-badge-bg, hsl(var(--muted, 220 13% 91%)));
+  color: var(--dj-badge-fg, hsl(var(--foreground, 222 47% 11%)));
+  white-space: nowrap;
+}
+
+/* Size variants */
+.dj-badge-sm {
+  padding: 0.125rem 0.375rem;
+  font-size: 0.625rem;
+}
+
+.dj-badge-lg {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+/* Color variants */
+.dj-badge-success {
+  background: var(--dj-badge-success-bg, rgba(16, 185, 129, 0.1));
+  color: var(--dj-badge-success-fg, rgb(5, 150, 105));
+}
+
+.dj-badge-info {
+  background: var(--dj-badge-info-bg, rgba(59, 130, 246, 0.1));
+  color: var(--dj-badge-info-fg, rgb(29, 78, 216));
+}
+
+.dj-badge-warning {
+  background: var(--dj-badge-warning-bg, rgba(245, 158, 11, 0.1));
+  color: var(--dj-badge-warning-fg, rgb(217, 119, 6));
+}
+
+.dj-badge-danger {
+  background: var(--dj-badge-danger-bg, rgba(239, 68, 68, 0.1));
+  color: var(--dj-badge-danger-fg, rgb(220, 38, 38));
+}
+
+.dj-badge-muted {
+  background: var(--dj-badge-muted-bg, rgba(107, 114, 128, 0.1));
+  color: var(--dj-badge-muted-fg, rgb(75, 85, 99));
+}
+
+/* ============================================================================
+   StatusDot Component
+   ============================================================================ */
+
+.dj-status-dot {
+  display: inline-block;
+  width: var(--dj-status-dot-size, 0.5rem);
+  height: var(--dj-status-dot-size, 0.5rem);
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* Size variants */
+.dj-status-dot-sm {
+  width: 0.375rem;
+  height: 0.375rem;
+}
+
+.dj-status-dot-lg {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+/* Color variants */
+.dj-status-dot-success {
+  color: var(--dj-status-dot-success, #10b981);
+}
+
+.dj-status-dot-info {
+  color: var(--dj-status-dot-info, #3b82f6);
+}
+
+.dj-status-dot-warning {
+  color: var(--dj-status-dot-warning, #f59e0b);
+}
+
+.dj-status-dot-danger {
+  color: var(--dj-status-dot-danger, #ef4444);
+}
+
+.dj-status-dot-muted {
+  color: var(--dj-status-dot-muted, #6b7280);
+}
+
+/* Animation variants */
+.dj-status-dot-pulse {
+  animation: dj-status-dot-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.dj-status-dot-spin {
+  animation: dj-status-dot-spin 1s linear infinite;
+  /* Note: Spin works better with a non-circular shape like a crescent */
+  background: linear-gradient(
+    to right,
+    currentColor 50%,
+    transparent 50%
+  );
+}
+
+.dj-status-dot-fade {
+  animation: dj-status-dot-fade 2s ease-in-out infinite;
+}
+
+/* Keyframes */
+@keyframes dj-status-dot-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.1);
+  }
+}
+
+@keyframes dj-status-dot-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes dj-status-dot-fade {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+/* ============================================================================
+   Integration with djust-theming
+   ============================================================================ */
+
+/*
+ * When djust-theming is installed, it will provide CSS custom properties
+ * that these components can use:
+ *
+ * Colors:
+ *   --muted, --foreground (for Badge)
+ *   --success, --info, --warning, --danger (for variants)
+ *
+ * Spacing:
+ *   --space-1, --space-2, --space-3 (for Badge padding)
+ *
+ * Radius:
+ *   --radius-sm (for Badge border-radius)
+ *
+ * This CSS uses fallbacks so components work without theming,
+ * but automatically pick up theme tokens when available.
+ */
