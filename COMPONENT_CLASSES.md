@@ -42,6 +42,10 @@ Status and priority indicators with auto-coloring.
 
 #### Basic Usage
 
+Status and priority indicators with auto-coloring.
+
+#### Basic Usage
+
 ```python
 from djust import LiveView
 from djust_components.components import Badge
@@ -192,6 +196,144 @@ dot = StatusDot(
 - `fade` - Fade in/out
 - `None` - Static (no animation)
 
+### Button
+
+Action buttons with djust event integration.
+
+#### Basic Usage
+
+```python
+from djust import LiveView
+from djust_components.components import Button
+
+class FormView(LiveView):
+    def mount(self, **kwargs):
+        # Primary action button
+        self.submit = Button("Save", variant="primary", action="save_form")
+
+        # Button with data attributes
+        self.delete = Button(
+            "Delete",
+            variant="danger",
+            action="delete_item",
+            data={"item_id": "123"}
+        )
+```
+
+```django
+<!-- In template -->
+{{ submit|safe }}
+{{ delete|safe }}
+```
+
+#### Variants
+
+- `primary` - Primary action (default)
+- `secondary` - Secondary actions
+- `danger` - Destructive actions
+- `success` - Success/completion actions
+- `ghost` - Outline style
+- `link` - Link style (no background/border)
+- `text` - Text-only style
+
+#### Features
+
+```python
+# With icon
+btn = Button("Save", icon="💾", icon_position="left")
+
+# Loading state
+btn = Button("Processing...", loading=True)
+
+# Disabled
+btn = Button("Submit", disabled=True)
+
+# Size variants
+sm = Button("Small", size="sm")
+lg = Button("Large", size="lg")
+
+# Type attribute
+submit = Button("Submit Form", type="submit")
+```
+
+### Card
+
+Flexible content containers.
+
+#### Basic Usage
+
+```python
+from djust import LiveView
+from djust_components.components import Card
+
+class DashboardView(LiveView):
+    def mount(self, **kwargs):
+        # Basic card
+        self.stats = Card(content="<p>Stats content</p>")
+
+        # Card with header and footer
+        self.task = Card(
+            header="<h3>Task Title</h3>",
+            content="<p>Task description</p>",
+            footer='<button dj-click="complete">Complete</button>',
+        )
+```
+
+```django
+<!-- In template -->
+{{ stats|safe }}
+{{ task|safe }}
+```
+
+#### Variants
+
+- `default` - Basic card with border
+- `bordered` - Thicker border
+- `elevated` - Card with shadow
+- `flat` - No border, no shadow
+
+#### Features
+
+```python
+# Card with image
+card = Card(
+    image='<img src="image.jpg" alt="Image">',
+    content="<p>Content</p>",
+)
+
+# Hover effect
+card = Card(content="<p>Hover me</p>", hover=True)
+
+# Clickable card
+card = Card(
+    content="<p>Click me</p>",
+    action="card_clicked",
+    data={"card_id": "123"}
+)
+
+# Padding variants
+none = Card(content="<p>No padding</p>", padding="none")
+sm = Card(content="<p>Small padding</p>", padding="sm")
+lg = Card(content="<p>Large padding</p>", padding="lg")
+```
+
+#### Sections
+
+Cards support four sections:
+- `image` - Image at the top (full width)
+- `header` - Header with border below
+- `content` - Main content area (required)
+- `footer` - Footer with border above
+
+```python
+card = Card(
+    image='<img src="hero.jpg">',
+    header="<h3>Title</h3>",
+    content="<p>Main content</p>",
+    footer='<div class="actions">...</div>',
+)
+```
+
 ## Pattern Comparison
 
 ### Template Tags (Declarative)
@@ -258,6 +400,30 @@ Components use CSS variables for theming:
 --dj-status-dot-warning: warning color
 --dj-status-dot-danger: danger color
 --dj-status-dot-muted: muted color
+
+/* Button */
+--dj-btn-bg: background color
+--dj-btn-fg: foreground/text color
+--dj-btn-border: border color
+--dj-btn-radius: border radius
+--dj-btn-padding: internal padding
+--dj-btn-font-size: text size
+--dj-btn-font-weight: text weight
+
+/* Button variants */
+--dj-btn-primary-bg, --dj-btn-primary-fg, --dj-btn-primary-border
+--dj-btn-secondary-bg, --dj-btn-secondary-fg, --dj-btn-secondary-border
+--dj-btn-danger-bg, --dj-btn-danger-fg, --dj-btn-danger-border
+--dj-btn-success-bg, --dj-btn-success-fg, --dj-btn-success-border
+--dj-btn-ghost-bg, --dj-btn-ghost-fg, --dj-btn-ghost-border
+--dj-btn-link-fg, --dj-btn-text-fg
+
+/* Card */
+--dj-card-bg: background color
+--dj-card-border: border color
+--dj-card-radius: border radius
+--dj-card-padding: internal padding
+--dj-card-shadow: box shadow (for elevated variant)
 ```
 
 Components work without customization but automatically pick up djust-theming tokens when available.
