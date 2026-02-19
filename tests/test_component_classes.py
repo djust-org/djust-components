@@ -2,7 +2,7 @@
 
 import pytest
 
-from djust_components.components import Badge, Button, Card, StatusDot
+from djust_components.components import Badge, Button, Card, Markdown, StatusDot
 
 
 class TestBadge:
@@ -415,3 +415,92 @@ class TestCard:
         card = Card(content="test", action="click", data={"value": "<script>"})
         html = card._render_custom()
         assert "&lt;script&gt;" in html
+
+
+class TestMarkdown:
+    """Test Markdown component."""
+
+    def test_basic_rendering(self):
+        """Test basic markdown to HTML conversion."""
+        md = Markdown("# Hello\n\nWorld")
+        html = md._render_custom()
+        assert "<h1>Hello</h1>" in html
+        assert "<p>World</p>" in html
+
+    def test_wrapper_div(self):
+        """Test output is wrapped in dj-prose div."""
+        md = Markdown("hello")
+        html = md._render_custom()
+        assert 'class="dj-prose"' in html
+        assert html.startswith('<div class="dj-prose">')
+
+    def test_empty_text(self):
+        """Test empty text returns empty string."""
+        assert Markdown("")._render_custom() == ""
+        assert Markdown()._render_custom() == ""
+
+    def test_custom_class(self):
+        """Test custom_class is added to wrapper."""
+        md = Markdown("hello", custom_class="text-sm")
+        html = md._render_custom()
+        assert 'class="dj-prose text-sm"' in html
+
+    def test_xss_prevention(self):
+        """Test <, >, & are escaped to prevent XSS."""
+        md = Markdown("<script>alert('xss')</script>")
+        html = md._render_custom()
+        assert "<script>" not in html
+        assert "&lt;script&gt;" in html
+
+    def test_apostrophes_not_escaped(self):
+        """Test apostrophes are NOT escaped — avoids &#x27; in code blocks."""
+        md = Markdown("`mark_safe(f'hello')`")
+        html = md._render_custom()
+        assert "&#x27;" not in html
+        assert "'" in html
+
+    def test_quotes_not_escaped(self):
+        """Test double quotes are NOT escaped in rendered output."""
+        md = Markdown('`config["key"]`')
+        html = md._render_custom()
+        assert "&quot;" not in html
+        assert '"' in html
+
+    def test_code_block(self):
+        """Test fenced code blocks render correctly."""
+        md = Markdown("```python\ndef foo():\n    pass\n```")
+        html = md._render_custom()
+        assert "<code" in html
+        assert "def foo():" in html
+
+    def test_table_rendering(self):
+        """Test markdown tables render as HTML tables."""
+        md = Markdown("| A | B |\n|---|---|\n| 1 | 2 |")
+        html = md._render_custom()
+        assert "<table>" in html
+        assert "<th>" in html
+
+    def test_reset_between_renders(self):
+        """Test the markdown instance resets between calls (no state bleed)."""
+        md = Markdown("# First")
+        html1 = md._render_custom()
+        md.text = "# Second"
+        html2 = md._render_custom()
+        assert "First" in html1
+        assert "Second" in html2
+        assert "First" not in html2
+
+    def test_ampersand_not_escaped(self):
+        """& is left as-is so pre-encoded entities are not double-encoded."""
+        md = Markdown("cats & dogs")
+        html = md._render_custom()
+        # markdown itself converts & to &amp; inside paragraph text
+        # — we just verify raw & in input doesn't become &amp;amp;
+        assert "&amp;amp;" not in html
+
+    def test_existing_entity_not_double_encoded(self):
+        """Pre-encoded &lt; from agent output must not become &amp;lt;."""
+        md = Markdown("There are no &lt;&lt;&lt; markers")
+        html = md._render_custom()
+        assert "&amp;lt;" not in html
+        assert "&lt;" in html
