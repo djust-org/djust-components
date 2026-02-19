@@ -1,18 +1,37 @@
 """Markdown component — renders Markdown text as sanitized HTML."""
 
+import re
 from typing import Optional
 
 import markdown as md_lib
 
 from djust import Component
 
+# Tags that can execute scripts or load external resources — stripped from
+# rendered output.  Everything else (bold, links, tables, code, …) is allowed.
+_DANGEROUS_TAGS = re.compile(
+    r"<(script|iframe|object|embed|form|meta|link|style)\b[^>]*>.*?</\1>|"
+    r"<(script|iframe|object|embed|form|meta|link|style)\b[^>]*/?>",
+    re.IGNORECASE | re.DOTALL,
+)
+# Strip on* event attributes (onclick=, onload=, …)
+_EVENT_ATTRS = re.compile(r"\s+on\w+\s*=\s*(?:\"[^\"]*\"|'[^']*'|[^\s>]+)", re.IGNORECASE)
+
+
+def _sanitize(html: str) -> str:
+    html = _DANGEROUS_TAGS.sub("", html)
+    html = _EVENT_ATTRS.sub("", html)
+    return html
+
 
 class Markdown(Component):
     """Render Markdown text as sanitized HTML.
 
-    Escapes only ``<`` and ``>`` in the source text before rendering to
-    prevent XSS. ``&`` is left untouched so that pre-encoded entities (e.g.
-    ``&lt;`` from agent output) are not double-encoded into ``&amp;lt;``.
+    Passes the source text directly to the markdown library so that code spans
+    and fenced code blocks are escaped correctly by the library itself (e.g.
+    ``\\`<<<<<<<\\``` renders as ``<<<<<<<``).  After conversion, dangerous
+    tags (``<script>``, ``<iframe>``, etc.) and ``on*`` event attributes are
+    stripped from the output to prevent XSS.
 
     The output is wrapped in a ``<div class="dj-prose">`` container. Style
     it with CSS targeting ``.dj-prose`` to control headings, lists, code
@@ -67,11 +86,10 @@ class Markdown(Component):
 
         self._md.reset()
 
-        # Escape only < and > to prevent XSS. Do NOT escape & — html.escape()
-        # would turn existing entities (e.g. &lt; from agent output) into
-        # &amp;lt;, causing them to render as literal "&lt;" in the browser.
-        safe_text = self.text.replace("<", "&lt;").replace(">", "&gt;")
-        body = self._md.convert(safe_text)
+        # Let the markdown library handle all escaping (it correctly escapes <
+        # and > inside code spans and fenced blocks).  Strip dangerous tags
+        # from the rendered output instead of pre-escaping the source.
+        body = _sanitize(self._md.convert(self.text))
 
         classes = ["dj-prose"]
         if self.custom_class:

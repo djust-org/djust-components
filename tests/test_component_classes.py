@@ -446,11 +446,20 @@ class TestMarkdown:
         assert 'class="dj-prose text-sm"' in html
 
     def test_xss_prevention(self):
-        """Test <, >, & are escaped to prevent XSS."""
+        """Script tags are stripped from rendered output."""
         md = Markdown("<script>alert('xss')</script>")
         html = md._render_custom()
         assert "<script>" not in html
-        assert "&lt;script&gt;" in html
+        assert "alert(" not in html
+
+    def test_backtick_angle_brackets(self):
+        """Angle brackets inside code spans render as < > not &lt; &gt;."""
+        md = Markdown("There are no `<<<<<<< ` or `>>>>>>> ` markers")
+        html = md._render_custom()
+        # The code element text content should be the literal characters,
+        # encoded by the markdown library as &lt; (not double-encoded &amp;lt;)
+        assert "&amp;lt;" not in html
+        assert "<code>" in html or "<code " in html
 
     def test_apostrophes_not_escaped(self):
         """Test apostrophes are NOT escaped — avoids &#x27; in code blocks."""
