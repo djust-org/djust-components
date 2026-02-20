@@ -185,7 +185,7 @@ User avatar with initials fallback and status indicator.
 
 ## Theming
 
-**djust-components v0.2.0+** integrates with [djust-theming](https://github.com/djust-org/djust-theming) for automatic theme adaptation. All components use theme variables and design tokens, so they automatically adapt to your selected theme preset (Default, Shadcn, Blue, Green, Purple, Orange, Rose) and mode (light/dark/system).
+**djust-components v0.2.0+** integrates with [djust-theming](https://github.com/djust-org/djust-theming) for automatic theme adaptation. All components use theme variables and design tokens, so they automatically adapt to any of djust-theming's 19 built-in presets (Default, Shadcn, Blue, Green, Purple, Orange, Rose, Cyberpunk, Forest, Amber, Slate, Nebula, and more) and mode (light/dark/system).
 
 ### Setup with djust-theming
 
@@ -229,6 +229,43 @@ Components use djust-theming's design tokens for consistent spacing, typography,
 ### Custom Theming
 
 To create custom themes, use djust-theming's preset system. See [djust-theming documentation](https://github.com/djust-org/djust-theming) for details.
+
+## Component Classes
+
+In addition to template tags, djust-components provides a Python class API for programmatic use in LiveViews. Component instances can be stored as view attributes and updated dynamically from event handlers.
+
+```python
+from djust_components.components import Badge, Button, Card, Markdown, StatusDot
+
+class TaskView(LiveView):
+    def mount(self, **kwargs):
+        self.status   = Badge.status("running")     # auto-colored
+        self.priority = Badge.priority("P0")        # danger variant
+        self.dot      = StatusDot("running")        # pulsing green dot
+        self.submit   = Button("Save", variant="primary", action="save")
+        self.card     = Card(content="<p>Details</p>", variant="elevated")
+        self.body     = Markdown(task.spec)         # safe rendered markdown
+```
+
+```django
+{{ status|safe }}   {{ priority|safe }}
+{{ dot|safe }}
+{{ submit|safe }}
+{{ card|safe }}
+{{ body|safe }}
+```
+
+### Available Component Classes
+
+| Class | Description |
+|-------|-------------|
+| `Badge` | Status/priority badge with auto-coloring. Factory methods: `Badge.status()`, `Badge.priority()` |
+| `StatusDot` | Animated dot indicator with built-in status → color/animation mapping |
+| `Button` | Action button with variants, icons, loading state, and djust event wiring |
+| `Card` | Content container with optional image, header, content, and footer sections |
+| `Markdown` | Renders Markdown to sanitized HTML. Wrapped in `<div class="dj-prose">` |
+
+See [COMPONENT_CLASSES.md](COMPONENT_CLASSES.md) for full API reference.
 
 ## Development
 
