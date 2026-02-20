@@ -4,6 +4,21 @@ Reusable UI components for [djust](https://github.com/djust-org/djust) — the P
 
 12 self-contained components with built-in CSS. No JavaScript dependencies beyond djust. Works with djust's event system (`dj-click`, `dj-input`, etc.) out of the box.
 
+## Two Ways to Use Components
+
+djust-components provides two complementary APIs:
+
+| | Template Tags | Component Classes |
+|--|--------------|-------------------|
+| **Usage** | `{% badge label="Active" %}` in templates | `self.badge = Badge.status("active")` in Python |
+| **Best for** | Static/declarative rendering | Dynamic state, event-driven updates |
+| **Update from handler** | Re-render whole template | Reassign the attribute |
+| **Logic** | Template-level | Full Python |
+
+**Use template tags** when the component is static or driven directly by template variables.
+
+**Use component classes** when you need to store component state as a view attribute, update it from an event handler, or configure it with complex business logic.
+
 ## Installation
 
 ```bash
@@ -37,7 +52,9 @@ Include the CSS in your base template:
 {% endmodal %}
 ```
 
-## Components
+## Template Tags
+
+12 components available as Django template tags via `{% load djust_components %}`.
 
 ### 1. Modal
 
