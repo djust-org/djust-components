@@ -27,6 +27,7 @@ In template::
 from .badge import Badge
 from .button import Button
 from .card import Card
+from .markdown import Markdown
 from .status_dot import StatusDot
 
-__all__ = ["Badge", "Button", "Card", "StatusDot"]
+__all__ = ["Badge", "Button", "Card", "Markdown", "StatusDot"]
