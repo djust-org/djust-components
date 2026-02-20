@@ -334,6 +334,66 @@ card = Card(
 )
 ```
 
+### Markdown
+
+Renders Markdown text as sanitized HTML, wrapped in a `<div class="dj-prose">` container.
+
+#### Basic Usage
+
+```python
+from djust import LiveView
+from djust_components.components import Markdown
+
+class TaskView(LiveView):
+    def mount(self, task_id=None, **kwargs):
+        task = Task.objects.get(id=task_id)
+        self.spec = Markdown(task.spec)
+        self.output = Markdown(task.agent_output, custom_class="text-sm")
+```
+
+```django
+{{ spec|safe }}
+{{ output|safe }}
+```
+
+#### Security
+
+Output is sanitized after Markdown rendering:
+- Dangerous tags stripped: `<script>`, `<iframe>`, `<object>`, `<embed>`, `<form>`, `<meta>`, `<link>`, `<style>`
+- Inline event attributes stripped: `onclick=`, `onload=`, etc.
+- Safe HTML (bold, links, tables, code, blockquotes) is preserved
+
+#### Customization
+
+```python
+# Additional CSS class on the wrapper div
+md = Markdown(text, custom_class="prose-sm opacity-80")
+
+# Custom markdown extensions
+md = Markdown(text, extensions=["fenced_code", "tables", "nl2br", "footnotes"])
+```
+
+#### CSS Custom Properties
+
+Style the `.dj-prose` container with these variables:
+
+```css
+--dj-prose-font-size          /* base font size (default: 1rem) */
+--dj-prose-line-height        /* line height (default: 1.6) */
+--dj-prose-heading-color      /* headings (default: var(--foreground)) */
+--dj-prose-link-color         /* links (default: var(--primary)) */
+--dj-prose-code-bg            /* inline code background (default: var(--muted)) */
+--dj-prose-code-color         /* inline code text (default: var(--foreground)) */
+--dj-prose-blockquote-border  /* blockquote left border (default: var(--border)) */
+--dj-prose-table-border       /* table borders (default: var(--border)) */
+```
+
+#### Default Markdown Extensions
+
+- `fenced_code` — fenced code blocks (` ``` `)
+- `tables` — GitHub-style tables
+- `nl2br` — newlines become `<br>` tags
+
 ## Pattern Comparison
 
 ### Template Tags (Declarative)

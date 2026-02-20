@@ -4,6 +4,21 @@ Reusable UI components for [djust](https://github.com/djust-org/djust) — the P
 
 12 self-contained components with built-in CSS. No JavaScript dependencies beyond djust. Works with djust's event system (`dj-click`, `dj-input`, etc.) out of the box.
 
+## Two Ways to Use Components
+
+djust-components provides two complementary APIs:
+
+| | Template Tags | Component Classes |
+|--|--------------|-------------------|
+| **Usage** | `{% badge label="Active" %}` in templates | `self.badge = Badge.status("active")` in Python |
+| **Best for** | Static/declarative rendering | Dynamic state, event-driven updates |
+| **Update from handler** | Re-render whole template | Reassign the attribute |
+| **Logic** | Template-level | Full Python |
+
+**Use template tags** when the component is static or driven directly by template variables.
+
+**Use component classes** when you need to store component state as a view attribute, update it from an event handler, or configure it with complex business logic.
+
 ## Installation
 
 ```bash
@@ -37,7 +52,9 @@ Include the CSS in your base template:
 {% endmodal %}
 ```
 
-## Components
+## Template Tags
+
+12 components available as Django template tags via `{% load djust_components %}`.
 
 ### 1. Modal
 
@@ -185,7 +202,7 @@ User avatar with initials fallback and status indicator.
 
 ## Theming
 
-**djust-components v0.2.0+** integrates with [djust-theming](https://github.com/djust-org/djust-theming) for automatic theme adaptation. All components use theme variables and design tokens, so they automatically adapt to your selected theme preset (Default, Shadcn, Blue, Green, Purple, Orange, Rose) and mode (light/dark/system).
+**djust-components v0.2.0+** integrates with [djust-theming](https://github.com/djust-org/djust-theming) for automatic theme adaptation. All components use theme variables and design tokens, so they automatically adapt to any of djust-theming's 19 built-in presets (Default, Shadcn, Blue, Green, Purple, Orange, Rose, Cyberpunk, Forest, Amber, Slate, Nebula, and more) and mode (light/dark/system).
 
 ### Setup with djust-theming
 
@@ -229,6 +246,43 @@ Components use djust-theming's design tokens for consistent spacing, typography,
 ### Custom Theming
 
 To create custom themes, use djust-theming's preset system. See [djust-theming documentation](https://github.com/djust-org/djust-theming) for details.
+
+## Component Classes
+
+In addition to template tags, djust-components provides a Python class API for programmatic use in LiveViews. Component instances can be stored as view attributes and updated dynamically from event handlers.
+
+```python
+from djust_components.components import Badge, Button, Card, Markdown, StatusDot
+
+class TaskView(LiveView):
+    def mount(self, **kwargs):
+        self.status   = Badge.status("running")     # auto-colored
+        self.priority = Badge.priority("P0")        # danger variant
+        self.dot      = StatusDot("running")        # pulsing green dot
+        self.submit   = Button("Save", variant="primary", action="save")
+        self.card     = Card(content="<p>Details</p>", variant="elevated")
+        self.body     = Markdown(task.spec)         # safe rendered markdown
+```
+
+```django
+{{ status|safe }}   {{ priority|safe }}
+{{ dot|safe }}
+{{ submit|safe }}
+{{ card|safe }}
+{{ body|safe }}
+```
+
+### Available Component Classes
+
+| Class | Description |
+|-------|-------------|
+| `Badge` | Status/priority badge with auto-coloring. Factory methods: `Badge.status()`, `Badge.priority()` |
+| `StatusDot` | Animated dot indicator with built-in status → color/animation mapping |
+| `Button` | Action button with variants, icons, loading state, and djust event wiring |
+| `Card` | Content container with optional image, header, content, and footer sections |
+| `Markdown` | Renders Markdown to sanitized HTML. Wrapped in `<div class="dj-prose">` |
+
+See [COMPONENT_CLASSES.md](COMPONENT_CLASSES.md) for full API reference.
 
 ## Development
 

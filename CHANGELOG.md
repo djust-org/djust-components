@@ -5,6 +5,20 @@ All notable changes to djust-components will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — Component Classes (feat/component-class-pattern)
+
+### Added
+- **Component Class API** — Python-first alternative to template tags for programmatic use in LiveViews
+- `Badge` — status/priority badge with factory methods `Badge.status()` and `Badge.priority()` for auto-coloring
+- `StatusDot` — animated dot indicator with built-in status → variant/animation mappings
+- `Button` — action button with variants, icons, loading state, and djust event wiring
+- `Card` — content container with image/header/content/footer sections and hover/click support
+- `Markdown` — renders Markdown to sanitized HTML; strips dangerous tags and `on*` event attributes; wraps in `<div class="dj-prose">`
+- `markdown>=3.0` added as a dependency (required by `Markdown` component)
+
+### Fixed
+- `Markdown`: post-render sanitization instead of pre-escaping source text, fixing code spans containing `&`, `<`, `>`
+
 ## [0.2.0] - 2026-02-17
 
 ### Added
