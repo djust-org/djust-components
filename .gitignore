@@ -1,0 +1,77 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+develop-eggs/
+.installed.cfg
+lib/
+lib64/
+.eggs/
+*.so
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Django
+*.sqlite3
+*.log
+local_settings.py
+db.sqlite3
+staticfiles/
+media/
+
+# Distribution / packaging
+.Python
+build/
+dist/
+.eggs/
+*.egg-info/
+
+# Testing
+.tox/
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+*.cover
+coverage.xml
+nosetests.xml
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*.DS_Store
+.DS_Store
+
+# Jupyter
+.ipynb_checkpoints
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Temporary
+*.tmp
+*.bak
+context/
+
+# Local Django showcase app (not part of the published package)
+component_showcase/
+components/
+manage.py
