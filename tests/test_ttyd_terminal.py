@@ -28,6 +28,22 @@ class _LiveViewBase:
 _djust_stub.LiveView = _LiveViewBase
 sys.modules.setdefault("djust", _djust_stub)
 
+# Build a fake 'djust.decorators' submodule — event_handler is a pass-through.
+_decorators_stub = types.ModuleType("djust.decorators")
+
+
+def _event_handler(fn=None, **kwargs):
+    """No-op stand-in for @event_handler; returns the function unchanged."""
+    if fn is not None:
+        return fn
+    def _decorator(fn):
+        return fn
+    return _decorator
+
+
+_decorators_stub.event_handler = _event_handler
+sys.modules.setdefault("djust.decorators", _decorators_stub)
+
 # ---------------------------------------------------------------------------
 # Django minimal setup (needed for RequestFactory).
 # ---------------------------------------------------------------------------
@@ -227,3 +243,140 @@ class TestTtydTerminalViewSubclass:
         view = ThemedView()
         view.mount(make_request())
         assert view.theme == {"background": "#000000", "foreground": "#ffffff"}
+
+
+# ---------------------------------------------------------------------------
+# Lifecycle state — initial values after mount()
+# ---------------------------------------------------------------------------
+
+class TestTtydTerminalViewLifecycleInitial:
+    """terminal_connected and session timestamps start falsy after mount()."""
+
+    def test_terminal_connected_false_after_mount(self):
+        view = TtydTerminalView()
+        view.mount(make_request())
+        assert view.terminal_connected is False
+
+    def test_session_start_none_after_mount(self):
+        view = TtydTerminalView()
+        view.mount(make_request())
+        assert view.session_start is None
+
+    def test_session_end_none_after_mount(self):
+        view = TtydTerminalView()
+        view.mount(make_request())
+        assert view.session_end is None
+
+
+# ---------------------------------------------------------------------------
+# on_ttyd_connect event handler
+# ---------------------------------------------------------------------------
+
+class TestOnTtydConnect:
+    """on_ttyd_connect sets terminal_connected=True and records session_start."""
+
+    def _mounted_view(self):
+        view = TtydTerminalView()
+        view.mount(make_request())
+        return view
+
+    def test_sets_terminal_connected_true(self):
+        view = self._mounted_view()
+        view.on_ttyd_connect(timestamp="2026-02-26T12:00:00.000Z", user_agent="Mozilla/5.0")
+        assert view.terminal_connected is True
+
+    def test_records_session_start(self):
+        ts = "2026-02-26T12:00:00.000Z"
+        view = self._mounted_view()
+        view.on_ttyd_connect(timestamp=ts, user_agent="Mozilla/5.0")
+        assert view.session_start == ts
+
+    def test_clears_session_end(self):
+        view = self._mounted_view()
+        # Simulate a previous disconnect then reconnect
+        view.session_end = "2026-02-26T11:59:00.000Z"
+        view.on_ttyd_connect(timestamp="2026-02-26T12:00:00.000Z", user_agent="Mozilla/5.0")
+        assert view.session_end is None
+
+    def test_accepts_empty_strings(self):
+        view = self._mounted_view()
+        view.on_ttyd_connect()  # all defaults
+        assert view.terminal_connected is True
+        assert view.session_start == ""
+
+
+# ---------------------------------------------------------------------------
+# on_ttyd_disconnect event handler
+# ---------------------------------------------------------------------------
+
+class TestOnTtydDisconnect:
+    """on_ttyd_disconnect sets terminal_connected=False and records session_end."""
+
+    def _connected_view(self):
+        view = TtydTerminalView()
+        view.mount(make_request())
+        view.on_ttyd_connect(timestamp="2026-02-26T12:00:00.000Z", user_agent="Mozilla/5.0")
+        return view
+
+    def test_sets_terminal_connected_false(self):
+        view = self._connected_view()
+        view.on_ttyd_disconnect(timestamp="2026-02-26T12:05:00.000Z", code=1000, reason="normal")
+        assert view.terminal_connected is False
+
+    def test_records_session_end(self):
+        ts = "2026-02-26T12:05:00.000Z"
+        view = self._connected_view()
+        view.on_ttyd_disconnect(timestamp=ts, code=1000, reason="normal")
+        assert view.session_end == ts
+
+    def test_preserves_session_start(self):
+        view = self._connected_view()
+        start = view.session_start
+        view.on_ttyd_disconnect(timestamp="2026-02-26T12:05:00.000Z", code=1000)
+        assert view.session_start == start
+
+    def test_accepts_empty_strings_and_zero_code(self):
+        view = self._connected_view()
+        view.on_ttyd_disconnect()  # all defaults
+        assert view.terminal_connected is False
+        assert view.session_end == ""
+
+    def test_handles_abnormal_close_code(self):
+        view = self._connected_view()
+        view.on_ttyd_disconnect(timestamp="2026-02-26T12:05:00.000Z", code=1006, reason="")
+        assert view.terminal_connected is False
+
+
+# ---------------------------------------------------------------------------
+# Subclass override of lifecycle callbacks
+# ---------------------------------------------------------------------------
+
+class TestTtydTerminalViewLifecycleSubclass:
+    """Subclasses can override on_ttyd_connect/on_ttyd_disconnect."""
+
+    def test_subclass_can_override_on_connect(self):
+        class LoggingView(TtydTerminalView):
+            def on_ttyd_connect(self, timestamp="", user_agent="", **kwargs):
+                super().on_ttyd_connect(timestamp=timestamp, user_agent=user_agent, **kwargs)
+                self.last_user_agent = user_agent
+
+        view = LoggingView()
+        view.mount(make_request())
+        view.on_ttyd_connect(timestamp="2026-02-26T12:00:00.000Z", user_agent="TestAgent/1.0")
+        assert view.terminal_connected is True
+        assert view.last_user_agent == "TestAgent/1.0"
+
+    def test_subclass_can_override_on_disconnect(self):
+        class CountingView(TtydTerminalView):
+            disconnect_count = 0
+
+            def on_ttyd_disconnect(self, timestamp="", code=0, reason="", **kwargs):
+                super().on_ttyd_disconnect(timestamp=timestamp, code=code, reason=reason, **kwargs)
+                self.__class__.disconnect_count += 1
+
+        view = CountingView()
+        view.mount(make_request())
+        view.on_ttyd_connect(timestamp="2026-02-26T12:00:00.000Z")
+        view.on_ttyd_disconnect(timestamp="2026-02-26T12:05:00.000Z", code=1000)
+        assert CountingView.disconnect_count == 1
+        assert view.terminal_connected is False

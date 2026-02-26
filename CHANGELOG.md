@@ -5,6 +5,12 @@ All notable changes to djust-components will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Security
+- **templatetags**: All user-controlled values interpolated inside `mark_safe(f"...")` strings are now wrapped with `conditional_escape()`, preventing XSS from attacker-controlled template tag arguments (modal `title`/`close_event`, tabs `id`/`event`, accordion `id`/`event`, dropdown `id`/`label`/`toggle_event`/`variant`, tooltip `text`/`position`, card `title`/`subtitle`/`variant`/`class`)
+- **Markdown component**: Replaced regex-based post-render sanitizer with [`nh3`](https://nh3.readthedocs.io/) (Rust-backed, allowlist-based sanitizer). Explicitly allowed tags and attributes are now enumerated; URL schemes restricted to `http`, `https`, `mailto`; `javascript:`, `data:`, and `vbscript:` URLs are blocked
+
 ## [0.3.0] - 2026-02-19
 
 ### Added
@@ -78,6 +84,7 @@ If you were using custom CSS variables to style components, you need to migrate 
 - Full djust event system integration (`dj-click`, `dj-input`, etc.)
 - Customizable via CSS custom properties
 
+[Unreleased]: https://github.com/djust-org/djust-components/compare/v0.3.0...HEAD
 [0.3.0]: https://github.com/djust-org/djust-components/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/djust-org/djust-components/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/djust-org/djust-components/releases/tag/v0.1.0

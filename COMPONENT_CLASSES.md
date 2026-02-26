@@ -358,10 +358,14 @@ class TaskView(LiveView):
 
 #### Security
 
-Output is sanitized after Markdown rendering:
-- Dangerous tags stripped: `<script>`, `<iframe>`, `<object>`, `<embed>`, `<form>`, `<meta>`, `<link>`, `<style>`
-- Inline event attributes stripped: `onclick=`, `onload=`, etc.
-- Safe HTML (bold, links, tables, code, blockquotes) is preserved
+Output is sanitized with [`nh3`](https://nh3.readthedocs.io/) (Rust-backed, allowlist-based HTML sanitizer) after Markdown rendering:
+- Only explicitly allowed tags are kept (see allowlist below); everything else is stripped
+- Only explicitly allowed attributes are kept per tag; `style=` and `on*` event attributes are never allowed
+- URL schemes are restricted to `http`, `https`, and `mailto`; `javascript:`, `data:`, and `vbscript:` are blocked
+
+**Allowed tags:** `p`, `br`, `hr`, `strong`, `em`, `s`, `del`, `ins`, `sup`, `sub`, `h1`–`h6`, `ul`, `ol`, `li`, `a`, `code`, `pre`, `blockquote`, `table`, `thead`, `tbody`, `tfoot`, `tr`, `th`, `td`, `img`, `div`, `span`
+
+**Allowed attributes (per tag):** `a` → `href`, `title`, `target`; `img` → `src`, `alt`, `title`, `width`, `height`; `th`/`td` → `align`, `colspan`, `rowspan`; `code`/`pre`/`div`/`span` → `class`
 
 #### Customization
 

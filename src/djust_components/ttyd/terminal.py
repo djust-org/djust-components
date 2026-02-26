@@ -32,6 +32,7 @@ import json
 from typing import Optional
 
 from djust import LiveView
+from djust.decorators import event_handler
 
 
 class TtydTerminalView(LiveView):
@@ -40,6 +41,15 @@ class TtydTerminalView(LiveView):
     All terminal configuration flows through URL query params (mount-time only).
     To hardcode config, use the subclass pattern — this avoids user-controlled
     WebSocket URL injection in sensitive deployments.
+
+    Lifecycle callbacks::
+
+        class MyTerminalView(TtydTerminalView):
+            def on_ttyd_connect(self, timestamp="", user_agent="", **kwargs):
+                self.session_log.append(f"Connected at {timestamp}")
+
+            def on_ttyd_disconnect(self, timestamp="", code=0, reason="", **kwargs):
+                self.session_log.append(f"Disconnected at {timestamp} (code={code})")
     """
 
     template_name = "djust_components/ttyd_terminal.html"
@@ -67,7 +77,24 @@ class TtydTerminalView(LiveView):
             class_theme = self.__class__.theme
             self.theme = dict(class_theme) if class_theme else {}
 
+        self.terminal_connected: bool = False
+        self.session_start: Optional[str] = None
+        self.session_end: Optional[str] = None
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx["theme_json"] = json.dumps(self.theme or {})
         return ctx
+
+    @event_handler
+    def on_ttyd_connect(self, timestamp: str = "", user_agent: str = "", **kwargs):
+        """Called when the ttyd WebSocket connection opens in the browser."""
+        self.terminal_connected = True
+        self.session_start = timestamp
+        self.session_end = None
+
+    @event_handler
+    def on_ttyd_disconnect(self, timestamp: str = "", code: int = 0, reason: str = "", **kwargs):
+        """Called when the ttyd WebSocket connection closes in the browser."""
+        self.terminal_connected = False
+        self.session_end = timestamp

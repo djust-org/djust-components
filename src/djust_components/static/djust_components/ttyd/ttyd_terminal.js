@@ -39,6 +39,10 @@ export const TtydTerminalHook = {
 
     this._ws.addEventListener("open", () => {
       this._sendResize(this._term.rows, this._term.cols);
+      this.pushEvent("ttyd_connect", {
+        timestamp: new Date().toISOString(),
+        user_agent: navigator.userAgent,
+      });
     });
 
     this._ws.addEventListener("message", ({ data }) => {
@@ -49,8 +53,13 @@ export const TtydTerminalHook = {
       // 0x01 (title) and 0x02 (prefs) ignored in v1
     });
 
-    this._ws.addEventListener("close", () => {
+    this._ws.addEventListener("close", ({ code, reason }) => {
       this._term.write("\r\n\x1b[31m[Connection closed]\x1b[0m\r\n");
+      this.pushEvent("ttyd_disconnect", {
+        timestamp: new Date().toISOString(),
+        code,
+        reason: reason || "",
+      });
     });
 
     this._ws.addEventListener("error", () => {

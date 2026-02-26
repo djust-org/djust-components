@@ -12,6 +12,7 @@ Usage:
 import uuid
 
 from django import template
+from django.utils.html import conditional_escape
 from django.utils.safestring import mark_safe
 
 register = template.Library()
@@ -77,12 +78,14 @@ class ModalNode(template.Node):
             "lg": "dj-modal--lg",
             "xl": "dj-modal--xl",
         }.get(size, "dj-modal--md")
+        e_close_event = conditional_escape(close_event)
+        e_title = conditional_escape(title)
 
-        return mark_safe(f"""<div class="dj-modal-backdrop" dj-click="{close_event}">
+        return mark_safe(f"""<div class="dj-modal-backdrop" dj-click="{e_close_event}">
   <div class="dj-modal {size_class}" onclick="event.stopPropagation()">
     <div class="dj-modal__header">
-      <h3 class="dj-modal__title">{title}</h3>
-      <button class="dj-modal__close" dj-click="{close_event}">&times;</button>
+      <h3 class="dj-modal__title">{e_title}</h3>
+      <button class="dj-modal__close" dj-click="{e_close_event}">&times;</button>
     </div>
     <div class="dj-modal__body">{content}</div>
   </div>
@@ -137,11 +140,11 @@ class TabsNode(template.Node):
             label = _resolve(tab.label, context)
             icon = _resolve(tab.icon, context) if tab.icon else ""
             active_cls = "dj-tab--active" if tid == active else ""
-            icon_html = f'<span class="dj-tab__icon">{icon}</span> ' if icon else ""
+            icon_html = f'<span class="dj-tab__icon">{conditional_escape(icon)}</span> ' if icon else ""
             nav_items.append(
                 f'<button class="dj-tab {active_cls}" '
-                f'dj-click="{event}" data-value="{tid}">'
-                f'{icon_html}{label}</button>'
+                f'dj-click="{conditional_escape(event)}" data-value="{conditional_escape(tid)}">'
+                f'{icon_html}{conditional_escape(label)}</button>'
             )
 
         nav = f'<nav class="dj-tabs__nav">{"".join(nav_items)}</nav>'
@@ -154,7 +157,7 @@ class TabsNode(template.Node):
                 pane = f'<div class="dj-tabs__pane">{tab.render(context)}</div>'
                 break
 
-        return mark_safe(f'<div class="dj-tabs" id="{tabs_id}">{nav}{pane}</div>')
+        return mark_safe(f'<div class="dj-tabs" id="{conditional_escape(tabs_id)}">{nav}{pane}</div>')
 
 
 @register.tag("tabs")
@@ -219,15 +222,15 @@ class AccordionNode(template.Node):
                 )
             parts.append(
                 f'<div class="dj-accordion-item {open_cls}">'
-                f'<button class="dj-accordion__trigger" dj-click="{event}" data-value="{iid}">'
-                f'<span>{title}</span>'
+                f'<button class="dj-accordion__trigger" dj-click="{conditional_escape(event)}" data-value="{conditional_escape(iid)}">'
+                f'<span>{conditional_escape(title)}</span>'
                 f'<span class="dj-accordion__chevron {chevron_cls}">&#9662;</span>'
                 f'</button>'
                 f'{content_html}</div>'
             )
 
         return mark_safe(
-            f'<div class="dj-accordion" id="{accordion_id}">{"".join(parts)}</div>'
+            f'<div class="dj-accordion" id="{conditional_escape(accordion_id)}">{"".join(parts)}</div>'
         )
 
 
@@ -270,15 +273,15 @@ class DropdownNode(template.Node):
 
         content = self.nodelist.render(context)
         open_cls = "dj-dropdown--open" if is_open else ""
-        variant_cls = f"dj-dropdown--{variant}"
+        variant_cls = f"dj-dropdown--{conditional_escape(variant)}"
 
         menu_html = ""
         if is_open:
             menu_html = f'<div class="dj-dropdown__menu">{content}</div>'
 
         return mark_safe(
-            f'<div class="dj-dropdown {open_cls} {variant_cls}" id="{dropdown_id}">'
-            f'<button class="dj-dropdown__trigger" dj-click="{toggle_event}">{label}</button>'
+            f'<div class="dj-dropdown {open_cls} {variant_cls}" id="{conditional_escape(dropdown_id)}">'
+            f'<button class="dj-dropdown__trigger" dj-click="{conditional_escape(toggle_event)}">{conditional_escape(label)}</button>'
             f'{menu_html}</div>'
         )
 
@@ -323,9 +326,9 @@ class TooltipNode(template.Node):
         content = self.nodelist.render(context)
 
         return mark_safe(
-            f'<span class="dj-tooltip dj-tooltip--{position}">'
+            f'<span class="dj-tooltip dj-tooltip--{conditional_escape(position)}">'
             f'{content}'
-            f'<span class="dj-tooltip__text">{text}</span>'
+            f'<span class="dj-tooltip__text">{conditional_escape(text)}</span>'
             f'</span>'
         )
 
@@ -400,11 +403,11 @@ class CardNode(template.Node):
 
         header = ""
         if title:
-            sub = f'<p class="dj-card__subtitle">{subtitle}</p>' if subtitle else ""
-            header = f'<div class="dj-card__header"><h3 class="dj-card__title">{title}</h3>{sub}</div>'
+            sub = f'<p class="dj-card__subtitle">{conditional_escape(subtitle)}</p>' if subtitle else ""
+            header = f'<div class="dj-card__header"><h3 class="dj-card__title">{conditional_escape(title)}</h3>{sub}</div>'
 
         return mark_safe(
-            f'<div class="dj-card dj-card--{variant} {extra_class}">'
+            f'<div class="dj-card dj-card--{conditional_escape(variant)} {conditional_escape(extra_class)}">'
             f'{header}'
             f'<div class="dj-card__body">{content}</div>'
             f'</div>'
