@@ -1,27 +1,47 @@
 """Markdown component — renders Markdown text as sanitized HTML."""
 
-import re
 from typing import Optional
 
 import markdown as md_lib
+import nh3
 
 from djust import Component
 
-# Tags that can execute scripts or load external resources — stripped from
-# rendered output.  Everything else (bold, links, tables, code, …) is allowed.
-_DANGEROUS_TAGS = re.compile(
-    r"<(script|iframe|object|embed|form|meta|link|style)\b[^>]*>.*?</\1>|"
-    r"<(script|iframe|object|embed|form|meta|link|style)\b[^>]*/?>",
-    re.IGNORECASE | re.DOTALL,
-)
-# Strip on* event attributes (onclick=, onload=, …)
-_EVENT_ATTRS = re.compile(r"\s+on\w+\s*=\s*(?:\"[^\"]*\"|'[^']*'|[^\s>]+)", re.IGNORECASE)
+# Allowlist of tags safe for prose content.
+_ALLOWED_TAGS = {
+    "p", "br", "hr",
+    "strong", "em", "s", "del", "ins", "sup", "sub",
+    "h1", "h2", "h3", "h4", "h5", "h6",
+    "ul", "ol", "li",
+    "a",
+    "code", "pre",
+    "blockquote",
+    "table", "thead", "tbody", "tfoot", "tr", "th", "td",
+    "img",
+    "div", "span",
+}
+
+# Per-tag attribute allowlist.  No style= or on* anywhere.
+_ALLOWED_ATTRS: dict[str, set[str]] = {
+    "a": {"href", "title", "target"},
+    "img": {"src", "alt", "title", "width", "height"},
+    "th": {"align", "colspan", "rowspan"},
+    "td": {"align", "colspan", "rowspan"},
+    "code": {"class"},   # for syntax-highlight class names
+    "pre": {"class"},
+    "div": {"class"},
+    "span": {"class"},
+}
 
 
 def _sanitize(html: str) -> str:
-    html = _DANGEROUS_TAGS.sub("", html)
-    html = _EVENT_ATTRS.sub("", html)
-    return html
+    return nh3.clean(
+        html,
+        tags=_ALLOWED_TAGS,
+        attributes=_ALLOWED_ATTRS,
+        link_rel=None,  # don't force rel= on every link; trust the allowlist
+        url_schemes={"http", "https", "mailto"},  # blocks javascript:, data:, vbscript:
+    )
 
 
 class Markdown(Component):
