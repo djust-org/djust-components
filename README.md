@@ -202,11 +202,13 @@ User avatar with initials fallback and status indicator.
 
 ## Theming
 
-**djust-components v0.2.0+** integrates with [djust-theming](https://github.com/djust-org/djust-theming) for automatic theme adaptation. All components use theme variables and design tokens, so they automatically adapt to any of djust-theming's 19 built-in presets (Default, Shadcn, Blue, Green, Purple, Orange, Rose, Cyberpunk, Forest, Amber, Slate, Nebula, and more) and mode (light/dark/system).
+**djust-components** integrates with [djust-theming](https://github.com/djust-org/djust-theming) for automatic theme adaptation. All components use theme CSS variables and design tokens, so they automatically adapt to any of djust-theming's built-in presets (Default, Shadcn, Blue, Green, Purple, Orange, Rose, and more) and mode (light/dark/system).
+
+djust-theming is an **optional** dependency — components work without it using their default styles.
 
 ### Setup with djust-theming
 
-Install djust-theming (required for v0.2.0+):
+Install djust-theming (compatible with 0.3.x):
 
 ```bash
 pip install djust-theming
