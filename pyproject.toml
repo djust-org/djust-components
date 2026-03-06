@@ -28,6 +28,7 @@ classifiers = [
 dependencies = [
     "djust>=0.3.0rc5",
     "markdown>=3.0",
+    "nh3>=0.2",
 ]
 
 [project.urls]
