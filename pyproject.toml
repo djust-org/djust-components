@@ -27,8 +27,8 @@ classifiers = [
 ]
 dependencies = [
     "djust>=0.3.0rc5",
-    "djust-theming>=1.1.0",
     "markdown>=3.0",
+    "nh3>=0.2",
 ]
 
 [project.urls]

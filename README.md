@@ -202,11 +202,13 @@ User avatar with initials fallback and status indicator.
 
 ## Theming
 
-**djust-components v0.2.0+** integrates with [djust-theming](https://github.com/djust-org/djust-theming) for automatic theme adaptation. All components use theme variables and design tokens, so they automatically adapt to any of djust-theming's 19 built-in presets (Default, Shadcn, Blue, Green, Purple, Orange, Rose, Cyberpunk, Forest, Amber, Slate, Nebula, and more) and mode (light/dark/system).
+**djust-components** integrates with [djust-theming](https://github.com/djust-org/djust-theming) for automatic theme adaptation. All components use theme CSS variables and design tokens, so they automatically adapt to any of djust-theming's built-in presets (Default, Shadcn, Blue, Green, Purple, Orange, Rose, and more) and mode (light/dark/system).
+
+djust-theming is an **optional** dependency — components work without it using their default styles.
 
 ### Setup with djust-theming
 
-Install djust-theming (required for v0.2.0+):
+Install djust-theming (compatible with 0.3.x):
 
 ```bash
 pip install djust-theming
@@ -283,6 +285,56 @@ class TaskView(LiveView):
 | `Markdown` | Renders Markdown to sanitized HTML. Wrapped in `<div class="dj-prose">` |
 
 See [COMPONENT_CLASSES.md](COMPONENT_CLASSES.md) for full API reference.
+
+## LiveViews
+
+In addition to components, djust-components ships ready-made LiveView classes for common full-page interactions.
+
+### TtydTerminalView
+
+Embeds a [ttyd](https://github.com/tsl0922/ttyd) WebSocket terminal using xterm.js 5.x — no djust relay, no build step.
+
+```python
+# urls.py
+from djust_components.ttyd import TtydTerminalView
+
+urlpatterns = [
+    path("shell/", TtydTerminalView.as_view(), name="shell"),
+]
+```
+
+**Props** (all optional — override by subclass or URL query param):
+
+| Prop | Default | Description |
+|------|---------|-------------|
+| `ttyd_url` | `ws://localhost:7681` | WebSocket URL of the ttyd backend |
+| `rows` | `24` | Terminal rows |
+| `cols` | `80` | Terminal columns |
+| `theme` | `{}` | xterm.js theme dict (e.g. `{"background": "#1e1e2e"}`) |
+
+**Subclass pattern** (recommended for production — prevents user-controlled URL injection):
+
+```python
+class DeployLogView(TtydTerminalView):
+    ttyd_url = "ws://localhost:7682"
+    rows = 40
+    cols = 120
+    theme = {"background": "#1e1e2e", "foreground": "#cdd6f4"}
+
+    path("deploy/logs/", DeployLogView.as_view(), name="deploy-logs"),
+```
+
+**URL query param override** (useful for dev/debugging):
+
+```
+/shell/?url=ws://myhost:7681&rows=30&cols=100
+```
+
+**Requirements:**
+- ttyd must be run with `--check-origin=false` (or same origin) to allow browser WebSocket connections.
+- xterm.js is loaded from `esm.sh` CDN at runtime. For offline/air-gapped environments, vendor `xterm@5` and `@xterm/addon-fit@0.10` to your static files and update the CDN constants in `ttyd_terminal.js`.
+
+**Security note:** `login_required = False` by default (v1 targets local/trusted access). Override in subclasses for authenticated deployments.
 
 ## Development
 

@@ -22,8 +22,18 @@ Add 'djust_components' to INSTALLED_APPS, then use:
     {{ status|safe }}
 
 See COMPONENT_CLASSES.md for full documentation.
+
+**LiveViews:**
+
+    from djust_components.ttyd import TtydTerminalView
+
+    path("shell/", TtydTerminalView.as_view(), name="shell"),
 """
 
 __version__ = "0.1.0"
 
 default_app_config = "djust_components.apps.DjustComponentsConfig"
+
+from .ttyd import TtydTerminalView  # noqa: E402
+
+__all__ = ["TtydTerminalView"]

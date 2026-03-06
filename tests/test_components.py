@@ -204,3 +204,150 @@ class TestToast:
     def test_toast_empty(self):
         html = render('{% toast_container toasts %}', {"toasts": []})
         assert "dj-toast-container--empty" in html
+
+
+# ─── XSS Escaping ───
+
+class TestXSSEscaping:
+    """Verify that user-controlled values are escaped to prevent XSS."""
+
+    XSS = '<script>alert(1)</script>'
+    # A payload that breaks out of an HTML attribute if quotes are not escaped
+    XSS_ATTR = '" onmouseover="alert(1)" x="'
+
+    def _assert_attr_escaped(self, html, payload=None):
+        """Assert that a quote-injection payload cannot break out of an attribute."""
+        if payload is None:
+            payload = self.XSS_ATTR
+        # The raw unescaped double-quote must not appear adjacent to the event handler
+        assert '" onmouseover="' not in html
+        # The attribute-breaking quote must be entity-encoded
+        assert "&quot;" in html
+
+    # Modal
+    def test_modal_title_xss(self):
+        html = render(
+            '{% modal open=True title=xss_title %}body{% endmodal %}',
+            {"xss_title": self.XSS},
+        )
+        assert "<script>" not in html
+        assert "&lt;script&gt;" in html
+
+    def test_modal_close_event_xss(self):
+        html = render(
+            '{% modal open=True close_event=bad_event %}body{% endmodal %}',
+            {"bad_event": self.XSS_ATTR},
+        )
+        self._assert_attr_escaped(html)
+
+    # Tabs
+    def test_tabs_id_xss(self):
+        html = render(
+            '{% tabs id=xss_id active="a" %}'
+            '{% tab id="a" label="A" %}A{% endtab %}'
+            '{% endtabs %}',
+            {"xss_id": self.XSS_ATTR},
+        )
+        self._assert_attr_escaped(html)
+
+    def test_tabs_label_xss(self):
+        html = render(
+            '{% tabs active="a" %}'
+            '{% tab id="a" label=xss_label %}A{% endtab %}'
+            '{% endtabs %}',
+            {"xss_label": self.XSS},
+        )
+        assert "<script>" not in html
+        assert "&lt;script&gt;" in html
+
+    def test_tabs_event_xss(self):
+        html = render(
+            '{% tabs active="a" event=bad_event %}'
+            '{% tab id="a" label="A" %}A{% endtab %}'
+            '{% endtabs %}',
+            {"bad_event": self.XSS_ATTR},
+        )
+        self._assert_attr_escaped(html)
+
+    # Accordion
+    def test_accordion_title_xss(self):
+        html = render(
+            '{% accordion active="q1" %}'
+            '{% accordion_item id="q1" title=xss_title %}Answer{% endaccordion_item %}'
+            '{% endaccordion %}',
+            {"xss_title": self.XSS},
+        )
+        assert "<script>" not in html
+        assert "&lt;script&gt;" in html
+
+    def test_accordion_id_xss(self):
+        html = render(
+            '{% accordion active="" id=xss_id %}'
+            '{% accordion_item id="q1" title="Q" %}A{% endaccordion_item %}'
+            '{% endaccordion %}',
+            {"xss_id": self.XSS_ATTR},
+        )
+        self._assert_attr_escaped(html)
+
+    # Dropdown
+    def test_dropdown_label_xss(self):
+        html = render(
+            '{% dropdown label=xss_label open=True %}items{% enddropdown %}',
+            {"xss_label": self.XSS},
+        )
+        assert "<script>" not in html
+        assert "&lt;script&gt;" in html
+
+    def test_dropdown_toggle_event_xss(self):
+        html = render(
+            '{% dropdown label="Menu" open=True toggle_event=bad_event %}items{% enddropdown %}',
+            {"bad_event": self.XSS_ATTR},
+        )
+        self._assert_attr_escaped(html)
+
+    def test_dropdown_id_xss(self):
+        html = render(
+            '{% dropdown label="Menu" open=True id=xss_id %}items{% enddropdown %}',
+            {"xss_id": self.XSS_ATTR},
+        )
+        self._assert_attr_escaped(html)
+
+    # Tooltip
+    def test_tooltip_text_xss(self):
+        html = render(
+            '{% tooltip text=xss_text %}hover me{% endtooltip %}',
+            {"xss_text": self.XSS},
+        )
+        assert "<script>" not in html
+        assert "&lt;script&gt;" in html
+
+    def test_tooltip_position_xss(self):
+        html = render(
+            '{% tooltip text="tip" position=xss_pos %}hover me{% endtooltip %}',
+            {"xss_pos": self.XSS_ATTR},
+        )
+        self._assert_attr_escaped(html)
+
+    # Card
+    def test_card_title_xss(self):
+        html = render(
+            '{% card title=xss_title %}content{% endcard %}',
+            {"xss_title": self.XSS},
+        )
+        assert "<script>" not in html
+        assert "&lt;script&gt;" in html
+
+    def test_card_subtitle_xss(self):
+        html = render(
+            '{% card title="Title" subtitle=xss_sub %}content{% endcard %}',
+            {"xss_sub": self.XSS},
+        )
+        assert "<script>" not in html
+        assert "&lt;script&gt;" in html
+
+    def test_card_extra_class_xss(self):
+        html = render(
+            '{% card class=xss_class %}content{% endcard %}',
+            {"xss_class": self.XSS_ATTR},
+        )
+        self._assert_attr_escaped(html)
