@@ -946,12 +946,17 @@ class ComboboxHandler:
     def render(self, args, context):
         from djust_components.templatetags.djust_components import combobox as _cb
         kwargs = _parse_args(args, context)
+        options_val = kwargs.get("options", "")
+        if isinstance(options_val, list):
+            options = options_val
+        else:
+            options = context.get(options_val, [])
         return str(_cb(
             name=kwargs.get("name", ""),
             label=kwargs.get("label", ""),
             value=kwargs.get("value", ""),
             placeholder=kwargs.get("placeholder", "Search…"),
-            options=context.get(kwargs.get("options", ""), []),
+            options=options,
             event=kwargs.get("event", ""),
             search_event=kwargs.get("search_event", ""),
         ))
