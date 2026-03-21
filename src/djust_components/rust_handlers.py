@@ -21,7 +21,11 @@ def _parse_args(args, context):
     """Parse handler arg list ["key='val'", "key2=var"] into a dict.
 
     Resolves variable references against the template context dict.
+    Values that are JSON-encoded lists/objects (from the Rust engine's
+    variable resolution) are deserialized automatically.
     """
+    import json as _json
+
     result = {}
     for arg in args:
         if "=" not in arg:
@@ -34,6 +38,14 @@ def _parse_args(args, context):
             val.startswith("'") and val.endswith("'")
         ):
             result[key] = val[1:-1]
+        # JSON array or object (from Rust variable resolution)
+        elif (val.startswith("[") and val.endswith("]")) or (
+            val.startswith("{") and val.endswith("}")
+        ):
+            try:
+                result[key] = _json.loads(val)
+            except (ValueError, TypeError):
+                result[key] = context.get(val, val)
         # Boolean
         elif val in ("True", "true", "1"):
             result[key] = True
@@ -912,3 +924,447 @@ def register_with_rust_engine():
 
     for tag_name, end_tag, handler in BLOCK_HANDLERS:
         register_block_tag_handler(tag_name, end_tag, handler)
+
+
+# ===========================================================================
+# TIER 2 REMAINING + TIER 3 HANDLERS
+# ===========================================================================
+
+class CodeBlockHandler:
+    """Inline handler for {% code_block code=... language=... %}"""
+    def render(self, args, context):
+        from django.utils.html import conditional_escape
+        from djust_components.templatetags.djust_components import code_block as _cb
+        kwargs = _parse_args(args, context)
+        code = kwargs.get("code", "")
+        language = kwargs.get("language", "")
+        filename = kwargs.get("filename", "")
+        return str(_cb(code=code, language=language, filename=filename))
+
+
+class ComboboxHandler:
+    def render(self, args, context):
+        from djust_components.templatetags.djust_components import combobox as _cb
+        kwargs = _parse_args(args, context)
+        return str(_cb(
+            name=kwargs.get("name", ""),
+            label=kwargs.get("label", ""),
+            value=kwargs.get("value", ""),
+            placeholder=kwargs.get("placeholder", "Search…"),
+            options=context.get(kwargs.get("options", ""), []),
+            event=kwargs.get("event", ""),
+            search_event=kwargs.get("search_event", ""),
+        ))
+
+
+class RatingHandler:
+    def render(self, args, context):
+        from djust_components.templatetags.djust_components import rating as _r
+        kwargs = _parse_args(args, context)
+        return str(_r(
+            value=kwargs.get("value", 0),
+            max_stars=kwargs.get("max_stars", 5),
+            readonly=kwargs.get("readonly", False),
+            event=kwargs.get("event", "set_rating"),
+            size=kwargs.get("size", "md"),
+        ))
+
+
+class CopyButtonHandler:
+    def render(self, args, context):
+        from djust_components.templatetags.djust_components import copy_button as _c
+        kwargs = _parse_args(args, context)
+        return str(_c(
+            text=kwargs.get("text", ""),
+            label=kwargs.get("label", "Copy"),
+            variant=kwargs.get("variant", "outline"),
+            size=kwargs.get("size", "sm"),
+        ))
+
+
+class KbdHandler:
+    def render(self, args, context):
+        from djust_components.templatetags.djust_components import kbd as _k
+        # args is a list of strings; filter out empty ones
+        keys = [a.strip("'\"") for a in args if a.strip("'\"")]
+        return str(_k(*keys))
+
+
+class GaugeHandler:
+    def render(self, args, context):
+        from djust_components.templatetags.djust_components import gauge as _g
+        kwargs = _parse_args(args, context)
+        return str(_g(
+            value=kwargs.get("value", 0),
+            max_value=kwargs.get("max_value", 100),
+            label=kwargs.get("label", ""),
+            color=kwargs.get("color", "primary"),
+            size=kwargs.get("size", "md"),
+        ))
+
+
+class NotificationCenterHandler:
+    def render(self, args, context):
+        from djust_components.templatetags.djust_components import notification_center as _nc
+        kwargs = _parse_args(args, context)
+        notifs_key = kwargs.get("notifications", "notifications")
+        notifs = context.get(notifs_key, []) if isinstance(notifs_key, str) else notifs_key
+        unread = sum(1 for n in notifs if isinstance(n, dict) and n.get("unread"))
+        return str(_nc(
+            notifications=notifs,
+            unread_count=unread,
+            open_event=kwargs.get("open_event", "toggle_notifications"),
+        ))
+
+
+class TreeViewHandler:
+    def render(self, args, context):
+        from djust_components.templatetags.djust_components import tree_view as _tv
+        kwargs = _parse_args(args, context)
+        nodes_key = kwargs.get("nodes", "tree_nodes")
+        nodes = context.get(nodes_key, []) if isinstance(nodes_key, str) else nodes_key
+        return str(_tv(
+            nodes=nodes,
+            expand_event=kwargs.get("expand_event", "tree_expand"),
+            select_event=kwargs.get("select_event", "tree_select"),
+            selected=kwargs.get("selected", ""),
+        ))
+
+
+class ColorPickerHandler:
+    def render(self, args, context):
+        from djust_components.templatetags.djust_components import color_picker as _cp
+        kwargs = _parse_args(args, context)
+        return str(_cp(
+            name=kwargs.get("name", ""),
+            value=kwargs.get("value", "#3B82F6"),
+            event=kwargs.get("event", ""),
+            label=kwargs.get("label", ""),
+        ))
+
+
+class CarouselHandler:
+    def render(self, args, context):
+        from djust_components.templatetags.djust_components import carousel as _car
+        kwargs = _parse_args(args, context)
+        imgs_key = kwargs.get("images", "carousel_images")
+        images = context.get(imgs_key, []) if isinstance(imgs_key, str) else imgs_key
+        return str(_car(
+            images=images,
+            active=kwargs.get("active", 0),
+            prev_event=kwargs.get("prev_event", "carousel_prev"),
+            next_event=kwargs.get("next_event", "carousel_next"),
+        ))
+
+
+class PaletteItemHandler:
+    def render(self, args, context):
+        from djust_components.templatetags.djust_components import palette_item as _pi
+        kwargs = _parse_args(args, context)
+        return str(_pi(
+            label=kwargs.get("label", ""),
+            shortcut=kwargs.get("shortcut", ""),
+            description=kwargs.get("description", ""),
+            event=kwargs.get("event", ""),
+            icon=kwargs.get("icon", ""),
+        ))
+
+
+class ContextMenuItemHandler:
+    def render(self, args, context):
+        from djust_components.templatetags.djust_components import context_menu_item as _ci
+        kwargs = _parse_args(args, context)
+        return str(_ci(
+            label=kwargs.get("label", ""),
+            event=kwargs.get("event", ""),
+            icon=kwargs.get("icon", ""),
+            danger=kwargs.get("danger", False),
+            divider=kwargs.get("divider", False),
+        ))
+
+
+class PopoverHandler:
+    """Block handler for {% popover trigger="..." %}...{% endpopover %}"""
+    def render(self, args, content, context):
+        kwargs = _parse_args(args, context)
+        trigger = kwargs.get("trigger", "Click me")
+        placement = kwargs.get("placement", "bottom")
+        title = kwargs.get("title", "")
+        from django.utils.html import conditional_escape
+        e_trigger = conditional_escape(trigger)
+        e_placement = conditional_escape(placement)
+        title_html = (
+            f'<div class="popover-title">{conditional_escape(title)}</div>'
+            if title else ""
+        )
+        return (
+            f'<div class="popover-wrapper">'
+            f'<button class="popover-trigger btn btn-outline btn-sm" '
+            f"onclick=\"(function(el){{var p=el.parentElement;p.classList.toggle('popover-open');"
+            f"document.addEventListener('click',function h(e){{if(!p.contains(e.target)){{p.classList.remove('popover-open');document.removeEventListener('click',h);}}}},true);"
+            f'}})(this)">'
+            f'{e_trigger}</button>'
+            f'<div class="popover popover-{e_placement}">'
+            f'{title_html}'
+            f'<div class="popover-content">{content}</div>'
+            f'</div>'
+            f'</div>'
+        )
+
+
+class CollapsibleHandler:
+    """Block handler for {% collapsible trigger="..." %}...{% endcollapsible %}"""
+    def render(self, args, content, context):
+        kwargs = _parse_args(args, context)
+        trigger = kwargs.get("trigger", "Toggle")
+        event = kwargs.get("event", "toggle_collapsible")
+        open_ = kwargs.get("open", False)
+        if isinstance(open_, str):
+            open_ = open_.lower() not in ("false", "0", "")
+        from django.utils.html import conditional_escape
+        e_trigger = conditional_escape(trigger)
+        e_event = conditional_escape(event)
+        open_cls = " collapsible-open" if open_ else ""
+        return (
+            f'<div class="collapsible{open_cls}">'
+            f'<button class="collapsible-trigger" '
+            f'onclick="(function(el){{el.closest(\'.collapsible\').classList.toggle(\'collapsible-open\');}})(this)"'
+            f' dj-click="{e_event}">'
+            f'<span class="collapsible-label">{e_trigger}</span>'
+            f'<span class="collapsible-icon">▾</span>'
+            f'</button>'
+            f'<div class="collapsible-content">{content}</div>'
+            f'</div>'
+        )
+
+
+class SheetHandler:
+    """Block handler for {% sheet side="right" open=show_sheet %}...{% endsheet %}"""
+    def render(self, args, content, context):
+        kwargs = _parse_args(args, context)
+        open_ = kwargs.get("open", False)
+        if isinstance(open_, str):
+            open_ = open_.lower() not in ("false", "0", "")
+        side = kwargs.get("side", "right")
+        title = kwargs.get("title", "")
+        close_event = kwargs.get("close_event", "close_sheet")
+        from django.utils.html import conditional_escape
+        e_side = conditional_escape(side)
+        e_title = conditional_escape(title)
+        e_close = conditional_escape(close_event)
+        open_attr = ' data-open="true"' if open_ else ""
+        title_html = (
+            f'<div class="sheet-header">'
+            f'<h3 class="sheet-title">{e_title}</h3>'
+            f'<button class="sheet-close" dj-click="{e_close}">&times;</button>'
+            f'</div>'
+            if title else
+            f'<div class="sheet-header-close">'
+            f'<button class="sheet-close" dj-click="{e_close}">&times;</button>'
+            f'</div>'
+        )
+        return (
+            f'<div class="sheet-overlay" dj-click="{e_close}"{open_attr}></div>'
+            f'<div class="sheet sheet-{e_side}"{open_attr}>'
+            f'{title_html}'
+            f'<div class="sheet-body">{content}</div>'
+            f'</div>'
+        )
+
+
+class CommandPaletteHandler:
+    """Block handler for {% command_palette open=show_palette %}...{% endcommand_palette %}"""
+    def render(self, args, content, context):
+        kwargs = _parse_args(args, context)
+        open_ = kwargs.get("open", False)
+        if isinstance(open_, str):
+            open_ = open_.lower() not in ("false", "0", "")
+        search_event = kwargs.get("search_event", "palette_search")
+        close_event = kwargs.get("close_event", "close_palette")
+        placeholder = kwargs.get("placeholder", "Search commands…")
+        from django.utils.html import conditional_escape
+        e_search = conditional_escape(search_event)
+        e_close = conditional_escape(close_event)
+        e_placeholder = conditional_escape(placeholder)
+        open_attr = ' data-open="true"' if open_ else ""
+        return (
+            f'<div class="palette-overlay" dj-click="{e_close}"{open_attr}></div>'
+            f'<div class="palette"{open_attr}>'
+            f'<div class="palette-search">'
+            f'<span class="palette-search-icon">⌕</span>'
+            f'<input class="palette-input" type="text" placeholder="{e_placeholder}" '
+            f'dj-input="{e_search}">'
+            f'<button class="palette-close" dj-click="{e_close}">Esc</button>'
+            f'</div>'
+            f'<div class="palette-results">{content}</div>'
+            f'</div>'
+        )
+
+
+class ContextMenuHandler:
+    """Block handler for {% context_menu label="..." %}...{% endcontext_menu %}"""
+    def render(self, args, content, context):
+        kwargs = _parse_args(args, context)
+        label = kwargs.get("label", "Right-click here")
+        from django.utils.html import conditional_escape
+        e_label = conditional_escape(label)
+        return (
+            f'<div class="ctx-wrapper" '
+            f"oncontextmenu=\"(function(e,el){{e.preventDefault();"
+            f"document.querySelectorAll('.ctx-menu[data-open]').forEach(function(m){{delete m.dataset.open;}});"
+            f"var m=el.querySelector('.ctx-menu');"
+            f"m.style.left=e.offsetX+'px';m.style.top=e.offsetY+'px';"
+            f"m.dataset.open='1';"
+            f"document.addEventListener('click',function h(){{delete m.dataset.open;document.removeEventListener('click',h);}},{{once:true}});"
+            f'}})(event,this)">'
+            f'<div class="ctx-trigger">{e_label}</div>'
+            f'<div class="ctx-menu">{content}</div>'
+            f'</div>'
+        )
+
+
+# Extend lists with Tier 2/3 handlers (defined above, after the original lists)
+INLINE_HANDLERS.extend([
+    ("code_block", CodeBlockHandler()),
+    ("combobox", ComboboxHandler()),
+    ("rating", RatingHandler()),
+    ("copy_button", CopyButtonHandler()),
+    ("kbd", KbdHandler()),
+    ("gauge", GaugeHandler()),
+    ("notification_center", NotificationCenterHandler()),
+    ("tree_view", TreeViewHandler()),
+    ("color_picker", ColorPickerHandler()),
+    ("carousel", CarouselHandler()),
+    ("palette_item", PaletteItemHandler()),
+    ("context_menu_item", ContextMenuItemHandler()),
+])
+
+BLOCK_HANDLERS.extend([
+    ("popover", "endpopover", PopoverHandler()),
+    ("collapsible", "endcollapsible", CollapsibleHandler()),
+    ("sheet", "endsheet", SheetHandler()),
+    ("command_palette", "endcommand_palette", CommandPaletteHandler()),
+    ("context_menu", "endcontext_menu", ContextMenuHandler()),
+])
+
+
+# ===========================================================================
+# v1.3 HANDLERS
+# ===========================================================================
+
+class DatePickerHandler:
+    def render(self, args, context):
+        from djust_components.templatetags.djust_components import date_picker as _dp
+        kwargs = _parse_args(args, context)
+        return str(_dp(
+            year=kwargs.get("year"),
+            month=kwargs.get("month"),
+            selected=kwargs.get("selected", ""),
+            prev_event=kwargs.get("prev_event", "date_prev_month"),
+            next_event=kwargs.get("next_event", "date_next_month"),
+            select_event=kwargs.get("select_event", "date_select"),
+            name=kwargs.get("name", "date"),
+            label=kwargs.get("label", ""),
+        ))
+
+
+class FileDropzoneHandler:
+    def render(self, args, context):
+        from djust_components.templatetags.djust_components import file_dropzone as _fd
+        kwargs = _parse_args(args, context)
+        return str(_fd(
+            name=kwargs.get("name", "file"),
+            label=kwargs.get("label", ""),
+            accept=kwargs.get("accept", ""),
+            multiple=kwargs.get("multiple", False),
+            max_size_mb=kwargs.get("max_size_mb", 10),
+            event=kwargs.get("event", "file_selected"),
+        ))
+
+
+class VirtualListHandler:
+    def render(self, args, context):
+        from djust_components.templatetags.djust_components import virtual_list as _vl
+        kwargs = _parse_args(args, context)
+        items_key = kwargs.get("items", "vl_items")
+        items = context.get(items_key, []) if isinstance(items_key, str) else items_key
+        return str(_vl(
+            items=items,
+            total=kwargs.get("total", len(items) if items else 0),
+            page=kwargs.get("page", 1),
+            page_size=kwargs.get("page_size", 20),
+            load_more_event=kwargs.get("load_more_event", "load_more"),
+        ))
+
+
+class KanbanBoardHandler:
+    def render(self, args, context):
+        from djust_components.templatetags.djust_components import kanban_board as _kb
+        kwargs = _parse_args(args, context)
+        cols_key = kwargs.get("columns", "kanban_columns")
+        columns = context.get(cols_key, []) if isinstance(cols_key, str) else cols_key
+        return str(_kb(
+            columns=columns,
+            move_event=kwargs.get("move_event", "kanban_move"),
+            add_card_event=kwargs.get("add_card_event", "kanban_add_card"),
+        ))
+
+
+class TableOfContentsHandler:
+    def render(self, args, context):
+        from djust_components.templatetags.djust_components import table_of_contents as _toc
+        kwargs = _parse_args(args, context)
+        items_key = kwargs.get("items", "toc_items")
+        items = context.get(items_key, []) if isinstance(items_key, str) else items_key
+        return str(_toc(
+            items=items,
+            title=kwargs.get("title", "Contents"),
+            active=kwargs.get("active", ""),
+        ))
+
+
+class RichTextEditorHandler:
+    def render(self, args, context):
+        from djust_components.templatetags.djust_components import rich_text_editor as _rte
+        kwargs = _parse_args(args, context)
+        return str(_rte(
+            name=kwargs.get("name", "content"),
+            value=kwargs.get("value", ""),
+            event=kwargs.get("event", "update_content"),
+            label=kwargs.get("label", ""),
+            height=kwargs.get("height", "200px"),
+        ))
+
+
+# Register v1.3 inline handlers
+INLINE_HANDLERS.extend([
+    ("date_picker", DatePickerHandler()),
+    ("file_dropzone", FileDropzoneHandler()),
+    ("virtual_list", VirtualListHandler()),
+    ("kanban_board", KanbanBoardHandler()),
+    ("table_of_contents", TableOfContentsHandler()),
+    ("rich_text_editor", RichTextEditorHandler()),
+])
+
+
+class SplitPaneHandler:
+    """Block handler for {% split_pane %}...{% pane %}...{% endsplit_pane %}"""
+    def render(self, args, content, context):
+        # For Rust engine, content is pre-rendered; we just wrap it
+        kwargs = _parse_args(args, context)
+        direction = kwargs.get("direction", "horizontal")
+        initial = kwargs.get("initial", "50")
+        from django.utils.html import conditional_escape as ce
+        import uuid as _uuid
+        uid = f"sp-{_uuid.uuid4().hex[:6]}"
+        size_prop = "width" if direction == "horizontal" else "height"
+        return (
+            f'<div class="split-pane split-pane-{ce(direction)}" id="{uid}">'
+            f'{content}'
+            f'</div>'
+        )
+
+
+BLOCK_HANDLERS.extend([
+    ("split_pane", "endsplit_pane", SplitPaneHandler()),
+])
