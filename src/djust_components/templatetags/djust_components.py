@@ -1740,6 +1740,9 @@ def gauge(value=0, max_value=100, label="", color="primary", size="md", show_val
         f'class="gauge-value-text" font-size="{px * 0.18:.0f}">{display_val}</text>'
         if show_value else ""
     )
+    label_html = (
+        f'<div class="gauge-label">{e_label}</div>' if e_label else ""
+    )
 
     return mark_safe(
         f'<div class="gauge gauge-{e_color}" style="width:{px}px;height:{px}px;">'
@@ -1752,7 +1755,7 @@ def gauge(value=0, max_value=100, label="", color="primary", size="md", show_val
         f'stroke-linecap="round" transform="rotate(-90 {cx} {cy})"/>'
         f'{val_html}'
         f'</svg>'
-        f'{("<div class=\'gauge-label\'>" + e_label + "</div>") if e_label else ""}'
+        f'{label_html}'
         f'</div>'
     )
 
