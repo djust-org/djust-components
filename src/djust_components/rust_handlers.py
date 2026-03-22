@@ -17,7 +17,7 @@ from django.utils.safestring import mark_safe
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _parse_args(args, context):
+def _parse_args(args: list[str], context: dict[str, object]) -> dict[str, object]:
     """Parse handler arg list ["key='val'", "key2=var"] into a dict.
 
     Resolves variable references against the template context dict.
@@ -1114,7 +1114,7 @@ class PopoverHandler:
             f'<div class="popover-title">{conditional_escape(title)}</div>'
             if title else ""
         )
-        return (
+        return mark_safe(
             f'<div class="popover-wrapper">'
             f'<button class="popover-trigger btn btn-outline btn-sm" '
             f"onclick=\"(function(el){{var p=el.parentElement;p.classList.toggle('popover-open');"
@@ -1142,7 +1142,7 @@ class CollapsibleHandler:
         e_trigger = conditional_escape(trigger)
         e_event = conditional_escape(event)
         open_cls = " collapsible-open" if open_ else ""
-        return (
+        return mark_safe(
             f'<div class="collapsible{open_cls}">'
             f'<button class="collapsible-trigger" '
             f'onclick="(function(el){{el.closest(\'.collapsible\').classList.toggle(\'collapsible-open\');}})(this)"'
@@ -1180,7 +1180,7 @@ class SheetHandler:
             f'<button class="sheet-close" dj-click="{e_close}">&times;</button>'
             f'</div>'
         )
-        return (
+        return mark_safe(
             f'<div class="sheet-overlay" dj-click="{e_close}"{open_attr}></div>'
             f'<div class="sheet sheet-{e_side}"{open_attr}>'
             f'{title_html}'
@@ -1204,7 +1204,7 @@ class CommandPaletteHandler:
         e_close = conditional_escape(close_event)
         e_placeholder = conditional_escape(placeholder)
         open_attr = ' data-open="true"' if open_ else ""
-        return (
+        return mark_safe(
             f'<div class="palette-overlay" dj-click="{e_close}"{open_attr}></div>'
             f'<div class="palette"{open_attr}>'
             f'<div class="palette-search">'
@@ -1225,7 +1225,7 @@ class ContextMenuHandler:
         label = kwargs.get("label", "Right-click here")
         from django.utils.html import conditional_escape
         e_label = conditional_escape(label)
-        return (
+        return mark_safe(
             f'<div class="ctx-wrapper" '
             f"oncontextmenu=\"(function(e,el){{e.preventDefault();"
             f"document.querySelectorAll('.ctx-menu[data-open]').forEach(function(m){{delete m.dataset.open;}});"
@@ -1376,7 +1376,7 @@ class SplitPaneHandler:
         import uuid as _uuid
         uid = f"sp-{_uuid.uuid4().hex[:6]}"
         size_prop = "width" if direction == "horizontal" else "height"
-        return (
+        return mark_safe(
             f'<div class="split-pane split-pane-{ce(direction)}" id="{uid}">'
             f'{content}'
             f'</div>'

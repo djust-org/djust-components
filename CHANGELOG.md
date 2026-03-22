@@ -7,10 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Rust engine handlers**: 40+ component tag handlers for the Rust template engine — components now work without `{% load djust_components %}` when using Rust-rendered templates
+- **Tier 1 handlers**: Modal, Tabs, Accordion, Dropdown, Toast, Tooltip, Progress, Badge, Card, DataTable, Pagination, Avatar, Alert, Switch, Divider, Breadcrumb, Skeleton, StatusDot, Button, Stepper, Timeline
+- **Tier 2/3 handlers**: CodeBlock, Combobox, Rating, CopyButton, Kbd, Gauge, NotificationCenter, TreeView, ColorPicker, Carousel, Popover, Collapsible, Sheet, CommandPalette, ContextMenu, PaletteItem, ContextMenuItem
+- **v1.3 handlers**: DatePicker, FileDropzone, VirtualList, KanbanBoard, TableOfContents, RichTextEditor, SplitPane
+- **CSS**: 206 lines of component styles for Tier 2/3 and v1.3 components
+- **Auto-registration**: Components register with the Rust engine automatically via `AppConfig.ready()`
+
+### Fixed
+- **Combobox**: Fixed `onmousedown` event handler preventing item selection
+- **Switch**: Fixed HTML structure to use `<span class="switch">` wrapper
+- **Divider**: Fixed CSS class generation for divider variants
+- **TableOfContents**: Fixed item rendering for nested headings
+- **`_parse_args`**: Fixed parsing of `"1"` and `"0"` string values being treated as booleans
+
 ### Changed
-- **Dependencies**: Removed `djust-theming` as a hard dependency. djust-theming 0.3 is the latest released version; the previous constraint (`>=1.1.0`) required an unreleased version. djust-theming is now optional — install it separately if you want automatic theme adaptation.
+- **Dependencies**: Removed `djust-theming` as a hard dependency. The previous constraint was `djust-theming>=0.3.0,<1.0`, which required an unreleased version and blocked installation. djust-theming is now optional — install it separately if you want automatic theme adaptation.
 
 ### Security
+- **Rust handlers**: All block handlers (`PopoverHandler`, `CollapsibleHandler`, `SheetHandler`, `CommandPaletteHandler`, `ContextMenuHandler`, `SplitPaneHandler`) now wrap returns in `mark_safe()` to prevent double-escaping in the Rust engine
 - **templatetags**: All user-controlled values interpolated inside `mark_safe(f"...")` strings are now wrapped with `conditional_escape()`, preventing XSS from attacker-controlled template tag arguments (modal `title`/`close_event`, tabs `id`/`event`, accordion `id`/`event`, dropdown `id`/`label`/`toggle_event`/`variant`, tooltip `text`/`position`, card `title`/`subtitle`/`variant`/`class`)
 - **Markdown component**: Replaced regex-based post-render sanitizer with [`nh3`](https://nh3.readthedocs.io/) (Rust-backed, allowlist-based sanitizer). Explicitly allowed tags and attributes are now enumerated; URL schemes restricted to `http`, `https`, `mailto`; `javascript:`, `data:`, and `vbscript:` URLs are blocked
 
