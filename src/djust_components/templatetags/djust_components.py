@@ -500,3 +500,2076 @@ def avatar(src="", alt="", initials="", size="md", status=""):
         "size": size,
         "status": status,
     }
+
+
+# ---------------------------------------------------------------------------
+# 13. Alert
+# ---------------------------------------------------------------------------
+
+_ALERT_ICONS = {
+    "info": "&#8505;",
+    "success": "&#10003;",
+    "warning": "&#9888;",
+    "error": "&#10005;",
+    "danger": "&#10005;",
+}
+
+
+class AlertNode(template.Node):
+    def __init__(self, nodelist, kwargs):
+        self.nodelist = nodelist
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        alert_type = kw.get("type", "info")
+        title = kw.get("title", "")
+        dismissible = kw.get("dismissible", False)
+        if isinstance(dismissible, str):
+            dismissible = dismissible.lower() not in ("false", "0", "")
+        event = kw.get("event", "dismiss_alert")
+
+        content = self.nodelist.render(context)
+
+        # Normalise error/danger to the same CSS class
+        css_type = "error" if alert_type == "danger" else conditional_escape(alert_type)
+        icon_char = _ALERT_ICONS.get(alert_type, "&#8505;")
+        dismissible_cls = " alert-dismissible" if dismissible else ""
+
+        title_html = (
+            f'<div class="alert-title">{conditional_escape(title)}</div>'
+            if title else ""
+        )
+        close_html = (
+            f'<button class="alert-close" dj-click="{conditional_escape(event)}">'
+            f'&times;</button>'
+            if dismissible else ""
+        )
+
+        return mark_safe(
+            f'<div class="alert alert-{css_type}{dismissible_cls}">'
+            f'<span class="alert-icon">{icon_char}</span>'
+            f'<div class="alert-body">'
+            f'{title_html}'
+            f'<div class="alert-message">{content}</div>'
+            f'</div>'
+            f'{close_html}'
+            f'</div>'
+        )
+
+
+@register.tag("alert")
+def do_alert(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    nodelist = parser.parse(("endalert",))
+    parser.delete_first_token()
+    return AlertNode(nodelist, kwargs)
+
+
+# ---------------------------------------------------------------------------
+# 14. Button
+# ---------------------------------------------------------------------------
+
+@register.simple_tag
+def dj_button(label="", variant="primary", event="", icon="",
+              disabled=False, loading=False, size="md"):
+    """Render a button element.
+
+    Args:
+        label: button text
+        variant: primary, secondary, danger, ghost, link, success, warning
+        event: dj-click event name
+        icon: optional icon HTML/text prepended to label
+        disabled: disables the button
+        loading: shows spinner and disables button
+        size: sm, md, lg (md emits no extra class)
+    """
+    if isinstance(disabled, str):
+        disabled = disabled.lower() not in ("false", "0", "")
+    if isinstance(loading, str):
+        loading = loading.lower() not in ("false", "0", "")
+
+    classes = f"btn btn-{conditional_escape(variant)}"
+    if size and size != "md":
+        classes += f" btn-{conditional_escape(size)}"
+    if loading:
+        classes += " btn-loading"
+
+    attrs = f'class="{classes}"'
+    if event:
+        attrs += f' dj-click="{conditional_escape(event)}"'
+    if disabled or loading:
+        attrs += " disabled"
+
+    spinner_html = (
+        '<span class="btn-spinner"></span>' if loading else ""
+    )
+    icon_html = (
+        f'<span class="btn-icon">{conditional_escape(icon)}</span> '
+        if icon else ""
+    )
+
+    return mark_safe(
+        f'<button {attrs}>'
+        f'{spinner_html}'
+        f'{icon_html}'
+        f'<span class="btn-label">{conditional_escape(label)}</span>'
+        f'</button>'
+    )
+
+
+# ---------------------------------------------------------------------------
+# 15. Input field
+# ---------------------------------------------------------------------------
+
+@register.simple_tag
+def dj_input(name="", label="", value="", placeholder="", input_type="text",
+             error="", helper="", required=False, disabled=False, event=""):
+    """Render a labelled text input inside a form-group wrapper."""
+    if isinstance(required, str):
+        required = required.lower() not in ("false", "0", "")
+    if isinstance(disabled, str):
+        disabled = disabled.lower() not in ("false", "0", "")
+
+    e_name = conditional_escape(name)
+    e_label = conditional_escape(label)
+    e_value = conditional_escape(value)
+    e_placeholder = conditional_escape(placeholder)
+    e_type = conditional_escape(input_type)
+    e_error = conditional_escape(error)
+    e_helper = conditional_escape(helper)
+    dj_event = conditional_escape(event or name)
+
+    required_attr = " required" if required else ""
+    disabled_attr = " disabled" if disabled else ""
+    error_cls = " form-input-error" if error else ""
+    required_span = '<span class="form-required"> *</span>' if required else ""
+
+    label_html = (
+        f'<label class="form-label" for="{e_name}">'
+        f'{e_label}'
+        f'{required_span}'
+        f'</label>'
+        if label else ""
+    )
+    error_html = (
+        f'<span class="form-error-message">{e_error}</span>' if error else ""
+    )
+    helper_html = (
+        f'<span class="form-helper">{e_helper}</span>' if helper else ""
+    )
+
+    return mark_safe(
+        f'<div class="form-group">'
+        f'{label_html}'
+        f'<input class="form-input{error_cls}" type="{e_type}" '
+        f'name="{e_name}" id="{e_name}" value="{e_value}" '
+        f'placeholder="{e_placeholder}" '
+        f'dj-input="{dj_event}"{required_attr}{disabled_attr}>'
+        f'{error_html}'
+        f'{helper_html}'
+        f'</div>'
+    )
+
+
+# ---------------------------------------------------------------------------
+# 16. Select field
+# ---------------------------------------------------------------------------
+
+@register.simple_tag
+def dj_select(name="", label="", value="", options=None,
+              error="", helper="", required=False, disabled=False, event=""):
+    """Render a labelled <select> inside a form-group wrapper.
+
+    Args:
+        options: list of dicts {"value":..., "label":...} or list of 2-tuples
+    """
+    if isinstance(required, str):
+        required = required.lower() not in ("false", "0", "")
+    if isinstance(disabled, str):
+        disabled = disabled.lower() not in ("false", "0", "")
+    if options is None:
+        options = []
+
+    e_name = conditional_escape(name)
+    e_label = conditional_escape(label)
+    e_error = conditional_escape(error)
+    e_helper = conditional_escape(helper)
+    dj_event = conditional_escape(event or name)
+
+    required_attr = " required" if required else ""
+    disabled_attr = " disabled" if disabled else ""
+    error_cls = " form-select-error" if error else ""
+
+    # Normalise options to list of (val, lbl)
+    def _opt_pair(opt):
+        if isinstance(opt, dict):
+            return str(opt.get("value", "")), str(opt.get("label", ""))
+        if isinstance(opt, (list, tuple)) and len(opt) >= 2:
+            return str(opt[0]), str(opt[1])
+        return str(opt), str(opt)
+
+    options_html_parts = []
+    for opt in options:
+        ov, ol = _opt_pair(opt)
+        selected_attr = ' selected' if str(ov) == str(value) else ""
+        options_html_parts.append(
+            f'<option value="{conditional_escape(ov)}"{selected_attr}>'
+            f'{conditional_escape(ol)}</option>'
+        )
+
+    required_span = '<span class="form-required"> *</span>' if required else ""
+    label_html = (
+        f'<label class="form-label" for="{e_name}">{e_label}'
+        f'{required_span}'
+        f'</label>'
+        if label else ""
+    )
+    error_html = f'<span class="form-error-message">{e_error}</span>' if error else ""
+    helper_html = f'<span class="form-helper">{e_helper}</span>' if helper else ""
+
+    return mark_safe(
+        f'<div class="form-group">'
+        f'{label_html}'
+        f'<select class="form-select{error_cls}" name="{e_name}" id="{e_name}" '
+        f'dj-change="{dj_event}"{required_attr}{disabled_attr}>'
+        f'{"".join(options_html_parts)}'
+        f'</select>'
+        f'{error_html}'
+        f'{helper_html}'
+        f'</div>'
+    )
+
+
+# ---------------------------------------------------------------------------
+# 17. Checkbox
+# ---------------------------------------------------------------------------
+
+@register.simple_tag
+def dj_checkbox(name="", label="", checked=False, value="on",
+                event="", disabled=False):
+    """Render a single checkbox input."""
+    if isinstance(checked, str):
+        checked = checked.lower() not in ("false", "0", "")
+    if isinstance(disabled, str):
+        disabled = disabled.lower() not in ("false", "0", "")
+
+    e_name = conditional_escape(name)
+    e_label = conditional_escape(label)
+    e_value = conditional_escape(value)
+    dj_event = conditional_escape(event or name)
+
+    checked_attr = " checked" if checked else ""
+    disabled_attr = " disabled" if disabled else ""
+
+    return mark_safe(
+        f'<div class="form-checkbox-wrapper">'
+        f'<input class="form-checkbox" type="checkbox" '
+        f'name="{e_name}" id="{e_name}" value="{e_value}" '
+        f'dj-change="{dj_event}"{checked_attr}{disabled_attr}>'
+        f'<label class="form-checkbox-label" for="{e_name}">{e_label}</label>'
+        f'</div>'
+    )
+
+
+# ---------------------------------------------------------------------------
+# 18. Radio
+# ---------------------------------------------------------------------------
+
+@register.simple_tag
+def dj_radio(name="", label="", value="", current_value="",
+             event="", disabled=False):
+    """Render a single radio button."""
+    if isinstance(disabled, str):
+        disabled = disabled.lower() not in ("false", "0", "")
+
+    e_name = conditional_escape(name)
+    e_label = conditional_escape(label)
+    e_value = conditional_escape(value)
+    radio_id = conditional_escape(f"{name}_{value}")
+    dj_event = conditional_escape(event or name)
+
+    checked_attr = " checked" if str(value) == str(current_value) else ""
+    disabled_attr = " disabled" if disabled else ""
+
+    return mark_safe(
+        f'<div class="form-radio-wrapper">'
+        f'<input class="form-radio" type="radio" '
+        f'name="{e_name}" id="{radio_id}" value="{e_value}" '
+        f'dj-change="{dj_event}"{checked_attr}{disabled_attr}>'
+        f'<label class="form-radio-label" for="{radio_id}">{e_label}</label>'
+        f'</div>'
+    )
+
+
+# ---------------------------------------------------------------------------
+# 19. Textarea
+# ---------------------------------------------------------------------------
+
+@register.simple_tag
+def dj_textarea(name="", label="", value="", placeholder="", rows=4,
+                error="", helper="", required=False, disabled=False, event=""):
+    """Render a labelled <textarea> inside a form-group wrapper."""
+    if isinstance(required, str):
+        required = required.lower() not in ("false", "0", "")
+    if isinstance(disabled, str):
+        disabled = disabled.lower() not in ("false", "0", "")
+    try:
+        rows = int(rows)
+    except (ValueError, TypeError):
+        rows = 4
+
+    e_name = conditional_escape(name)
+    e_label = conditional_escape(label)
+    e_value = conditional_escape(value)
+    e_placeholder = conditional_escape(placeholder)
+    e_error = conditional_escape(error)
+    e_helper = conditional_escape(helper)
+    dj_event = conditional_escape(event or name)
+
+    required_attr = " required" if required else ""
+    disabled_attr = " disabled" if disabled else ""
+    error_cls = " form-input-error" if error else ""
+    required_span = '<span class="form-required"> *</span>' if required else ""
+
+    label_html = (
+        f'<label class="form-label" for="{e_name}">{e_label}'
+        f'{required_span}'
+        f'</label>'
+        if label else ""
+    )
+    error_html = f'<span class="form-error-message">{e_error}</span>' if error else ""
+    helper_html = f'<span class="form-helper">{e_helper}</span>' if helper else ""
+
+    return mark_safe(
+        f'<div class="form-group">'
+        f'{label_html}'
+        f'<textarea class="form-input{error_cls}" name="{e_name}" id="{e_name}" '
+        f'rows="{rows}" placeholder="{e_placeholder}" '
+        f'dj-input="{dj_event}"{required_attr}{disabled_attr}>'
+        f'{e_value}</textarea>'
+        f'{error_html}'
+        f'{helper_html}'
+        f'</div>'
+    )
+
+
+# ---------------------------------------------------------------------------
+# 20. Form Group (block tag)
+# ---------------------------------------------------------------------------
+
+class FormGroupNode(template.Node):
+    def __init__(self, nodelist, kwargs):
+        self.nodelist = nodelist
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        label = kw.get("label", "")
+        error = kw.get("error", "")
+        helper = kw.get("helper", "")
+        required = kw.get("required", False)
+        if isinstance(required, str):
+            required = required.lower() not in ("false", "0", "")
+        for_input = kw.get("for_input", "")
+
+        content = self.nodelist.render(context)
+
+        for_attr = f' for="{conditional_escape(for_input)}"' if for_input else ""
+        required_html = '<span class="form-required"> *</span>' if required else ""
+        label_html = (
+            f'<label class="form-label"{for_attr}>{conditional_escape(label)}{required_html}</label>'
+            if label else ""
+        )
+        error_html = (
+            f'<span class="form-error-message">{conditional_escape(error)}</span>'
+            if error else ""
+        )
+        helper_html = (
+            f'<span class="form-helper">{conditional_escape(helper)}</span>'
+            if helper else ""
+        )
+
+        return mark_safe(
+            f'<div class="form-group">'
+            f'{label_html}'
+            f'{content}'
+            f'{error_html}'
+            f'{helper_html}'
+            f'</div>'
+        )
+
+
+@register.tag("form_group")
+def do_form_group(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    nodelist = parser.parse(("endform_group",))
+    parser.delete_first_token()
+    return FormGroupNode(nodelist, kwargs)
+
+
+# ---------------------------------------------------------------------------
+# 21. Spinner
+# ---------------------------------------------------------------------------
+
+@register.simple_tag
+def spinner(size="md", color="primary"):
+    """Render an animated spinner."""
+    e_size = conditional_escape(size)
+    e_color = conditional_escape(color)
+    return mark_safe(
+        f'<span class="spinner spinner-{e_size} spinner-{e_color}" '
+        f'aria-label="Loading" role="status"></span>'
+    )
+
+
+# ---------------------------------------------------------------------------
+# 22. Skeleton
+# ---------------------------------------------------------------------------
+
+@register.simple_tag
+def skeleton(skeleton_type="text", lines=3):
+    """Render skeleton loading placeholder.
+
+    Args:
+        skeleton_type: text, card, avatar, table
+        lines: number of lines for text/table type
+    """
+    try:
+        lines = int(lines)
+    except (ValueError, TypeError):
+        lines = 3
+
+    if skeleton_type == "avatar":
+        return mark_safe('<div class="skeleton-avatar"></div>')
+
+    if skeleton_type == "card":
+        inner_lines = "".join(
+            f'<div class="skeleton-line"></div>' for _ in range(max(1, lines))
+        )
+        return mark_safe(
+            f'<div class="skeleton-card">'
+            f'<div class="skeleton-card-header"></div>'
+            f'<div class="skeleton-card-body">{inner_lines}</div>'
+            f'</div>'
+        )
+
+    if skeleton_type == "table":
+        rows = "".join(
+            f'<div class="skeleton-line"></div>' for _ in range(max(1, lines))
+        )
+        return mark_safe(
+            f'<div class="skeleton-table">'
+            f'<div class="skeleton-line skeleton-line-header"></div>'
+            f'{rows}'
+            f'</div>'
+        )
+
+    # Default: text lines
+    line_html = "".join(
+        f'<div class="skeleton-line"></div>' for _ in range(max(1, lines))
+    )
+    return mark_safe(f'<div class="skeleton-text">{line_html}</div>')
+
+
+# ---------------------------------------------------------------------------
+# 23. Breadcrumb
+# ---------------------------------------------------------------------------
+
+@register.simple_tag
+def breadcrumb(items=None):
+    """Render breadcrumb navigation.
+
+    Args:
+        items: list of dicts {"label":..., "url":..., "active": False}
+    """
+    if not items:
+        return mark_safe('<nav class="breadcrumb"></nav>')
+
+    parts = []
+    for i, item in enumerate(items):
+        if isinstance(item, dict):
+            lbl = item.get("label", "")
+            url = item.get("url", "")
+            active = item.get("active", False)
+        else:
+            lbl, url, active = str(item), "", False
+
+        e_lbl = conditional_escape(lbl)
+        e_url = conditional_escape(url)
+
+        if active or not url:
+            crumb = f'<span class="breadcrumb-item breadcrumb-active">{e_lbl}</span>'
+        else:
+            crumb = (
+                f'<a class="breadcrumb-item breadcrumb-link" href="{e_url}">{e_lbl}</a>'
+            )
+
+        parts.append(crumb)
+        if i < len(items) - 1:
+            parts.append('<span class="breadcrumb-separator">&#8250;</span>')
+
+    return mark_safe(f'<nav class="breadcrumb">{"".join(parts)}</nav>')
+
+
+# ---------------------------------------------------------------------------
+# 24. Empty State
+# ---------------------------------------------------------------------------
+
+@register.simple_tag
+def empty_state(title="", description="", icon="", action_label="", action_event=""):
+    """Render an empty-state placeholder with optional CTA."""
+    e_title = conditional_escape(title)
+    e_description = conditional_escape(description)
+    e_icon = conditional_escape(icon)
+    e_action_label = conditional_escape(action_label)
+    e_action_event = conditional_escape(action_event)
+
+    icon_html = (
+        f'<div class="empty-state-icon">{e_icon}</div>' if icon else ""
+    )
+    title_html = (
+        f'<h3 class="empty-state-title">{e_title}</h3>' if title else ""
+    )
+    desc_html = (
+        f'<p class="empty-state-description">{e_description}</p>' if description else ""
+    )
+    action_html = ""
+    if action_label:
+        action_html = (
+            f'<button class="btn btn-primary empty-state-action" '
+            f'dj-click="{e_action_event}">{e_action_label}</button>'
+        )
+
+    return mark_safe(
+        f'<div class="empty-state">'
+        f'{icon_html}'
+        f'{title_html}'
+        f'{desc_html}'
+        f'{action_html}'
+        f'</div>'
+    )
+
+
+# ---------------------------------------------------------------------------
+# 25. Divider
+# ---------------------------------------------------------------------------
+
+@register.simple_tag
+def dj_divider(label="", vertical=False):
+    """Render a horizontal or vertical divider, optionally with a label."""
+    if isinstance(vertical, str):
+        vertical = vertical.lower() not in ("false", "0", "")
+
+    orientation_cls = "divider-vertical" if vertical else "divider-horizontal"
+
+    if label:
+        e_label = conditional_escape(label)
+        return mark_safe(
+            f'<div class="divider-label">'
+            f'<span>{e_label}</span>'
+            f'</div>'
+        )
+
+    return mark_safe(f'<hr class="divider {orientation_cls}">')
+
+
+# ---------------------------------------------------------------------------
+# 26. Switch / Toggle
+# ---------------------------------------------------------------------------
+
+@register.simple_tag
+def switch(name="", checked=False, label="", event="toggle", size="md", disabled=False):
+    """Render an accessible switch/toggle."""
+    if isinstance(checked, str):
+        checked = checked.lower() not in ("false", "0", "")
+    if isinstance(disabled, str):
+        disabled = disabled.lower() not in ("false", "0", "")
+
+    e_name = conditional_escape(name)
+    e_label = conditional_escape(label)
+    e_event = conditional_escape(event)
+    e_size = conditional_escape(size)
+
+    checked_attr = " checked" if checked else ""
+    disabled_attr = " disabled" if disabled else ""
+    switch_id = e_name
+
+    label_html = (
+        f'<span class="switch-label">{e_label}</span>' if label else ""
+    )
+
+    return mark_safe(
+        f'<label class="switch-wrapper switch-{e_size}">'
+        f'<span class="switch">'
+        f'<input type="checkbox" name="{e_name}" id="{switch_id}" '
+        f'class="switch-input" dj-change="{e_event}"{checked_attr}{disabled_attr}>'
+        f'<span class="switch-track"></span>'
+        f'<span class="switch-thumb"></span>'
+        f'</span>'
+        f'{label_html}'
+        f'</label>'
+    )
+
+
+# ---------------------------------------------------------------------------
+# 27. Stat Card
+# ---------------------------------------------------------------------------
+
+@register.simple_tag
+def stat_card(label="", value="", trend="", description="", trend_direction=""):
+    """Render a metric/stat card."""
+    e_label = conditional_escape(label)
+    e_value = conditional_escape(value)
+    e_trend = conditional_escape(trend)
+    e_description = conditional_escape(description)
+    e_dir = conditional_escape(trend_direction)
+
+    trend_html = ""
+    if trend:
+        dir_cls = f" trend-{e_dir}" if trend_direction else ""
+        arrow = {"up": "&#8593;", "down": "&#8595;", "flat": "&#8212;"}.get(
+            trend_direction, ""
+        )
+        trend_html = (
+            f'<span class="stat-trend{dir_cls}">'
+            f'{arrow} {e_trend}'
+            f'</span>'
+        )
+
+    desc_html = (
+        f'<p class="stat-description">{e_description}</p>' if description else ""
+    )
+
+    return mark_safe(
+        f'<div class="stat-card">'
+        f'<div class="stat-label">{e_label}</div>'
+        f'<div class="stat-value">{e_value}</div>'
+        f'{trend_html}'
+        f'{desc_html}'
+        f'</div>'
+    )
+
+
+# ---------------------------------------------------------------------------
+# 28. Tag / Chip
+# ---------------------------------------------------------------------------
+
+@register.simple_tag
+def dj_tag(label="", variant="default", dismissible=False, event="dismiss_tag", size=""):
+    """Render a tag/chip element."""
+    if isinstance(dismissible, str):
+        dismissible = dismissible.lower() not in ("false", "0", "")
+
+    e_label = conditional_escape(label)
+    e_variant = conditional_escape(variant)
+    e_event = conditional_escape(event)
+    size_cls = f" tag-{conditional_escape(size)}" if size else ""
+
+    close_html = (
+        f'<button class="tag-close" dj-click="{e_event}">&times;</button>'
+        if dismissible else ""
+    )
+
+    return mark_safe(
+        f'<span class="tag tag-{e_variant}{size_cls}">'
+        f'{e_label}'
+        f'{close_html}'
+        f'</span>'
+    )
+
+
+# ---------------------------------------------------------------------------
+# 29. Timeline (block tag)
+# ---------------------------------------------------------------------------
+
+class TimelineNode(template.Node):
+    def __init__(self, nodelist):
+        self.nodelist = nodelist
+
+    def render(self, context):
+        content = self.nodelist.render(context)
+        return mark_safe(f'<div class="timeline">{content}</div>')
+
+
+@register.tag("timeline")
+def do_timeline(parser, token):
+    nodelist = parser.parse(("endtimeline",))
+    parser.delete_first_token()
+    return TimelineNode(nodelist)
+
+
+# ---------------------------------------------------------------------------
+# 30. Timeline Item (block tag)
+# ---------------------------------------------------------------------------
+
+class TimelineItemNode(template.Node):
+    def __init__(self, nodelist, kwargs):
+        self.nodelist = nodelist
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        title = kw.get("title", "")
+        time = kw.get("time", "")
+
+        content = self.nodelist.render(context)
+
+        title_html = (
+            f'<div class="timeline-title">{conditional_escape(title)}</div>'
+            if title else ""
+        )
+        time_html = (
+            f'<div class="timeline-time">{conditional_escape(time)}</div>'
+            if time else ""
+        )
+
+        return mark_safe(
+            f'<div class="timeline-item">'
+            f'<div class="timeline-marker"></div>'
+            f'<div class="timeline-content">'
+            f'{title_html}'
+            f'{time_html}'
+            f'{content}'
+            f'</div>'
+            f'</div>'
+        )
+
+
+@register.tag("timeline_item")
+def do_timeline_item(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    nodelist = parser.parse(("endtimeline_item",))
+    parser.delete_first_token()
+    return TimelineItemNode(nodelist, kwargs)
+
+
+# ---------------------------------------------------------------------------
+# 31. Stepper
+# ---------------------------------------------------------------------------
+
+@register.simple_tag
+def stepper(steps=None, active=0, event="set_step"):
+    """Render a step indicator.
+
+    Args:
+        steps: list of dicts {"label":..., "complete": False} or list of strings
+        active: 0-based index of the current step
+        event: dj-click event name for step navigation
+    """
+    if not steps:
+        return mark_safe('<div class="stepper"></div>')
+
+    try:
+        active = int(active)
+    except (ValueError, TypeError):
+        active = 0
+
+    e_event = conditional_escape(event)
+    parts = []
+    for i, step in enumerate(steps):
+        if isinstance(step, dict):
+            lbl = step.get("label", "")
+            complete = step.get("complete", False)
+        else:
+            lbl = str(step)
+            complete = False
+
+        cls = "stepper-step"
+        if i == active:
+            cls += " stepper-step-active"
+        if complete:
+            cls += " stepper-step-complete"
+
+        parts.append(
+            f'<button class="{cls}" dj-click="{e_event}" data-value="{i}">'
+            f'<span class="stepper-number">{i + 1}</span>'
+            f'<span class="stepper-label">{conditional_escape(lbl)}</span>'
+            f'</button>'
+        )
+
+    return mark_safe(f'<div class="stepper">{"".join(parts)}</div>')
+
+
+# ===========================================================================
+# TIER 2 REMAINING + TIER 3 COMPONENTS
+# ===========================================================================
+
+# ---------------------------------------------------------------------------
+# 32. Code Block
+# ---------------------------------------------------------------------------
+
+@register.simple_tag
+def code_block(code="", language="", filename="", copy_event="copy_code"):
+    """Render a syntax-highlighted code block with optional copy button."""
+    e_language = conditional_escape(language or "text")
+    e_filename = conditional_escape(filename)
+    e_code = conditional_escape(code)
+    e_event = conditional_escape(copy_event)
+
+    filename_html = (
+        f'<span class="code-block-filename">{e_filename}</span>'
+        if filename else ""
+    )
+    lang_html = f'<span class="code-block-lang">{e_language}</span>'
+    copy_html = (
+        f'<button class="code-block-copy" '
+        f'onclick="(function(btn){{var pre=btn.closest(\'.code-block\').querySelector(\'code\');'
+        f'navigator.clipboard&&navigator.clipboard.writeText(pre.textContent).then(function(){{'
+        f'btn.textContent=\'Copied!\';setTimeout(function(){{btn.textContent=\'Copy\';}},2000);}});}})(this)">'
+        f'Copy</button>'
+    )
+
+    return mark_safe(
+        f'<div class="code-block">'
+        f'<div class="code-block-header">'
+        f'{filename_html}{lang_html}{copy_html}'
+        f'</div>'
+        f'<pre class="code-block-pre"><code class="language-{e_language}">{e_code}</code></pre>'
+        f'</div>'
+    )
+
+
+# ---------------------------------------------------------------------------
+# 33. Combobox (searchable select with server-side filtering)
+# ---------------------------------------------------------------------------
+
+@register.simple_tag
+def combobox(name="", label="", value="", placeholder="Search…",
+             options=None, event="", search_event="", required=False,
+             error="", helper=""):
+    """Render a combobox (searchable select).
+
+    Args:
+        options: list of dicts {"value":..., "label":...}
+        event: dj-change event when option selected
+        search_event: dj-input event for search input (server filters options)
+    """
+    if options is None:
+        options = []
+    if isinstance(required, str):
+        required = required.lower() not in ("false", "0", "")
+
+    e_name = conditional_escape(name)
+    e_label = conditional_escape(label)
+    e_value = conditional_escape(value)
+    e_placeholder = conditional_escape(placeholder)
+    e_event = conditional_escape(event or name)
+    e_search = conditional_escape(search_event or (name + "_search"))
+    e_error = conditional_escape(error)
+    e_helper = conditional_escape(helper)
+
+    # Find current label
+    current_label = e_value
+    for opt in options:
+        if isinstance(opt, dict) and str(opt.get("value", "")) == str(value):
+            current_label = conditional_escape(str(opt.get("label", value)))
+            break
+
+    options_html = ""
+    for opt in options:
+        if isinstance(opt, dict):
+            ov = conditional_escape(str(opt.get("value", "")))
+            ol = conditional_escape(str(opt.get("label", "")))
+        else:
+            ov = ol = conditional_escape(str(opt))
+        sel = ' class="combobox-option-selected"' if str(ov) == str(value) else ""
+        options_html += (
+            f'<div class="combobox-option"{sel} '
+            f'dj-click="{e_event}" data-value="{ov}">{ol}</div>'
+        )
+
+    label_html = (
+        f'<label class="form-label" for="{e_name}-input">{e_label}</label>'
+        if label else ""
+    )
+    error_html = f'<span class="form-error-message">{e_error}</span>' if error else ""
+    helper_html = f'<span class="form-helper">{e_helper}</span>' if helper else ""
+    req = " required" if required else ""
+
+    return mark_safe(
+        f'<div class="form-group">'
+        f'{label_html}'
+        f'<div class="combobox" id="{e_name}-combobox">'
+        f'<input class="combobox-input form-input" type="text" id="{e_name}-input" '
+        f'name="{e_name}" placeholder="{e_placeholder}" value="{current_label}" '
+        f'dj-input="{e_search}" autocomplete="off"{req}>'
+        f'<div class="combobox-dropdown" onmousedown="event.preventDefault()" onclick="this.previousElementSibling.blur()">{options_html}</div>'
+        f'</div>'
+        f'{error_html}{helper_html}'
+        f'</div>'
+    )
+
+
+# ---------------------------------------------------------------------------
+# 34. Popover
+# ---------------------------------------------------------------------------
+
+@register.tag("popover")
+def do_popover(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    nodelist = parser.parse(("endpopover",))
+    parser.delete_first_token()
+    return PopoverNode(nodelist, kwargs)
+
+
+class PopoverNode(template.Node):
+    def __init__(self, nodelist, kwargs):
+        self.nodelist = nodelist
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        trigger = kw.get("trigger", "Click me")
+        placement = kw.get("placement", "bottom")
+        title = kw.get("title", "")
+        uid = kw.get("id", f"pop-{uuid.uuid4().hex[:6]}")
+
+        e_uid = conditional_escape(uid)
+        e_trigger = conditional_escape(trigger)
+        e_placement = conditional_escape(placement)
+
+        content = self.nodelist.render(context)
+        title_html = (
+            f'<div class="popover-title">{conditional_escape(title)}</div>'
+            if title else ""
+        )
+
+        js = (
+            "(function(el){var p=el.parentElement;"
+            "p.classList.toggle('popover-open');"
+            "document.addEventListener('click',function h(e){"
+            "if(!p.contains(e.target)){p.classList.remove('popover-open');"
+            "document.removeEventListener('click',h);}},true);})(this)"
+        )
+        return mark_safe(
+            f'<div class="popover-wrapper" id="{e_uid}">'
+            f'<button class="popover-trigger btn btn-outline btn-sm" '
+            f'onclick="{js}">'
+            f'{e_trigger}</button>'
+            f'<div class="popover popover-{e_placement}">'
+            f'{title_html}'
+            f'<div class="popover-content">{content}</div>'
+            f'</div>'
+            f'</div>'
+        )
+
+
+# ---------------------------------------------------------------------------
+# 35. Rating / Stars
+# ---------------------------------------------------------------------------
+
+@register.simple_tag
+def rating(value=0, max_stars=5, readonly=False, event="set_rating", size="md"):
+    """Render a star rating component."""
+    try:
+        value = float(value)
+        max_stars = int(max_stars)
+    except (ValueError, TypeError):
+        value = 0
+        max_stars = 5
+    if isinstance(readonly, str):
+        readonly = readonly.lower() not in ("false", "0", "")
+
+    e_event = conditional_escape(event)
+    size_cls = f" rating-{conditional_escape(size)}" if size != "md" else ""
+    parts = []
+
+    for i in range(1, max_stars + 1):
+        if i <= value:
+            star_cls = "rating-star rating-star-full"
+        elif i - 0.5 <= value:
+            star_cls = "rating-star rating-star-half"
+        else:
+            star_cls = "rating-star rating-star-empty"
+
+        if readonly:
+            parts.append(f'<span class="{star_cls}">★</span>')
+        else:
+            parts.append(
+                f'<button class="{star_cls}" dj-click="{e_event}" '
+                f'data-value="{i}" title="{i} star{"s" if i > 1 else ""}">★</button>'
+            )
+
+    return mark_safe(f'<div class="rating{size_cls}">{"".join(parts)}</div>')
+
+
+# ---------------------------------------------------------------------------
+# 36. Copy Button
+# ---------------------------------------------------------------------------
+
+@register.simple_tag
+def copy_button(text="", label="Copy", copied_label="Copied!", variant="outline", size="sm"):
+    """Render a copy-to-clipboard button."""
+    e_text = conditional_escape(text)
+    e_label = conditional_escape(label)
+    e_copied = conditional_escape(copied_label)
+    e_variant = conditional_escape(variant)
+    e_size = conditional_escape(size)
+
+    return mark_safe(
+        f'<button class="btn btn-{e_variant} btn-{e_size} copy-btn" '
+        f'data-copy-text="{e_text}" '
+        f'data-copied-label="{e_copied}" '
+        f'onclick="(function(btn){{var t=btn.getAttribute(\'data-copy-text\');'
+        f'navigator.clipboard&&navigator.clipboard.writeText(t).then(function(){{'
+        f'var orig=btn.textContent;btn.textContent=btn.getAttribute(\'data-copied-label\');'
+        f'setTimeout(function(){{btn.textContent=orig;}},2000);}});}})(this)">'
+        f'{e_label}</button>'
+    )
+
+
+# ---------------------------------------------------------------------------
+# 37. Kbd / Keyboard Shortcut
+# ---------------------------------------------------------------------------
+
+@register.simple_tag
+def kbd(*keys):
+    """Render keyboard shortcut keys.
+
+    Usage: {% kbd "Ctrl" "K" %} → <kbd>Ctrl</kbd>+<kbd>K</kbd>
+    """
+    if not keys:
+        return mark_safe("")
+    parts = [f'<kbd class="kbd">{conditional_escape(k)}</kbd>' for k in keys]
+    return mark_safe('<span class="kbd-group">' + '<span class="kbd-sep">+</span>'.join(parts) + '</span>')
+
+
+# ---------------------------------------------------------------------------
+# 38. Collapsible
+# ---------------------------------------------------------------------------
+
+@register.tag("collapsible")
+def do_collapsible(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    nodelist = parser.parse(("endcollapsible",))
+    parser.delete_first_token()
+    return CollapsibleNode(nodelist, kwargs)
+
+
+class CollapsibleNode(template.Node):
+    def __init__(self, nodelist, kwargs):
+        self.nodelist = nodelist
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        trigger = kw.get("trigger", "Toggle")
+        open_ = kw.get("open", False)
+        if isinstance(open_, str):
+            open_ = open_.lower() not in ("false", "0", "")
+        event = kw.get("event", "toggle_collapsible")
+        uid = f"coll-{uuid.uuid4().hex[:6]}"
+
+        e_uid = conditional_escape(uid)
+        e_trigger = conditional_escape(trigger)
+        e_event = conditional_escape(event)
+        open_cls = " collapsible-open" if open_ else ""
+        content = self.nodelist.render(context)
+
+        return mark_safe(
+            f'<div class="collapsible{open_cls}" id="{e_uid}">'
+            f'<button class="collapsible-trigger" '
+            f'onclick="(function(el){{el.closest(\'.collapsible\').classList.toggle(\'collapsible-open\');}})(this)"'
+            f' dj-click="{e_event}">'
+            f'<span class="collapsible-label">{e_trigger}</span>'
+            f'<span class="collapsible-icon">▾</span>'
+            f'</button>'
+            f'<div class="collapsible-content">{content}</div>'
+            f'</div>'
+        )
+
+
+# ---------------------------------------------------------------------------
+# 39. Sheet / Drawer
+# ---------------------------------------------------------------------------
+
+@register.tag("sheet")
+def do_sheet(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    nodelist = parser.parse(("endsheet",))
+    parser.delete_first_token()
+    return SheetNode(nodelist, kwargs)
+
+
+class SheetNode(template.Node):
+    def __init__(self, nodelist, kwargs):
+        self.nodelist = nodelist
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        open_ = kw.get("open", False)
+        if isinstance(open_, str):
+            open_ = open_.lower() not in ("false", "0", "")
+        side = kw.get("side", "right")
+        title = kw.get("title", "")
+        close_event = kw.get("close_event", "close_sheet")
+
+        e_side = conditional_escape(side)
+        e_title = conditional_escape(title)
+        e_close = conditional_escape(close_event)
+        open_attr = ' data-open="true"' if open_ else ""
+        content = self.nodelist.render(context)
+
+        title_html = (
+            f'<div class="sheet-header">'
+            f'<h3 class="sheet-title">{e_title}</h3>'
+            f'<button class="sheet-close" dj-click="{e_close}">&times;</button>'
+            f'</div>'
+            if title else
+            f'<div class="sheet-header-close">'
+            f'<button class="sheet-close" dj-click="{e_close}">&times;</button>'
+            f'</div>'
+        )
+
+        return mark_safe(
+            f'<div class="sheet-overlay" dj-click="{e_close}"{open_attr}></div>'
+            f'<div class="sheet sheet-{e_side}"{open_attr}>'
+            f'{title_html}'
+            f'<div class="sheet-body">{content}</div>'
+            f'</div>'
+        )
+
+
+# ---------------------------------------------------------------------------
+# 40. Notification Center
+# ---------------------------------------------------------------------------
+
+@register.simple_tag
+def notification_center(notifications=None, unread_count=0,
+                        open_event="toggle_notifications",
+                        mark_read_event="mark_notification_read",
+                        clear_event="clear_notifications"):
+    """Render a notification bell with dropdown list."""
+    if notifications is None:
+        notifications = []
+    try:
+        unread_count = int(unread_count)
+    except (ValueError, TypeError):
+        unread_count = 0
+
+    e_open = conditional_escape(open_event)
+    e_clear = conditional_escape(clear_event)
+    e_read = conditional_escape(mark_read_event)
+
+    badge_html = (
+        f'<span class="notif-badge">{unread_count}</span>'
+        if unread_count > 0 else ""
+    )
+
+    items_html = ""
+    for n in notifications:
+        if not isinstance(n, dict):
+            continue
+        nid = conditional_escape(str(n.get("id", "")))
+        msg = conditional_escape(str(n.get("message", n.get("msg", ""))))
+        time_ = conditional_escape(str(n.get("time", "")))
+        unread = n.get("unread", False)
+        unread_cls = " notif-item-unread" if unread else ""
+        time_html = f'<span class="notif-item-time">{time_}</span>' if time_ else ""
+        items_html += (
+            f'<div class="notif-item{unread_cls}" '
+            f'dj-click="{e_read}" data-value="{nid}">'
+            f'<div class="notif-item-msg">{msg}</div>'
+            f'{time_html}'
+            f'</div>'
+        )
+
+    if not items_html:
+        items_html = '<div class="notif-empty">No notifications</div>'
+
+    footer_html = (
+        f'<div class="notif-footer">'
+        f'<button class="btn btn-ghost btn-sm" dj-click="{e_clear}">Clear all</button>'
+        f'</div>'
+        if notifications else ""
+    )
+
+    return mark_safe(
+        f'<div class="notif-center">'
+        f'<button class="notif-trigger" dj-click="{e_open}">'
+        f'<span class="notif-bell">&#128276;</span>'
+        f'{badge_html}'
+        f'</button>'
+        f'<div class="notif-dropdown">'
+        f'<div class="notif-header"><span class="notif-title">Notifications</span></div>'
+        f'<div class="notif-list">{items_html}</div>'
+        f'{footer_html}'
+        f'</div>'
+        f'</div>'
+    )
+
+
+# ---------------------------------------------------------------------------
+# 41. Gauge / Donut Chart
+# ---------------------------------------------------------------------------
+
+@register.simple_tag
+def gauge(value=0, max_value=100, label="", color="primary", size="md", show_value=True):
+    """Render an SVG donut/gauge chart."""
+    try:
+        value = float(value)
+        max_value = float(max_value) or 100
+    except (ValueError, TypeError):
+        value = 0
+        max_value = 100
+    if isinstance(show_value, str):
+        show_value = show_value.lower() not in ("false", "0", "")
+
+    pct = min(max(value / max_value, 0), 1)
+    sizes = {"sm": 64, "md": 96, "lg": 128}
+    px = sizes.get(str(size), 96)
+    r = (px - 12) / 2
+    circ = 2 * 3.14159 * r
+    dash = pct * circ
+    gap = circ - dash
+    cx = cy = px / 2
+
+    e_color = conditional_escape(color)
+    e_label = conditional_escape(label)
+    display_val = f"{int(pct * 100)}%"
+    val_html = (
+        f'<text x="{cx}" y="{cy + 5}" text-anchor="middle" '
+        f'class="gauge-value-text" font-size="{px * 0.18:.0f}">{display_val}</text>'
+        if show_value else ""
+    )
+    label_html = (
+        f'<div class="gauge-label">{e_label}</div>' if e_label else ""
+    )
+
+    return mark_safe(
+        f'<div class="gauge gauge-{e_color}" style="width:{px}px;height:{px}px;">'
+        f'<svg width="{px}" height="{px}" viewBox="0 0 {px} {px}">'
+        f'<circle cx="{cx}" cy="{cy}" r="{r:.1f}" class="gauge-track" '
+        f'stroke-width="8" fill="none"/>'
+        f'<circle cx="{cx}" cy="{cy}" r="{r:.1f}" class="gauge-fill gauge-fill-{e_color}" '
+        f'stroke-width="8" fill="none" '
+        f'stroke-dasharray="{dash:.1f} {gap:.1f}" '
+        f'stroke-linecap="round" transform="rotate(-90 {cx} {cy})"/>'
+        f'{val_html}'
+        f'</svg>'
+        f'{label_html}'
+        f'</div>'
+    )
+
+
+# ---------------------------------------------------------------------------
+# 42. Image Carousel
+# ---------------------------------------------------------------------------
+
+@register.simple_tag
+def carousel(images=None, active=0, prev_event="carousel_prev",
+             next_event="carousel_next", go_event="carousel_go"):
+    """Render an image carousel / slideshow."""
+    if images is None:
+        images = []
+    try:
+        active = int(active)
+    except (ValueError, TypeError):
+        active = 0
+
+    if not images:
+        return mark_safe('<div class="carousel carousel-empty"></div>')
+
+    e_prev = conditional_escape(prev_event)
+    e_next = conditional_escape(next_event)
+    e_go = conditional_escape(go_event)
+
+    slides = ""
+    dots = ""
+    for i, img in enumerate(images):
+        if isinstance(img, dict):
+            src = conditional_escape(str(img.get("src", img.get("url", ""))))
+            alt = conditional_escape(str(img.get("alt", f"Slide {i + 1}")))
+            caption = img.get("caption", "")
+        else:
+            src = conditional_escape(str(img))
+            alt = f"Slide {i + 1}"
+            caption = ""
+
+        active_cls = " carousel-slide-active" if i == active else ""
+        caption_html = (
+            f'<div class="carousel-caption">{conditional_escape(caption)}</div>'
+            if caption else ""
+        )
+        slides += (
+            f'<div class="carousel-slide{active_cls}">'
+            f'<img src="{src}" alt="{alt}" class="carousel-img">'
+            f'{caption_html}'
+            f'</div>'
+        )
+        dot_cls = " carousel-dot-active" if i == active else ""
+        dots += (
+            f'<button class="carousel-dot{dot_cls}" '
+            f'dj-click="{e_go}" data-value="{i}"></button>'
+        )
+
+    total = len(images)
+    counter_html = (
+        f'<div class="carousel-counter">{active + 1} / {total}</div>'
+        if total > 1 else ""
+    )
+
+    return mark_safe(
+        f'<div class="carousel">'
+        f'<div class="carousel-track">{slides}</div>'
+        f'<button class="carousel-btn carousel-btn-prev" dj-click="{e_prev}">&#8249;</button>'
+        f'<button class="carousel-btn carousel-btn-next" dj-click="{e_next}">&#8250;</button>'
+        f'<div class="carousel-dots">{dots}</div>'
+        f'{counter_html}'
+        f'</div>'
+    )
+
+
+# ---------------------------------------------------------------------------
+# 43. Tree View
+# ---------------------------------------------------------------------------
+
+@register.simple_tag
+def tree_view(nodes=None, expand_event="tree_expand", select_event="tree_select",
+              selected=""):
+    """Render an expandable tree view.
+
+    Args:
+        nodes: list of dicts:
+            {"id": "n1", "label": "Root", "expanded": True,
+             "children": [{"id": "n1a", "label": "Child"}]}
+        expand_event: dj-click event fired with node id when expanding
+        select_event: dj-click event fired with node id when selected
+        selected: currently selected node id
+    """
+    if nodes is None:
+        return mark_safe('<div class="tree"></div>')
+
+    e_expand = conditional_escape(expand_event)
+    e_select = conditional_escape(select_event)
+    e_selected = conditional_escape(selected)
+
+    def render_node(node, depth=0):
+        if not isinstance(node, dict):
+            return ""
+        nid = conditional_escape(str(node.get("id", "")))
+        label = conditional_escape(str(node.get("label", "")))
+        children = node.get("children", [])
+        expanded = node.get("expanded", False)
+        has_children = bool(children)
+
+        sel_cls = " tree-node-selected" if str(node.get("id", "")) == str(selected) else ""
+        exp_cls = " tree-node-expanded" if expanded else ""
+        has_cls = " tree-node-has-children" if has_children else " tree-node-leaf"
+        indent = depth * 1.25
+
+        toggle_icon = "▾" if expanded else "▸"
+        toggle_html = (
+            f'<button class="tree-toggle" dj-click="{e_expand}" data-value="{nid}">'
+            f'{toggle_icon}</button>'
+            if has_children else
+            f'<span class="tree-toggle-placeholder"></span>'
+        )
+
+        children_html = ""
+        if has_children and expanded:
+            children_html = (
+                f'<div class="tree-children">'
+                + "".join(render_node(c, depth + 1) for c in children)
+                + "</div>"
+            )
+
+        return (
+            f'<div class="tree-node{sel_cls}{exp_cls}{has_cls}" '
+            f'style="padding-left:{indent}rem">'
+            f'<div class="tree-node-row">'
+            f'{toggle_html}'
+            f'<button class="tree-node-label" dj-click="{e_select}" data-value="{nid}">'
+            f'{label}</button>'
+            f'</div>'
+            f'{children_html}'
+            f'</div>'
+        )
+
+    html = "".join(render_node(n) for n in nodes)
+    return mark_safe(f'<div class="tree">{html}</div>')
+
+
+# ---------------------------------------------------------------------------
+# 44. Color Picker (swatches + hex input)
+# ---------------------------------------------------------------------------
+
+@register.simple_tag
+def color_picker(name="", value="#3B82F6", event="", label="",
+                 swatches=None):
+    """Render a color picker with preset swatches and a hex input."""
+    if swatches is None:
+        swatches = [
+            "#EF4444", "#F97316", "#EAB308", "#22C55E",
+            "#3B82F6", "#8B5CF6", "#EC4899", "#6B7280",
+        ]
+    e_name = conditional_escape(name)
+    e_value = conditional_escape(value)
+    e_event = conditional_escape(event or name)
+    e_label = conditional_escape(label)
+
+    label_html = f'<label class="form-label">{e_label}</label>' if label else ""
+
+    swatch_html = ""
+    for sw in swatches:
+        e_sw = conditional_escape(sw)
+        active_cls = " color-swatch-active" if sw == value else ""
+        swatch_html += (
+            f'<button class="color-swatch{active_cls}" '
+            f'style="background:{e_sw}" title="{e_sw}" '
+            f'dj-click="{e_event}" data-value="{e_sw}"></button>'
+        )
+
+    return mark_safe(
+        f'<div class="form-group">'
+        f'{label_html}'
+        f'<div class="color-picker">'
+        f'<div class="color-preview" style="background:{e_value}"></div>'
+        f'<div class="color-swatches">{swatch_html}</div>'
+        f'<input class="color-hex-input form-input" type="text" '
+        f'name="{e_name}" value="{e_value}" placeholder="#000000" '
+        f'maxlength="7" dj-input="{e_event}">'
+        f'</div>'
+        f'</div>'
+    )
+
+
+# ---------------------------------------------------------------------------
+# 45. Command Palette
+# ---------------------------------------------------------------------------
+
+@register.tag("command_palette")
+def do_command_palette(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    nodelist = parser.parse(("endcommand_palette",))
+    parser.delete_first_token()
+    return CommandPaletteNode(nodelist, kwargs)
+
+
+class CommandPaletteNode(template.Node):
+    def __init__(self, nodelist, kwargs):
+        self.nodelist = nodelist
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        open_ = kw.get("open", False)
+        if isinstance(open_, str):
+            open_ = open_.lower() not in ("false", "0", "")
+        search_event = kw.get("search_event", "palette_search")
+        close_event = kw.get("close_event", "close_palette")
+        placeholder = kw.get("placeholder", "Search commands…")
+
+        e_search = conditional_escape(search_event)
+        e_close = conditional_escape(close_event)
+        e_placeholder = conditional_escape(placeholder)
+        open_attr = ' data-open="true"' if open_ else ""
+        content = self.nodelist.render(context)
+
+        return mark_safe(
+            f'<div class="palette-overlay" dj-click="{e_close}"{open_attr}></div>'
+            f'<div class="palette"{open_attr}>'
+            f'<div class="palette-search">'
+            f'<span class="palette-search-icon">⌕</span>'
+            f'<input class="palette-input" type="text" placeholder="{e_placeholder}" '
+            f'dj-input="{e_search}" autofocus>'
+            f'<button class="palette-close" dj-click="{e_close}">Esc</button>'
+            f'</div>'
+            f'<div class="palette-results">{content}</div>'
+            f'</div>'
+        )
+
+
+@register.simple_tag
+def palette_item(label="", shortcut="", description="", event="", icon=""):
+    """Render a single command palette result item."""
+    e_label = conditional_escape(label)
+    e_event = conditional_escape(event)
+    e_desc = conditional_escape(description)
+    e_icon = conditional_escape(icon)
+
+    icon_html = f'<span class="palette-item-icon">{e_icon}</span>' if icon else ""
+    shortcut_html = f'<kbd class="kbd">{conditional_escape(shortcut)}</kbd>' if shortcut else ""
+    desc_html = f'<span class="palette-item-desc">{e_desc}</span>' if description else ""
+
+    return mark_safe(
+        f'<div class="palette-item" dj-click="{e_event}">'
+        f'{icon_html}'
+        f'<div class="palette-item-body">'
+        f'<span class="palette-item-label">{e_label}</span>'
+        f'{desc_html}'
+        f'</div>'
+        f'{shortcut_html}'
+        f'</div>'
+    )
+
+
+# ---------------------------------------------------------------------------
+# 46. Context Menu
+# ---------------------------------------------------------------------------
+
+@register.tag("context_menu")
+def do_context_menu(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    nodelist = parser.parse(("endcontext_menu",))
+    parser.delete_first_token()
+    return ContextMenuNode(nodelist, kwargs)
+
+
+class ContextMenuNode(template.Node):
+    def __init__(self, nodelist, kwargs):
+        self.nodelist = nodelist
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        label = kw.get("label", "Right-click area")
+        uid = f"ctx-{uuid.uuid4().hex[:6]}"
+
+        e_uid = conditional_escape(uid)
+        e_label = conditional_escape(label)
+        content = self.nodelist.render(context)
+
+        return mark_safe(
+            f'<div class="ctx-wrapper" id="{e_uid}" '
+            f'oncontextmenu="(function(e,el){{e.preventDefault();'
+            f'document.querySelectorAll(\'.ctx-menu[data-open]\').forEach(function(m){{delete m.dataset.open;}});'
+            f'var m=el.querySelector(\'.ctx-menu\');'
+            f'm.style.left=e.offsetX+\'px\';m.style.top=e.offsetY+\'px\';'
+            f'm.dataset.open=\'1\';'
+            f'document.addEventListener(\'click\',function h(){{delete m.dataset.open;document.removeEventListener(\'click\',h);}},{{once:true}});'
+            f'}})(event,this)">'
+            f'<div class="ctx-trigger">{e_label}</div>'
+            f'<div class="ctx-menu">{content}</div>'
+            f'</div>'
+        )
+
+
+@register.simple_tag
+def context_menu_item(label="", event="", icon="", danger=False, divider=False):
+    """Render a context menu item."""
+    if divider:
+        return mark_safe('<div class="ctx-divider"></div>')
+
+    e_label = conditional_escape(label)
+    e_event = conditional_escape(event)
+    e_icon = conditional_escape(icon)
+    danger_cls = " ctx-item-danger" if danger else ""
+    icon_html = f'<span class="ctx-item-icon">{e_icon}</span>' if icon else ""
+
+    return mark_safe(
+        f'<div class="ctx-item{danger_cls}" dj-click="{e_event}">'
+        f'{icon_html}{e_label}'
+        f'</div>'
+    )
+
+
+# ===========================================================================
+# TIER 3 REMAINING — v1.3 COMPONENTS
+# ===========================================================================
+
+# ---------------------------------------------------------------------------
+# 47. Date Picker (server-rendered calendar)
+# ---------------------------------------------------------------------------
+
+import calendar as _calendar
+
+
+@register.simple_tag
+def date_picker(year=None, month=None, selected="", prev_event="date_prev_month",
+                next_event="date_next_month", select_event="date_select",
+                name="date", label="", required=False, error="", helper=""):
+    """Render a server-driven calendar date picker.
+
+    The server owns year/month navigation state. On each prev/next click,
+    the view re-renders the calendar for the new month.
+    """
+    import datetime
+    try:
+        today = datetime.date.today()
+        year = int(year) if year else today.year
+        month = int(month) if month else today.month
+        today_str = today.strftime("%Y-%m-%d")
+    except (ValueError, TypeError):
+        import datetime
+        today = datetime.date.today()
+        year, month = today.year, today.month
+        today_str = today.strftime("%Y-%m-%d")
+
+    e_prev = conditional_escape(prev_event)
+    e_next = conditional_escape(next_event)
+    e_select = conditional_escape(select_event)
+    e_name = conditional_escape(name)
+    e_label = conditional_escape(label)
+    e_selected = conditional_escape(selected)
+    e_error = conditional_escape(error)
+    e_helper = conditional_escape(helper)
+
+    if isinstance(required, str):
+        required = required.lower() not in ("false", "0", "")
+
+    month_name = _calendar.month_name[month]
+    weekdays = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
+
+    # Build day grid
+    cal = _calendar.monthcalendar(year, month)
+    header_cells = "".join(f'<div class="dp-weekday">{d}</div>' for d in weekdays)
+
+    day_cells = ""
+    for week in cal:
+        for day in week:
+            if day == 0:
+                day_cells += '<div class="dp-day dp-day-empty"></div>'
+            else:
+                date_str = f"{year}-{month:02d}-{day:02d}"
+                cls = "dp-day"
+                if date_str == today_str:
+                    cls += " dp-day-today"
+                if date_str == selected:
+                    cls += " dp-day-selected"
+                day_cells += (
+                    f'<button class="{cls}" dj-click="{e_select}" '
+                    f'data-value="{date_str}">{day}</button>'
+                )
+
+    label_html = f'<label class="form-label">{e_label}</label>' if label else ""
+    required_html = ' <span class="form-required">*</span>' if required else ""
+    selected_html = (
+        f'<div class="dp-selected-value">{e_selected}</div>'
+        if selected else ""
+    )
+    error_html = f'<span class="form-error-message">{e_error}</span>' if error else ""
+    helper_html = f'<span class="form-helper">{e_helper}</span>' if helper else ""
+
+    return mark_safe(
+        f'<div class="form-group">'
+        f'{label_html}{required_html}'
+        f'<div class="date-picker">'
+        f'<div class="dp-header">'
+        f'<button class="dp-nav-btn" dj-click="{e_prev}" title="Previous month">&#8249;</button>'
+        f'<span class="dp-month-label">{month_name} {year}</span>'
+        f'<button class="dp-nav-btn" dj-click="{e_next}" title="Next month">&#8250;</button>'
+        f'</div>'
+        f'<div class="dp-grid">'
+        f'{header_cells}'
+        f'{day_cells}'
+        f'</div>'
+        f'<input type="hidden" name="{e_name}" value="{e_selected}">'
+        f'{selected_html}'
+        f'</div>'
+        f'{error_html}{helper_html}'
+        f'</div>'
+    )
+
+
+# ---------------------------------------------------------------------------
+# 48. File Dropzone
+# ---------------------------------------------------------------------------
+
+@register.simple_tag
+def file_dropzone(name="file", label="", accept="", multiple=False,
+                  max_size_mb=10, event="file_selected", helper=""):
+    """Render a drag-and-drop file upload zone."""
+    if isinstance(multiple, str):
+        multiple = multiple.lower() not in ("false", "0", "")
+
+    e_name = conditional_escape(name)
+    e_label = conditional_escape(label)
+    e_accept = conditional_escape(accept)
+    e_event = conditional_escape(event)
+    e_helper = conditional_escape(helper)
+    e_max = conditional_escape(str(max_size_mb))
+
+    multiple_attr = " multiple" if multiple else ""
+    accept_attr = f' accept="{e_accept}"' if accept else ""
+    label_html = f'<label class="form-label">{e_label}</label>' if label else ""
+    helper_html = f'<span class="form-helper">{e_helper}</span>' if helper else ""
+
+    js_id = f"dz-{name}"
+
+    return mark_safe(
+        f'{label_html}'
+        f'<div class="dropzone" id="{js_id}" '
+        f'ondragover="event.preventDefault();this.classList.add(\'dropzone-over\')" '
+        f'ondragleave="this.classList.remove(\'dropzone-over\')" '
+        f'ondrop="(function(e,el){{e.preventDefault();el.classList.remove(\'dropzone-over\');'
+        f'var f=e.dataTransfer.files;if(f.length){{var inp=el.querySelector(\'input[type=file]\');'
+        f'try{{var dt=new DataTransfer();for(var i=0;i<f.length;i++)dt.items.add(f[i]);'
+        f'inp.files=dt.files;}}catch(ex){{}}el.querySelector(\'.dz-file-count\').textContent='
+        f'f.length+\' file\'+(f.length>1?\'s\':\'\')+\' selected\';'
+        f'el.classList.add(\'dropzone-has-file\');}}}})( event,this)">'
+        f'<input type="file" name="{e_name}" class="dropzone-input" '
+        f'{accept_attr}{multiple_attr} '
+        f'onchange="(function(el){{var f=el.files;var c=el.closest(\'.dropzone\');'
+        f'c.querySelector(\'.dz-file-count\').textContent=f.length+\' file\'+(f.length>1?\'s\':\'\')+\' selected\';'
+        f'c.classList.add(\'dropzone-has-file\');}})( this)">'
+        f'<div class="dz-icon">&#128196;</div>'
+        f'<div class="dz-text">Drag files here or <span class="dz-browse">browse</span></div>'
+        f'<div class="dz-hint">Max {e_max} MB{(", accepts " + e_accept) if accept else ""}</div>'
+        f'<div class="dz-file-count"></div>'
+        f'</div>'
+        f'{helper_html}'
+    )
+
+
+# ---------------------------------------------------------------------------
+# 49. Split Pane
+# ---------------------------------------------------------------------------
+
+@register.tag("split_pane")
+def do_split_pane(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    # parse two children: {% pane %}...{% endpane %}{% pane %}...{% endpane %}
+    pane1 = parser.parse(("pane",))
+    parser.delete_first_token()  # consume {% pane %}
+    pane2 = parser.parse(("endsplit_pane",))
+    parser.delete_first_token()  # consume {% endsplit_pane %}
+    return SplitPaneNode(pane1, pane2, kwargs)
+
+
+class SplitPaneNode(template.Node):
+    def __init__(self, pane1, pane2, kwargs):
+        self.pane1 = pane1
+        self.pane2 = pane2
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        direction = kw.get("direction", "horizontal")
+        initial = kw.get("initial", "50")
+        uid = f"sp-{uuid.uuid4().hex[:6]}"
+
+        e_uid = conditional_escape(uid)
+        e_dir = conditional_escape(direction)
+        e_init = conditional_escape(str(initial))
+
+        content1 = self.pane1.render(context)
+        content2 = self.pane2.render(context)
+
+        flex_dir = "row" if direction == "horizontal" else "column"
+        size_prop = "width" if direction == "horizontal" else "height"
+
+        js = (
+            f"(function(){{var sp=document.getElementById('{uid}');"
+            f"if(!sp)return;"
+            f"var h=sp.querySelector('.sp-handle');"
+            f"var p1=sp.querySelector('.sp-pane-1');"
+            f"var dragging=false;"
+            f"h.addEventListener('mousedown',function(e){{dragging=true;e.preventDefault();}});"
+            f"document.addEventListener('mousemove',function(e){{"
+            f"if(!dragging)return;"
+            f"var r=sp.getBoundingClientRect();"
+            f"var pct={'((e.clientX-r.left)/r.width*100)' if direction == 'horizontal' else '((e.clientY-r.top)/r.height*100)'};"
+            f"pct=Math.max(10,Math.min(90,pct));"
+            f"p1.style.{size_prop}=pct+'%';}});"
+            f"document.addEventListener('mouseup',function(){{dragging=false;}});"
+            f"}})();"
+        )
+
+        return mark_safe(
+            f'<div class="split-pane split-pane-{e_dir}" id="{e_uid}">'
+            f'<div class="sp-pane sp-pane-1" style="{size_prop}:{e_init}%">{content1}</div>'
+            f'<div class="sp-handle sp-handle-{e_dir}"></div>'
+            f'<div class="sp-pane sp-pane-2" style="flex:1">{content2}</div>'
+            f'</div>'
+            f'<script>{js}</script>'
+        )
+
+
+# ---------------------------------------------------------------------------
+# 50. Table of Contents
+# ---------------------------------------------------------------------------
+
+@register.simple_tag
+def table_of_contents(items=None, title="Contents", active="", event=""):
+    """Render a table of contents from a list of items.
+
+    Args:
+        items: list of dicts {"id": "section-1", "label": "Introduction", "level": 1}
+        title: TOC heading
+        active: currently active section id (highlight)
+        event: dj-click event when an item is clicked (sends id as data-value)
+    """
+    if not items:
+        return mark_safe("")
+
+    e_title = conditional_escape(title)
+    e_active = conditional_escape(active)
+    e_event = conditional_escape(event) if event else ""
+
+    def render_item(item):
+        if not isinstance(item, dict):
+            return ""
+        iid = conditional_escape(str(item.get("id", "")))
+        lbl = conditional_escape(str(item.get("label", "")))
+        level = int(item.get("level", 1))
+        indent = (level - 1) * 1.0
+        active_cls = " toc-item-active" if str(item.get("id", "")) == active else ""
+        event_attr = f' dj-click="{e_event}" data-value="{iid}"' if e_event else ""
+        return (
+            f'<a href="#{iid}" class="toc-item toc-level-{level}{active_cls}" '
+            f'style="padding-left:{indent + 0.75}rem"{event_attr}>{lbl}</a>'
+        )
+
+    items_html = "".join(render_item(i) for i in items)
+    title_html = f'<div class="toc-title">{e_title}</div>' if title else ""
+
+    return mark_safe(
+        f'<nav class="toc">'
+        f'{title_html}'
+        f'<div class="toc-list">{items_html}</div>'
+        f'</nav>'
+    )
+
+
+# ---------------------------------------------------------------------------
+# 51. Virtualized List (server-paginated "virtual" list)
+# ---------------------------------------------------------------------------
+
+@register.simple_tag
+def virtual_list(items=None, total=0, page=1, page_size=20,
+                 load_more_event="load_more", item_height=48):
+    """Render a paginated list optimised for large datasets.
+
+    Renders one page of items in a scrollable container. A 'Load more'
+    sentinel triggers the server to extend the list.
+    """
+    if items is None:
+        items = []
+    try:
+        total = int(total)
+        page = int(page)
+        page_size = int(page_size)
+        item_height = int(item_height)
+    except (ValueError, TypeError):
+        total = len(items)
+        page = 1
+        page_size = 20
+        item_height = 48
+
+    e_load = conditional_escape(load_more_event)
+    has_more = (page * page_size) < total
+
+    rows = ""
+    for item in items:
+        if isinstance(item, dict):
+            label = conditional_escape(str(item.get("label", item.get("title", str(item)))))
+            sub = conditional_escape(str(item.get("sub", item.get("subtitle", ""))))
+            sub_html = f'<span class="vl-item-sub">{sub}</span>' if sub else ""
+            rows += (
+                f'<div class="vl-item" style="height:{item_height}px">'
+                f'<span class="vl-item-label">{label}</span>'
+                f'{sub_html}'
+                f'</div>'
+            )
+        else:
+            rows += (
+                f'<div class="vl-item" style="height:{item_height}px">'
+                f'<span class="vl-item-label">{conditional_escape(str(item))}</span>'
+                f'</div>'
+            )
+
+    shown = min(len(items), page * page_size)
+    load_more_html = (
+        f'<div class="vl-load-more">'
+        f'<button class="btn btn-ghost btn-sm" dj-click="{e_load}">'
+        f'Load more ({total - shown} remaining)'
+        f'</button>'
+        f'</div>'
+        if has_more else ""
+    )
+
+    return mark_safe(
+        f'<div class="virtual-list">'
+        f'<div class="vl-info">Showing {shown} of {total} items</div>'
+        f'<div class="vl-scroll">'
+        f'{rows}'
+        f'{load_more_html}'
+        f'</div>'
+        f'</div>'
+    )
+
+
+# ---------------------------------------------------------------------------
+# 52. Kanban Board
+# ---------------------------------------------------------------------------
+
+@register.simple_tag
+def kanban_board(columns=None, move_event="kanban_move", add_card_event="kanban_add_card",
+                 add_col_event="kanban_add_column"):
+    """Render a Kanban board.
+
+    Args:
+        columns: list of dicts:
+            {"id": "todo", "title": "To Do", "color": "#6366F1",
+             "cards": [{"id": "c1", "title": "Task A", "label": "bug"}]}
+        move_event: event fired on drag-drop with JSON payload {card_id, from_col, to_col}
+        add_card_event: event fired when adding a card, passes column id
+    """
+    if not columns:
+        return mark_safe('<div class="kanban"></div>')
+
+    e_move = conditional_escape(move_event)
+    e_add_card = conditional_escape(add_card_event)
+
+    cols_html = ""
+    for col in columns:
+        if not isinstance(col, dict):
+            continue
+        col_id = conditional_escape(str(col.get("id", "")))
+        col_title = conditional_escape(str(col.get("title", "")))
+        col_color = conditional_escape(str(col.get("color", "#6366F1")))
+        cards = col.get("cards", [])
+
+        cards_html = ""
+        for card in cards:
+            if not isinstance(card, dict):
+                continue
+            card_id = conditional_escape(str(card.get("id", "")))
+            card_title = conditional_escape(str(card.get("title", "")))
+            card_label = card.get("label", "")
+            card_sub = card.get("sub", "")
+            label_html = (
+                f'<span class="kanban-card-label kanban-label-{conditional_escape(card_label)}">'
+                f'{conditional_escape(card_label)}</span>'
+                if card_label else ""
+            )
+            sub_html = (
+                f'<div class="kanban-card-sub">{conditional_escape(card_sub)}</div>'
+                if card_sub else ""
+            )
+            cards_html += (
+                f'<div class="kanban-card" draggable="true" '
+                f'data-card-id="{card_id}" data-col-id="{col_id}" '
+                f'ondragstart="(function(e,el){{e.dataTransfer.setData(\'card\',el.dataset.cardId);'
+                f'e.dataTransfer.setData(\'from\',el.dataset.colId);el.classList.add(\'dragging\');}})( event,this)" '
+                f'ondragend="this.classList.remove(\'dragging\')">'
+                f'<div class="kanban-card-title">{card_title}</div>'
+                f'{sub_html}'
+                f'{label_html}'
+                f'</div>'
+            )
+
+        add_btn = (
+            f'<button class="kanban-add-card" dj-click="{e_add_card}" '
+            f'data-value="{col_id}">+ Add card</button>'
+        )
+
+        cols_html += (
+            f'<div class="kanban-col" '
+            f'data-col-id="{col_id}" '
+            f'ondragover="event.preventDefault();this.classList.add(\'kanban-col-over\')" '
+            f'ondragleave="this.classList.remove(\'kanban-col-over\')" '
+            f'ondrop="(function(e,el){{e.preventDefault();el.classList.remove(\'kanban-col-over\');'
+            f'var cid=e.dataTransfer.getData(\'card\');'
+            f'var from=e.dataTransfer.getData(\'from\');'
+            f'var to=el.dataset.colId;'
+            f'if(from!==to){{window.djust&&window.djust.handleEvent(\'{e_move}\',{{card_id:cid,from_col:from,to_col:to}});}}'
+            f'}})( event,this)">'
+            f'<div class="kanban-col-header" style="border-top-color:{col_color}">'
+            f'<span class="kanban-col-title">{col_title}</span>'
+            f'<span class="kanban-col-count">{len(cards)}</span>'
+            f'</div>'
+            f'<div class="kanban-cards">{cards_html}</div>'
+            f'{add_btn}'
+            f'</div>'
+        )
+
+    return mark_safe(f'<div class="kanban">{cols_html}</div>')
+
+
+# ---------------------------------------------------------------------------
+# 53. Rich Text Editor
+# ---------------------------------------------------------------------------
+
+@register.simple_tag
+def rich_text_editor(name="content", value="", event="update_content",
+                     placeholder="Start typing…", height="200px",
+                     label="", required=False):
+    """Render a basic rich text editor (contenteditable + toolbar).
+
+    Toolbar: Bold, Italic, Underline, Strikethrough, | H2, H3, | UL, OL, | Link, Quote, Code
+    The content is synced to the server via dj-input on blur.
+    """
+    if isinstance(required, str):
+        required = required.lower() not in ("false", "0", "")
+
+    e_name = conditional_escape(name)
+    e_value = value  # Already HTML — rendered as-is (trust server content)
+    e_event = conditional_escape(event)
+    e_placeholder = conditional_escape(placeholder)
+    e_height = conditional_escape(height)
+    e_label = conditional_escape(label)
+
+    uid = f"rte-{uuid.uuid4().hex[:6]}"
+    e_uid = conditional_escape(uid)
+
+    label_html = f'<label class="form-label">{e_label}</label>' if label else ""
+    req_html = ' <span class="form-required">*</span>' if required else ""
+
+    buttons = [
+        ("bold", "B", "bold"),
+        ("italic", "I", "italic"),
+        ("underline", "U", "underline"),
+        ("strikeThrough", "S̶", "strikeThrough"),
+        ("|", "", ""),
+        ("formatBlock", "H2", "h2"),
+        ("formatBlock", "H3", "h3"),
+        ("|", "", ""),
+        ("insertUnorderedList", "•", "insertUnorderedList"),
+        ("insertOrderedList", "1.", "insertOrderedList"),
+        ("|", "", ""),
+        ("formatBlock", "❝", "blockquote"),
+        ("formatBlock", "</>", "pre"),
+    ]
+
+    toolbar_html = ""
+    for cmd, lbl, arg in buttons:
+        if cmd == "|":
+            toolbar_html += '<div class="rte-sep"></div>'
+        else:
+            e_cmd = conditional_escape(cmd)
+            e_arg = conditional_escape(arg)
+            e_lbl = conditional_escape(lbl)
+            toolbar_html += (
+                f'<button class="rte-btn" type="button" title="{e_cmd}" '
+                f'onmousedown="event.preventDefault();'
+                f'document.execCommand(\'{e_cmd}\',false,{repr(arg)});">'
+                f'{e_lbl}</button>'
+            )
+
+    sync_js = (
+        f"var ed=document.getElementById('{uid}-editor');"
+        f"var hid=document.getElementById('{uid}-hidden');"
+        f"if(ed&&hid){{hid.value=ed.innerHTML;}}"
+    )
+
+    return mark_safe(
+        f'<div class="form-group">'
+        f'{label_html}{req_html}'
+        f'<div class="rte" id="{e_uid}">'
+        f'<div class="rte-toolbar">{toolbar_html}</div>'
+        f'<div class="rte-editor" id="{e_uid}-editor" '
+        f'contenteditable="true" '
+        f'style="min-height:{e_height}" '
+        f'data-placeholder="{e_placeholder}" '
+        f'dj-input="{e_event}" '
+        f'oninput="(function(el){{var h=document.getElementById(\'{e_uid}-hidden\');'
+        f'if(h)h.value=el.innerHTML;}})(this)">'
+        f'{e_value}'
+        f'</div>'
+        f'<input type="hidden" id="{e_uid}-hidden" name="{e_name}" value="">'
+        f'</div>'
+        f'</div>'
+    )
