@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0rc1] - 2026-03-21
+
 ### Added
 - **Rust engine handlers**: 40+ component tag handlers for the Rust template engine — components now work without `{% load djust_components %}` when using Rust-rendered templates
 - **Tier 1 handlers**: Modal, Tabs, Accordion, Dropdown, Toast, Tooltip, Progress, Badge, Card, DataTable, Pagination, Avatar, Alert, Switch, Divider, Breadcrumb, Skeleton, StatusDot, Button, Stepper, Timeline
@@ -21,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Divider**: Fixed CSS class generation for divider variants
 - **TableOfContents**: Fixed item rendering for nested headings
 - **`_parse_args`**: Fixed parsing of `"1"` and `"0"` string values being treated as booleans
+- **Gauge**: Fixed f-string backslash syntax for Python 3.10/3.11 compatibility
 
 ### Changed
 - **Dependencies**: Removed `djust-theming` as a hard dependency. The previous constraint was `djust-theming>=0.3.0,<1.0`, which required an unreleased version and blocked installation. djust-theming is now optional — install it separately if you want automatic theme adaptation.
@@ -103,7 +106,8 @@ If you were using custom CSS variables to style components, you need to migrate 
 - Full djust event system integration (`dj-click`, `dj-input`, etc.)
 - Customizable via CSS custom properties
 
-[Unreleased]: https://github.com/djust-org/djust-components/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/djust-org/djust-components/compare/v0.4.0rc1...HEAD
+[0.4.0rc1]: https://github.com/djust-org/djust-components/compare/v0.3.0...v0.4.0rc1
 [0.3.0]: https://github.com/djust-org/djust-components/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/djust-org/djust-components/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/djust-org/djust-components/releases/tag/v0.1.0

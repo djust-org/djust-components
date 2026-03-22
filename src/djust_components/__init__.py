@@ -30,7 +30,7 @@ See COMPONENT_CLASSES.md for full documentation.
     path("shell/", TtydTerminalView.as_view(), name="shell"),
 """
 
-__version__ = "0.1.0"
+__version__ = "0.4.0rc1"
 
 default_app_config = "djust_components.apps.DjustComponentsConfig"
 
