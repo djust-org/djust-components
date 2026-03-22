@@ -75,3 +75,6 @@ context/
 component_showcase/
 components/
 manage.py
+
+# Claude Code
+.claude/
