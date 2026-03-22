@@ -47,16 +47,25 @@ def _parse_args(args, context):
             except (ValueError, TypeError):
                 result[key] = context.get(val, val)
         # Boolean
-        elif val in ("True", "true", "1"):
+        elif val in ("True", "true"):
             result[key] = True
-        elif val in ("False", "false", "0", ""):
+        elif val in ("False", "false"):
             result[key] = False
+        elif val == "":
+            result[key] = ""
         # None
         elif val in ("None", "null"):
             result[key] = None
         else:
-            # Variable reference — look up in context
-            result[key] = context.get(val, val)
+            # Try numeric before falling back to variable reference
+            try:
+                result[key] = int(val)
+            except ValueError:
+                try:
+                    result[key] = float(val)
+                except ValueError:
+                    # Variable reference — look up in context
+                    result[key] = context.get(val, val)
     return result
 
 
@@ -504,8 +513,8 @@ class DividerHandler:
             return mark_safe('<div class="divider divider-vertical"></div>')
         if label:
             return mark_safe(
-                f'<div class="divider">'
-                f'<span class="divider-label">{conditional_escape(label)}</span>'
+                f'<div class="divider-label">'
+                f"<span>{conditional_escape(label)}</span>"
                 f"</div>"
             )
         return mark_safe('<hr class="divider divider-horizontal">')
@@ -528,9 +537,12 @@ class SwitchHandler:
         size_cls = f" switch-{size}" if size != "md" else ""
         return mark_safe(
             f'<label class="switch-wrapper{size_cls}">'
+            f'<span class="switch">'
             f'<input type="checkbox" class="switch-input" name="{name}"'
             f'{checked_attr}{disabled_attr} dj-change="{event}">'
-            f'<span class="switch-track"><span class="switch-thumb"></span></span>'
+            f'<span class="switch-track"></span>'
+            f'<span class="switch-thumb"></span>'
+            f'</span>'
             f"{label_html}"
             f"</label>"
         )
@@ -1325,6 +1337,7 @@ class TableOfContentsHandler:
             items=items,
             title=kwargs.get("title", "Contents"),
             active=kwargs.get("active", ""),
+            event=kwargs.get("event", ""),
         ))
 
 
