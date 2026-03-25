@@ -28,6 +28,12 @@ See COMPONENT_CLASSES.md for full documentation.
     from djust_components.ttyd import TtydTerminalView
 
     path("shell/", TtydTerminalView.as_view(), name="shell"),
+
+**Component Gallery:**
+
+    python manage.py component_gallery              # Serve on port 8765
+    python manage.py component_gallery --port 9000  # Custom port
+    python manage.py component_gallery --dry-run    # List components and exit
 """
 
 __version__ = "0.1.0"

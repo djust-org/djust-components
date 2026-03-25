@@ -336,6 +336,27 @@ class DeployLogView(TtydTerminalView):
 
 **Security note:** `login_required = False` by default (v1 targets local/trusted access). Override in subclasses for authenticated deployments.
 
+## Component Gallery
+
+djust-components ships a management command that renders every component for visual QA. It auto-discovers all template tags and component classes, groups them by category, and serves a self-contained HTML page with light/dark mode toggle and responsive preview controls.
+
+```bash
+# Start the gallery server (default port 8765)
+python manage.py component_gallery
+
+# Use a custom port
+python manage.py component_gallery --port 9000
+
+# List discovered components without starting the server
+python manage.py component_gallery --dry-run
+```
+
+The gallery renders components using the Django template engine (for template tags) and Python `_render_custom()` calls (for component classes). It embeds all necessary CSS variables so components display correctly without djust or djust-theming installed.
+
+### Adding a component to the gallery
+
+Add an entry to `EXAMPLES` (for template tags) or `CLASS_EXAMPLES` (for component classes) in `src/djust_components/gallery/examples.py`. Each entry needs a `label`, `category` (matching a key in `CATEGORIES`), and a list of `variants` with example templates or render callables.
+
 ## Development
 
 ```bash
