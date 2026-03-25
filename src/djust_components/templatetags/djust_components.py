@@ -8480,3 +8480,381 @@ def do_mentions_input(parser, token):
     bits = token.split_contents()[1:]
     kwargs = _parse_kv_args(bits, parser)
     return MentionsInputNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Expandable Text (#118)
+# ---------------------------------------------------------------------------
+
+class ExpandableTextNode(template.Node):
+    def __init__(self, nodelist, kwargs):
+        self.nodelist = nodelist
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        max_lines = int(kw.get("max_lines", 3))
+        expanded = kw.get("expanded", False)
+        toggle_event = kw.get("toggle_event", "toggle_expand")
+        more_label = kw.get("more_label", "Read more")
+        less_label = kw.get("less_label", "Show less")
+        custom_class = kw.get("class", "")
+
+        content = self.nodelist.render(context)
+        e_event = conditional_escape(str(toggle_event))
+        e_more = conditional_escape(str(more_label))
+        e_less = conditional_escape(str(less_label))
+        e_class = conditional_escape(str(custom_class))
+
+        cls = "dj-expandable-text"
+        if expanded:
+            cls += " dj-expandable-text--expanded"
+        if e_class:
+            cls += f" {e_class}"
+
+        if expanded:
+            style = ""
+            label = e_less
+        else:
+            style = (
+                f' style="-webkit-line-clamp:{max_lines};'
+                f'display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden"'
+            )
+            label = e_more
+
+        return mark_safe(
+            f'<div class="{cls}">'
+            f'<div class="dj-expandable-text__content"{style}>{content}</div>'
+            f'<button class="dj-expandable-text__toggle" dj-click="{e_event}">'
+            f'{label}</button>'
+            f'</div>'
+        )
+
+
+@register.tag("expandable_text")
+def do_expandable_text(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    nodelist = parser.parse(("endexpandable_text",))
+    parser.delete_first_token()
+    return ExpandableTextNode(nodelist, kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Truncated List (#150)
+# ---------------------------------------------------------------------------
+
+class TruncatedListNode(template.Node):
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        items = kw.get("items", [])
+        max_count = int(kw.get("max", 3))
+        expanded = kw.get("expanded", False)
+        toggle_event = kw.get("toggle_event", "toggle_list")
+        overflow_label = kw.get("overflow_label", "+{count} more")
+        custom_class = kw.get("class", "")
+
+        if not isinstance(items, (list, tuple)):
+            items = []
+
+        e_class = conditional_escape(str(custom_class))
+        cls = "dj-truncated-list"
+        if expanded:
+            cls += " dj-truncated-list--expanded"
+        if e_class:
+            cls += f" {e_class}"
+
+        total = len(items)
+        visible = items if expanded else items[:max_count]
+        hidden_count = max(0, total - max_count)
+
+        items_html = []
+        for item in visible:
+            if isinstance(item, dict):
+                label = conditional_escape(str(item.get("label", item.get("name", ""))))
+            else:
+                label = conditional_escape(str(item))
+            items_html.append(f'<span class="dj-truncated-list__item">{label}</span>')
+
+        overflow_html = ""
+        if hidden_count > 0:
+            e_event = conditional_escape(str(toggle_event))
+            if expanded:
+                overflow_text = conditional_escape("Show less")
+            else:
+                overflow_text = conditional_escape(
+                    str(overflow_label).replace("{count}", str(hidden_count))
+                )
+            overflow_html = (
+                f'<button class="dj-truncated-list__overflow" dj-click="{e_event}">'
+                f'{overflow_text}</button>'
+            )
+
+        return mark_safe(
+            f'<div class="{cls}" role="list">'
+            f'{"".join(items_html)}{overflow_html}'
+            f'</div>'
+        )
+
+
+@register.tag("truncated_list")
+def do_truncated_list(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return TruncatedListNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Inline Markdown Preview (#169)
+# ---------------------------------------------------------------------------
+
+class MarkdownTextareaNode(template.Node):
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        name = kw.get("name", "content")
+        value = kw.get("value", "")
+        preview = kw.get("preview", False)
+        toggle_event = kw.get("toggle_event", "toggle_preview")
+        placeholder = kw.get("placeholder", "Write markdown here...")
+        rows = int(kw.get("rows", 6))
+        disabled = kw.get("disabled", False)
+        custom_class = kw.get("class", "")
+
+        e_name = conditional_escape(str(name))
+        e_value = conditional_escape(str(value))
+        e_event = conditional_escape(str(toggle_event))
+        e_placeholder = conditional_escape(str(placeholder))
+        e_class = conditional_escape(str(custom_class))
+        disabled_attr = " disabled" if disabled else ""
+
+        cls = "dj-md-textarea"
+        if preview:
+            cls += " dj-md-textarea--preview"
+        if e_class:
+            cls += f" {e_class}"
+
+        write_active = "" if preview else " dj-md-textarea__tab--active"
+        preview_active = " dj-md-textarea__tab--active" if preview else ""
+
+        toolbar = (
+            f'<div class="dj-md-textarea__toolbar">'
+            f'<button type="button" class="dj-md-textarea__tab{write_active}" '
+            f'dj-click="{e_event}" data-mode="write">Write</button>'
+            f'<button type="button" class="dj-md-textarea__tab{preview_active}" '
+            f'dj-click="{e_event}" data-mode="preview">Preview</button>'
+            f'</div>'
+        )
+
+        if preview:
+            body = (
+                f'<div class="dj-md-textarea__preview" data-raw="{e_value}">'
+                f'{e_value}</div>'
+                f'<input type="hidden" name="{e_name}" value="{e_value}">'
+            )
+        else:
+            body = (
+                f'<textarea class="dj-md-textarea__input" name="{e_name}" '
+                f'rows="{rows}" placeholder="{e_placeholder}"{disabled_attr}>'
+                f'{e_value}</textarea>'
+            )
+
+        return mark_safe(
+            f'<div class="{cls}" dj-hook="MarkdownTextarea">'
+            f'{toolbar}{body}'
+            f'</div>'
+        )
+
+
+@register.tag("markdown_textarea")
+def do_markdown_textarea(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return MarkdownTextareaNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Skeleton Factory (#144)
+# ---------------------------------------------------------------------------
+
+class SkeletonForNode(template.Node):
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        component = kw.get("component", "text")
+        columns = int(kw.get("columns", 4))
+        rows = int(kw.get("rows", 5))
+        custom_class = kw.get("class", "")
+
+        e_class = conditional_escape(str(custom_class))
+        cls = "dj-skeleton"
+        if e_class:
+            cls += f" {e_class}"
+
+        supported = {"data_table", "card", "list", "text"}
+        if component not in supported:
+            component = "text"
+
+        if component == "data_table":
+            return mark_safe(self._render_table(cls, columns, rows))
+        elif component == "card":
+            return mark_safe(self._render_card(cls))
+        elif component == "list":
+            return mark_safe(self._render_list(cls, rows))
+        else:
+            return mark_safe(self._render_text(cls, rows))
+
+    def _render_table(self, cls, cols, rows):
+        header_cells = "".join(
+            '<th><span class="dj-skeleton__line dj-skeleton__pulse" '
+            'style="width:70%">&nbsp;</span></th>'
+            for _ in range(cols)
+        )
+        header = f'<thead><tr>{header_cells}</tr></thead>'
+        body_rows = []
+        for _ in range(rows):
+            cells = "".join(
+                '<td><span class="dj-skeleton__line dj-skeleton__pulse">'
+                '&nbsp;</span></td>'
+                for _ in range(cols)
+            )
+            body_rows.append(f'<tr>{cells}</tr>')
+        body = f'<tbody>{"".join(body_rows)}</tbody>'
+        return (
+            f'<div class="{cls} dj-skeleton--data-table" '
+            f'role="status" aria-label="Loading">'
+            f'<table class="dj-skeleton__table">{header}{body}</table>'
+            f'</div>'
+        )
+
+    def _render_card(self, cls):
+        return (
+            f'<div class="{cls} dj-skeleton--card" '
+            f'role="status" aria-label="Loading">'
+            f'<div class="dj-skeleton__card-image dj-skeleton__pulse">&nbsp;</div>'
+            f'<div class="dj-skeleton__card-body">'
+            f'<span class="dj-skeleton__line dj-skeleton__pulse" '
+            f'style="width:60%">&nbsp;</span>'
+            f'<span class="dj-skeleton__line dj-skeleton__pulse" '
+            f'style="width:90%">&nbsp;</span>'
+            f'<span class="dj-skeleton__line dj-skeleton__pulse" '
+            f'style="width:40%">&nbsp;</span>'
+            f'</div></div>'
+        )
+
+    def _render_list(self, cls, rows):
+        items = []
+        for _ in range(rows):
+            items.append(
+                '<div class="dj-skeleton__list-item">'
+                '<span class="dj-skeleton__circle dj-skeleton__pulse">&nbsp;</span>'
+                '<span class="dj-skeleton__line dj-skeleton__pulse" '
+                'style="width:80%">&nbsp;</span>'
+                '</div>'
+            )
+        return (
+            f'<div class="{cls} dj-skeleton--list" '
+            f'role="status" aria-label="Loading">'
+            f'{"".join(items)}</div>'
+        )
+
+    def _render_text(self, cls, rows):
+        widths = [95, 85, 90, 70, 80, 60, 75, 88, 65, 92]
+        lines = []
+        for i in range(rows):
+            w = widths[i % len(widths)]
+            lines.append(
+                f'<span class="dj-skeleton__line dj-skeleton__pulse" '
+                f'style="width:{w}%">&nbsp;</span>'
+            )
+        return (
+            f'<div class="{cls} dj-skeleton--text" '
+            f'role="status" aria-label="Loading">'
+            f'{"".join(lines)}</div>'
+        )
+
+
+@register.tag("skeleton_for")
+def do_skeleton_for(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return SkeletonForNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Content Loader / Suspense (#152)
+# ---------------------------------------------------------------------------
+
+class AwaitNode(template.Node):
+    def __init__(self, nodelist, kwargs):
+        self.nodelist = nodelist
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        loading_event = kw.get("loading_event", "data_loaded")
+        loaded = kw.get("loaded", False)
+        error = kw.get("error", "")
+        error_event = kw.get("error_event", "")
+        custom_class = kw.get("class", "")
+
+        e_event = conditional_escape(str(loading_event))
+        e_class = conditional_escape(str(custom_class))
+
+        cls = "dj-content-loader"
+        if loaded:
+            cls += " dj-content-loader--loaded"
+        if error:
+            cls += " dj-content-loader--error"
+        if e_class:
+            cls += f" {e_class}"
+
+        if error:
+            e_error = conditional_escape(str(error))
+            retry_html = ""
+            if error_event:
+                e_retry = conditional_escape(str(error_event))
+                retry_html = (
+                    f'<button class="dj-content-loader__retry" '
+                    f'dj-click="{e_retry}">Retry</button>'
+                )
+            return mark_safe(
+                f'<div class="{cls}" data-loading-event="{e_event}">'
+                f'<div class="dj-content-loader__error" role="alert">'
+                f'<span class="dj-content-loader__error-msg">{e_error}</span>'
+                f'{retry_html}</div></div>'
+            )
+
+        # Render child nodes — for loaded state these are the actual content,
+        # for loading state they are the placeholder (e.g. skeleton_for)
+        inner = self.nodelist.render(context)
+
+        if loaded:
+            return mark_safe(
+                f'<div class="{cls}" data-loading-event="{e_event}">'
+                f'<div class="dj-content-loader__content">{inner}</div>'
+                f'</div>'
+            )
+
+        return mark_safe(
+            f'<div class="{cls}" data-loading-event="{e_event}" '
+            f'role="status" aria-label="Loading">'
+            f'<div class="dj-content-loader__placeholder">{inner}</div>'
+            f'</div>'
+        )
+
+
+@register.tag("await")
+def do_await(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    nodelist = parser.parse(("endawait",))
+    parser.delete_first_token()
+    return AwaitNode(nodelist, kwargs)
