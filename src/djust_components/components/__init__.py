@@ -124,6 +124,11 @@ from .pivot_table import PivotTable
 from .org_chart import OrgChart
 from .comparison_table import ComparisonTable
 from .masonry_grid import MasonryGrid
+from .cursors_overlay import CursorsOverlay
+from .live_indicator import LiveIndicator
+from .collab_selection import CollabSelection
+from .activity_feed import ActivityFeed
+from .reactions import Reactions
 
 __all__ = [
     "Alert",
@@ -218,4 +223,9 @@ __all__ = [
     "OrgChart",
     "ComparisonTable",
     "MasonryGrid",
+    "CursorsOverlay",
+    "LiveIndicator",
+    "CollabSelection",
+    "ActivityFeed",
+    "Reactions",
 ]
