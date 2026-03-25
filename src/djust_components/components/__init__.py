@@ -52,8 +52,13 @@ from .switch import Switch
 from .tag import Tag
 from .toast import Toast
 from .streaming_text import StreamingText
+from .code_snippet import CodeSnippet
 from .connection_status import ConnectionStatus
+from .copyable_text import CopyableText
 from .live_counter import LiveCounter
+from .relative_time import RelativeTime
+from .responsive_image import ResponsiveImage
+from .scroll_to_top import ScrollToTop
 from .server_event_toast import ServerEventToastMixin
 
 __all__ = [
@@ -61,14 +66,19 @@ __all__ = [
     "Badge",
     "Button",
     "Card",
+    "CodeSnippet",
     "ConnectionStatus",
+    "CopyableText",
     "DataGrid",
     "LiveCounter",
     "Markdown",
     "NotificationBadge",
     "Progress",
     "ProgressCircle",
+    "RelativeTime",
+    "ResponsiveImage",
     "RichSelect",
+    "ScrollToTop",
     "SegmentedProgress",
     "ServerEventToastMixin",
     "Spinner",

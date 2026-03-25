@@ -4572,3 +4572,233 @@ def do_server_toast_container(parser, token):
     bits = token.split_contents()[1:]
     kwargs = _parse_kv_args(bits, parser)
     return ToastContainerNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Scroll to Top (#125)
+# ---------------------------------------------------------------------------
+
+@register.simple_tag
+def scroll_to_top(threshold="300px", label="Back to top", custom_class=""):
+    """Floating button that appears after scrolling past a threshold.
+
+    Args:
+        threshold: scroll distance before button appears (default "300px")
+        label: accessible button label
+        custom_class: additional CSS classes
+    """
+    e_threshold = conditional_escape(threshold)
+    e_label = conditional_escape(label)
+    e_cls = conditional_escape(custom_class)
+
+    cls = "dj-scroll-to-top"
+    if e_cls:
+        cls += f" {e_cls}"
+
+    return mark_safe(
+        f'<button class="{cls}" '
+        f'data-threshold="{e_threshold}" '
+        f'aria-label="{e_label}" '
+        f'title="{e_label}" '
+        f'style="display:none">'
+        f'<svg width="20" height="20" viewBox="0 0 20 20" fill="none" '
+        f'stroke="currentColor" stroke-width="2" stroke-linecap="round" '
+        f'stroke-linejoin="round">'
+        f'<path d="M10 16V4M10 4l-6 6M10 4l6 6"/>'
+        f'</svg>'
+        f'</button>'
+    )
+
+
+# ---------------------------------------------------------------------------
+# Code Snippet (#139)
+# ---------------------------------------------------------------------------
+
+@register.simple_tag
+def code_snippet(code="", language="", custom_class=""):
+    """Code block with copy button and language badge.
+
+    Args:
+        code: source code text
+        language: programming language label
+        custom_class: additional CSS classes
+    """
+    e_code = conditional_escape(code)
+    e_lang = conditional_escape(language)
+    e_cls = conditional_escape(custom_class)
+
+    cls = "dj-code-snippet"
+    if e_cls:
+        cls += f" {e_cls}"
+
+    lang_badge = ""
+    if language:
+        lang_badge = f'<span class="dj-code-snippet__lang">{e_lang}</span>'
+
+    return mark_safe(
+        f'<div class="{cls}">'
+        f'<div class="dj-code-snippet__header">'
+        f'{lang_badge}'
+        f'<button class="dj-code-snippet__copy" aria-label="Copy code" '
+        f'type="button">Copy</button>'
+        f'</div>'
+        f'<pre class="dj-code-snippet__pre">'
+        f'<code class="dj-code-snippet__code">{e_code}</code>'
+        f'</pre>'
+        f'</div>'
+    )
+
+
+# ---------------------------------------------------------------------------
+# Responsive Image (#140)
+# ---------------------------------------------------------------------------
+
+@register.simple_tag
+def responsive_image(src="", alt="", aspect_ratio="", lazy=True, srcset="",
+                     sizes="", placeholder="", custom_class=""):
+    """Picture element with srcset, lazy loading, and blur-up placeholder.
+
+    Args:
+        src: image URL
+        alt: alt text
+        aspect_ratio: CSS aspect-ratio (e.g. "16/9")
+        lazy: enable native lazy loading (default True)
+        srcset: srcset attribute value
+        sizes: sizes attribute value
+        placeholder: blur-up placeholder image URL
+        custom_class: additional CSS classes
+    """
+    if isinstance(lazy, str):
+        lazy = lazy.lower() not in ("false", "0", "")
+
+    e_src = conditional_escape(src)
+    e_alt = conditional_escape(alt)
+    e_cls = conditional_escape(custom_class)
+
+    cls = "dj-responsive-image"
+    if placeholder:
+        cls += " dj-responsive-image--blur-up"
+    if e_cls:
+        cls += f" {e_cls}"
+
+    style = ""
+    if aspect_ratio:
+        e_ratio = conditional_escape(aspect_ratio)
+        style = f' style="aspect-ratio:{e_ratio}"'
+
+    img_attrs = [f'src="{e_src}"', f'alt="{e_alt}"']
+    if lazy:
+        img_attrs.append('loading="lazy"')
+    if srcset:
+        img_attrs.append(f'srcset="{conditional_escape(srcset)}"')
+    if sizes:
+        img_attrs.append(f'sizes="{conditional_escape(sizes)}"')
+
+    img_tag = f'<img {" ".join(img_attrs)} class="dj-responsive-image__img">'
+
+    placeholder_html = ""
+    if placeholder:
+        e_ph = conditional_escape(placeholder)
+        placeholder_html = (
+            f'<img src="{e_ph}" alt="" class="dj-responsive-image__placeholder" '
+            f'aria-hidden="true">'
+        )
+
+    return mark_safe(
+        f'<div class="{cls}"{style}>'
+        f'{placeholder_html}'
+        f'{img_tag}'
+        f'</div>'
+    )
+
+
+# ---------------------------------------------------------------------------
+# Relative Time (#146)
+# ---------------------------------------------------------------------------
+
+@register.simple_tag
+def relative_time(datetime="", auto_update=True, interval=60, custom_class=""):
+    """Display a datetime as relative text ("3 hours ago") with auto-update.
+
+    Args:
+        datetime: ISO datetime string or datetime object
+        auto_update: enable client-side interval updates (default True)
+        interval: update interval in seconds (default 60)
+        custom_class: additional CSS classes
+    """
+    if isinstance(auto_update, str):
+        auto_update = auto_update.lower() not in ("false", "0", "")
+
+    e_cls = conditional_escape(custom_class)
+    cls = "dj-relative-time"
+    if e_cls:
+        cls += f" {e_cls}"
+
+    iso_val = ""
+    if datetime:
+        if hasattr(datetime, "isoformat"):
+            iso_val = datetime.isoformat()
+        else:
+            iso_val = str(datetime)
+
+    e_iso = conditional_escape(iso_val)
+    auto_str = "true" if auto_update else "false"
+
+    try:
+        interval_val = int(interval)
+    except (ValueError, TypeError):
+        interval_val = 60
+
+    return mark_safe(
+        f'<time class="{cls}" '
+        f'datetime="{e_iso}" '
+        f'data-auto-update="{auto_str}" '
+        f'data-interval="{interval_val}">'
+        f'{e_iso}'
+        f'</time>'
+    )
+
+
+# ---------------------------------------------------------------------------
+# Copyable Text (#153)
+# ---------------------------------------------------------------------------
+
+class CopyableTextNode(template.Node):
+    def __init__(self, nodelist, kwargs):
+        self.nodelist = nodelist
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        copied_label = kw.get("copied_label", "Copied!")
+        custom_class = kw.get("custom_class", "")
+
+        content = self.nodelist.render(context).strip()
+
+        e_content = conditional_escape(content)
+        e_label = conditional_escape(copied_label)
+        e_cls = conditional_escape(custom_class)
+
+        cls = "dj-copyable-text"
+        if e_cls:
+            cls += f" {e_cls}"
+
+        return mark_safe(
+            f'<span class="{cls}" '
+            f'data-copy-text="{e_content}" '
+            f'data-copied-label="{e_label}" '
+            f'role="button" tabindex="0" '
+            f'aria-label="Click to copy">'
+            f'<span class="dj-copyable-text__value">{e_content}</span>'
+            f'<span class="dj-copyable-text__tooltip" aria-hidden="true">{e_label}</span>'
+            f'</span>'
+        )
+
+
+@register.tag("copyable_text")
+def do_copyable_text(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    nodelist = parser.parse(("endcopyable_text",))
+    parser.delete_first_token()
+    return CopyableTextNode(nodelist, kwargs)
