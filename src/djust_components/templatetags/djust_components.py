@@ -435,10 +435,20 @@ def data_table(rows, columns, sort_by="", sort_desc=False, sort_event="table_sor
                search_debounce=300, filters=None, filter_event="table_filter",
                loading=False, empty_title="No data", empty_description="",
                empty_icon="", paginate=False, page_event="table_page",
-               striped=False, compact=False):
-    """Render a sortable data table with search, filters, selection, and pagination.
+               striped=False, compact=False,
+               # Phase 2 params
+               editable_columns=None, edit_event="table_cell_edit",
+               resizable=False, reorderable=False, reorder_event="table_reorder",
+               frozen_left=0, frozen_right=0,
+               column_visibility=False, visibility_event="table_visibility",
+               density="comfortable", density_toggle=False, density_event="table_density",
+               responsive_cards=False,
+               editable_rows=False, edit_row_event="table_row_edit",
+               save_row_event="table_row_save", cancel_row_event="table_row_cancel",
+               editing_rows=None):
+    """Render a sortable data table with search, filters, selection, pagination, and editing.
 
-    Args:
+    Phase 1 args:
         rows: list of dicts
         columns: list of dicts with keys: key, label, sortable, filterable, filter_type, filter_options, width
         sort_by: current sort column key
@@ -466,6 +476,26 @@ def data_table(rows, columns, sort_by="", sort_desc=False, sort_event="table_sor
         page_event: pagination event name
         striped: alternating row backgrounds
         compact: reduced padding
+
+    Phase 2 args:
+        editable_columns: list of column keys that support inline editing
+        edit_event: inline cell edit event name
+        resizable: enable column resize (client-side JS)
+        reorderable: enable column reorder via drag (client-side JS)
+        reorder_event: column reorder persist event
+        frozen_left: number of columns frozen on the left
+        frozen_right: number of columns frozen on the right
+        column_visibility: show column visibility dropdown
+        visibility_event: column visibility toggle persist event
+        density: row density — "compact", "comfortable", or "spacious"
+        density_toggle: show density toggle buttons
+        density_event: density change event
+        responsive_cards: collapse rows to stacked cards on narrow viewports
+        editable_rows: enable row edit mode with Edit/Save/Cancel buttons
+        edit_row_event: enter row edit mode event
+        save_row_event: save edited row event
+        cancel_row_event: cancel row edit event
+        editing_rows: list of row keys currently in edit mode
     """
     return {
         "rows": rows,
@@ -495,6 +525,25 @@ def data_table(rows, columns, sort_by="", sort_desc=False, sort_event="table_sor
         "page_event": page_event,
         "striped": striped,
         "compact": compact,
+        # Phase 2
+        "editable_columns": editable_columns or [],
+        "edit_event": edit_event,
+        "resizable": resizable,
+        "reorderable": reorderable,
+        "reorder_event": reorder_event,
+        "frozen_left": frozen_left,
+        "frozen_right": frozen_right,
+        "column_visibility": column_visibility,
+        "visibility_event": visibility_event,
+        "density": density,
+        "density_toggle": density_toggle,
+        "density_event": density_event,
+        "responsive_cards": responsive_cards,
+        "editable_rows": editable_rows,
+        "edit_row_event": edit_row_event,
+        "save_row_event": save_row_event,
+        "cancel_row_event": cancel_row_event,
+        "editing_rows": editing_rows or [],
     }
 
 

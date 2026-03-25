@@ -834,7 +834,7 @@ class DataTableHandler:
         sort_desc = kw.get("sort_desc", False)
         sort_event = conditional_escape(kw.get("sort_event", "table_sort"))
 
-        # New Phase 1 parameters (all opt-in)
+        # Phase 1 parameters (all opt-in)
         selectable = kw.get("selectable", False)
         selected_rows = kw.get("selected_rows") or []
         select_event = conditional_escape(kw.get("select_event", "table_select"))
@@ -862,6 +862,32 @@ class DataTableHandler:
         striped = kw.get("striped", False)
         compact = kw.get("compact", False)
 
+        # Phase 2 parameters (all opt-in)
+        editable_columns = kw.get("editable_columns") or []
+        edit_event = conditional_escape(kw.get("edit_event", "table_cell_edit"))
+        resizable = kw.get("resizable", False)
+        reorderable = kw.get("reorderable", False)
+        reorder_event = conditional_escape(kw.get("reorder_event", "table_reorder"))
+        try:
+            frozen_left = int(kw.get("frozen_left", 0))
+        except (ValueError, TypeError):
+            frozen_left = 0
+        try:
+            frozen_right = int(kw.get("frozen_right", 0))
+        except (ValueError, TypeError):
+            frozen_right = 0
+        column_visibility = kw.get("column_visibility", False)
+        visibility_event = conditional_escape(kw.get("visibility_event", "table_visibility"))
+        density = conditional_escape(str(kw.get("density", "comfortable")))
+        density_toggle = kw.get("density_toggle", False)
+        density_event = conditional_escape(kw.get("density_event", "table_density"))
+        responsive_cards = kw.get("responsive_cards", False)
+        editable_rows = kw.get("editable_rows", False)
+        edit_row_event = conditional_escape(kw.get("edit_row_event", "table_row_edit"))
+        save_row_event = conditional_escape(kw.get("save_row_event", "table_row_save"))
+        cancel_row_event = conditional_escape(kw.get("cancel_row_event", "table_row_cancel"))
+        editing_rows = kw.get("editing_rows") or []
+
         if not isinstance(rows, (list, tuple)):
             rows = []
         if not isinstance(columns, (list, tuple)):
@@ -870,17 +896,90 @@ class DataTableHandler:
             selected_rows = []
         if not isinstance(filters, dict):
             filters = {}
+        if not isinstance(editable_columns, (list, tuple)):
+            editable_columns = []
+        if not isinstance(editing_rows, (list, tuple, set)):
+            editing_rows = []
 
-        # Convert selected_rows to a set of strings for fast lookup
+        # Convert to sets for fast lookup
         selected_set = {str(v) for v in selected_rows}
+        editable_col_set = set(str(c) for c in editable_columns)
+        editing_row_set = {str(v) for v in editing_rows}
+        num_cols = len(columns)
 
         # --- Table classes ---
         table_classes = ["data-table"]
         if striped:
             table_classes.append("data-table-striped")
-        if compact:
+        if compact or density == "compact":
             table_classes.append("data-table-compact")
+        if density == "spacious":
+            table_classes.append("data-table-spacious")
         table_cls = " ".join(table_classes)
+
+        # --- Wrapper attributes ---
+        wrapper_classes = ["data-table-wrapper", "data-table-container"]
+        if responsive_cards:
+            wrapper_classes.append("data-table-responsive")
+        wrapper_attrs = []
+        if resizable:
+            wrapper_attrs.append('data-resizable="true"')
+        if reorderable:
+            wrapper_attrs.append('data-reorderable="true"')
+            wrapper_attrs.append(f'data-reorder-event="{reorder_event}"')
+        if editable_columns:
+            wrapper_attrs.append(f'data-edit-event="{edit_event}"')
+        if column_visibility:
+            wrapper_attrs.append(f'data-visibility-event="{visibility_event}"')
+        wrapper_attrs_str = (" " + " ".join(wrapper_attrs)) if wrapper_attrs else ""
+
+        # --- Toolbar (column visibility + density toggle) ---
+        toolbar_html = ""
+        toolbar_parts = []
+
+        if column_visibility:
+            vis_items = ""
+            for col in columns:
+                if isinstance(col, dict):
+                    ckey = conditional_escape(str(col.get("key", "")))
+                    clabel = conditional_escape(str(col.get("label", ckey)))
+                else:
+                    ckey = clabel = conditional_escape(str(col))
+                vis_items += (
+                    f'<label class="data-table-visibility-item">'
+                    f'<input type="checkbox" checked data-col-key="{ckey}"> {clabel}'
+                    f'</label>'
+                )
+            toolbar_parts.append(
+                f'<div class="data-table-visibility-dropdown">'
+                f'<button type="button" class="data-table-visibility-btn">'
+                f'&#9776; Columns</button>'
+                f'<div class="data-table-visibility-menu">{vis_items}</div>'
+                f'</div>'
+            )
+
+        if density_toggle:
+            def _dbtn(val, label):
+                active = " active" if val == density else ""
+                return (
+                    f'<button type="button" class="data-table-density-btn{active}"'
+                    f' data-density="{val}"'
+                    f' dj-click="{density_event}" data-value="{val}">{label}</button>'
+                )
+            toolbar_parts.append(
+                f'<div class="data-table-density-toggle">'
+                f'{_dbtn("compact", "Compact")}'
+                f'{_dbtn("comfortable", "Comfortable")}'
+                f'{_dbtn("spacious", "Spacious")}'
+                f'</div>'
+            )
+
+        if toolbar_parts:
+            toolbar_html = (
+                f'<div class="data-table-toolbar">'
+                f'{"".join(toolbar_parts)}'
+                f'</div>'
+            )
 
         # --- Search bar ---
         search_html = ""
@@ -896,14 +995,14 @@ class DataTableHandler:
 
         # --- Loading state ---
         if loading:
-            # Render skeleton instead of table body
             skeleton_rows = "".join(
                 '<div class="skeleton skeleton-line" style="width:100%"></div>'
                 for _ in range(5)
             )
             return mark_safe(
-                f'<div class="data-table-wrapper data-table-container" role="grid"'
-                f' aria-label="Data table" aria-busy="true">'
+                f'<div class="{" ".join(wrapper_classes)}" role="grid"'
+                f' aria-label="Data table" aria-busy="true"{wrapper_attrs_str}>'
+                f'{toolbar_html}'
                 f'{search_html}'
                 f'<div class="data-table-loading skeleton-table">'
                 f'{skeleton_rows}'
@@ -916,10 +1015,9 @@ class DataTableHandler:
             isinstance(col, dict) and col.get("filterable", False)
             for col in columns
         )
-        # Build a second header row for filters if needed
         header_cells = []
         filter_cells = []
-        for col in columns:
+        for col_idx, col in enumerate(columns):
             if isinstance(col, dict):
                 key = conditional_escape(str(col.get("key", "")))
                 col_label = conditional_escape(str(col.get("label", key)))
@@ -936,8 +1034,24 @@ class DataTableHandler:
                 filter_options = []
                 width = ""
 
+            # Frozen column class
+            frozen_cls = ""
+            if frozen_left > 0 and col_idx < frozen_left:
+                frozen_cls = " data-table-frozen-left"
+            elif frozen_right > 0 and col_idx >= (num_cols - frozen_right):
+                frozen_cls = " data-table-frozen-right"
+
             # Width style
             width_attr = f' style="width:{conditional_escape(width)}"' if width else ""
+
+            # Resize / reorder attributes
+            extra_attrs = ""
+            if resizable:
+                extra_attrs += ' data-resizable="true"'
+            if reorderable:
+                extra_attrs += f' draggable="true" data-col-key="{key}"'
+            elif column_visibility:
+                extra_attrs += f' data-col-key="{key}"'
 
             # Sort state
             if sortable:
@@ -949,19 +1063,20 @@ class DataTableHandler:
                     arrow = ""
                     aria_sort = "none"
                 header_cells.append(
-                    f'<th class="sortable{active}" role="columnheader"'
+                    f'<th class="sortable{active}{frozen_cls}" role="columnheader"'
                     f' aria-sort="{aria_sort}"'
-                    f' dj-click="{sort_event}" data-value="{key}"{width_attr}>'
+                    f' dj-click="{sort_event}" data-value="{key}"{width_attr}{extra_attrs}>'
                     f'{col_label}{arrow}</th>'
                 )
             else:
                 header_cells.append(
-                    f'<th role="columnheader"{width_attr}>'
+                    f'<th class="{frozen_cls.strip()}" role="columnheader"{width_attr}{extra_attrs}>'
                     f'{col_label}</th>'
                 )
 
             # Filter cell
             if has_filters:
+                frozen_f = f' class="{frozen_cls.strip()}"' if frozen_cls else ""
                 if filterable:
                     filter_val = conditional_escape(str(filters.get(key, "")))
                     if filter_type == "select":
@@ -975,7 +1090,7 @@ class DataTableHandler:
                             selected = " selected" if opt_val == filter_val else ""
                             opts_html += f'<option value="{opt_val}"{selected}>{opt_label}</option>'
                         filter_cells.append(
-                            f'<th><select class="data-table-filter"'
+                            f'<th{frozen_f}><select class="data-table-filter"'
                             f' aria-label="Filter {col_label}"'
                             f' dj-input="{filter_event}" data-column="{key}">'
                             f'{opts_html}'
@@ -983,7 +1098,7 @@ class DataTableHandler:
                         )
                     else:
                         filter_cells.append(
-                            f'<th><input type="text" class="data-table-filter"'
+                            f'<th{frozen_f}><input type="text" class="data-table-filter"'
                             f' aria-label="Filter {col_label}"'
                             f' placeholder="Filter..."'
                             f' value="{filter_val}"'
@@ -991,7 +1106,7 @@ class DataTableHandler:
                             f'</th>'
                         )
                 else:
-                    filter_cells.append("<th></th>")
+                    filter_cells.append(f"<th{frozen_f}></th>")
 
         # Prepend selection column
         if selectable:
@@ -1002,6 +1117,12 @@ class DataTableHandler:
             )
             if has_filters:
                 filter_cells.insert(0, "<th></th>")
+
+        # Append actions column header for editable rows
+        if editable_rows:
+            header_cells.append('<th role="columnheader">Actions</th>')
+            if has_filters:
+                filter_cells.append("<th></th>")
 
         # --- Header rows ---
         thead_rows = f"<tr>{''.join(header_cells)}</tr>"
@@ -1016,6 +1137,14 @@ class DataTableHandler:
                     continue
                 row_id = str(row.get(row_key, ""))
                 is_selected = row_id in selected_set
+                is_editing = row_id in editing_row_set
+                row_attrs = ""
+                row_classes = []
+
+                if is_editing:
+                    row_classes.append("data-table-row-editing")
+                row_attrs += f' data-row-key="{conditional_escape(row_id)}"'
+
                 cells = ""
                 if selectable:
                     checked = " checked" if is_selected else ""
@@ -1026,19 +1155,83 @@ class DataTableHandler:
                         f' dj-click="{select_event}"'
                         f' data-value="{conditional_escape(row_id)}"></td>'
                     )
-                for col in columns:
-                    col_key = col.get("key", col) if isinstance(col, dict) else col
-                    cell_val = conditional_escape(str(row.get(str(col_key), "")))
-                    cells += f"<td>{cell_val}</td>"
+
+                for col_idx, col in enumerate(columns):
+                    col_k = col.get("key", col) if isinstance(col, dict) else col
+                    col_k_str = str(col_k)
+                    cell_val = conditional_escape(str(row.get(col_k_str, "")))
+                    col_label_for_card = ""
+                    if responsive_cards and isinstance(col, dict):
+                        col_label_for_card = conditional_escape(str(col.get("label", col_k_str)))
+
+                    # Frozen class for td
+                    td_frozen = ""
+                    if frozen_left > 0 and col_idx < frozen_left:
+                        td_frozen = ' class="data-table-frozen-left"'
+                    elif frozen_right > 0 and col_idx >= (num_cols - frozen_right):
+                        td_frozen = ' class="data-table-frozen-right"'
+
+                    # Responsive card data-label
+                    label_attr = f' data-label="{col_label_for_card}"' if responsive_cards and col_label_for_card else ""
+
+                    # Editable cell (inline editing)
+                    is_col_editable = col_k_str in editable_col_set
+
+                    # Editable row mode: all cells become inputs when row is editing
+                    if editable_rows and is_editing:
+                        raw_val = conditional_escape(str(row.get(col_k_str, "")))
+                        cells += (
+                            f'<td{td_frozen}{label_attr}>'
+                            f'<input type="text" value="{raw_val}"'
+                            f' name="{conditional_escape(col_k_str)}"'
+                            f' aria-label="Edit {conditional_escape(col_k_str)}">'
+                            f'</td>'
+                        )
+                    elif is_col_editable:
+                        cells += (
+                            f'<td data-editable="true"'
+                            f' data-col-key="{conditional_escape(col_k_str)}"'
+                            f'{td_frozen}{label_attr}>'
+                            f'{cell_val}</td>'
+                        )
+                    else:
+                        cells += f"<td{td_frozen}{label_attr}>{cell_val}</td>"
+
+                # Actions column for editable rows
+                if editable_rows:
+                    if is_editing:
+                        cells += (
+                            f'<td class="data-table-row-actions">'
+                            f'<button class="save-btn"'
+                            f' dj-click="{save_row_event}"'
+                            f' data-value="{conditional_escape(row_id)}">Save</button>'
+                            f' <button class="cancel-btn"'
+                            f' dj-click="{cancel_row_event}"'
+                            f' data-value="{conditional_escape(row_id)}">Cancel</button>'
+                            f'</td>'
+                        )
+                    else:
+                        cells += (
+                            f'<td class="data-table-row-actions">'
+                            f'<button dj-click="{edit_row_event}"'
+                            f' data-value="{conditional_escape(row_id)}">Edit</button>'
+                            f'</td>'
+                        )
+
+                # Row element
                 if selectable:
                     sel_attr = "true" if is_selected else "false"
-                    body_rows.append(f'<tr aria-selected="{sel_attr}">{cells}</tr>')
+                    row_cls = f' class="{" ".join(row_classes)}"' if row_classes else ""
+                    body_rows.append(
+                        f'<tr aria-selected="{sel_attr}"{row_cls}{row_attrs}>{cells}</tr>'
+                    )
                 else:
-                    body_rows.append(f"<tr>{cells}</tr>")
+                    row_cls = f' class="{" ".join(row_classes)}"' if row_classes else ""
+                    body_rows.append(f"<tr{row_cls}{row_attrs}>{cells}</tr>")
             tbody_html = "".join(body_rows)
         else:
             # Empty state
-            col_span = len(columns) + (1 if selectable else 0)
+            col_span = len(columns) + (1 if selectable else 0) + (1 if editable_rows else 0)
             icon_html = f'<div class="data-table-empty-icon">{empty_icon}</div>' if empty_icon else ""
             desc_html = f'<p class="data-table-empty-description">{empty_description}</p>' if empty_description else ""
             tbody_html = (
@@ -1069,15 +1262,44 @@ class DataTableHandler:
                 f'</div>'
             )
 
+        # --- Hidden triggers for JS events ---
+        triggers_html = ""
+        if reorderable:
+            triggers_html += (
+                f'<button class="data-table-reorder-trigger" style="display:none"'
+                f' dj-click="{reorder_event}"></button>'
+            )
+        if editable_columns:
+            triggers_html += (
+                f'<button class="data-table-edit-trigger" style="display:none"'
+                f' dj-click="{edit_event}"></button>'
+            )
+        if column_visibility:
+            triggers_html += (
+                f'<button class="data-table-visibility-trigger" style="display:none"'
+                f' dj-click="{visibility_event}"></button>'
+            )
+
+        # --- Scrollable wrapper for frozen columns ---
+        scroll_open = ""
+        scroll_close = ""
+        if frozen_left > 0 or frozen_right > 0:
+            scroll_open = '<div class="data-table-scroll">'
+            scroll_close = '</div>'
+
         return mark_safe(
-            f'<div class="data-table-wrapper data-table-container" role="grid"'
-            f' aria-label="Data table">'
+            f'<div class="{" ".join(wrapper_classes)}" role="grid"'
+            f' aria-label="Data table"{wrapper_attrs_str}>'
+            f'{toolbar_html}'
             f'{search_html}'
+            f'{scroll_open}'
             f'<table class="{table_cls}">'
             f"<thead>{thead_rows}</thead>"
             f"<tbody>{tbody_html}</tbody>"
             f"</table>"
+            f'{scroll_close}'
             f'{pagination_html}'
+            f'{triggers_html}'
             f"</div>"
         )
 
