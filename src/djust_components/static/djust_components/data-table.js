@@ -296,6 +296,170 @@
     });
   }
 
+  // ── Keyboard Navigation ──────────────────────────────────────
+
+  function initKeyboardNav(wrapper) {
+    if (wrapper._dtKeyboard) return;
+    wrapper._dtKeyboard = true;
+
+    var table = wrapper.querySelector("table.data-table");
+    if (!table) return;
+
+    wrapper.addEventListener("keydown", function (e) {
+      var active = document.activeElement;
+      if (!active || !table.contains(active)) return;
+
+      var td = active.closest("td") || active.closest("th");
+      if (!td) return;
+
+      var tr = td.parentElement;
+      var cellIdx = td.cellIndex;
+      var rows = table.querySelectorAll("tbody tr:not(.data-table-detail-row):not(.data-table-group-header)");
+      var rowIdx = -1;
+      rows.forEach(function (r, i) { if (r === tr) rowIdx = i; });
+
+      var targetCell = null;
+
+      if (e.key === "ArrowRight" && td.nextElementSibling) {
+        targetCell = td.nextElementSibling;
+      } else if (e.key === "ArrowLeft" && td.previousElementSibling) {
+        targetCell = td.previousElementSibling;
+      } else if (e.key === "ArrowDown" && rowIdx >= 0 && rowIdx < rows.length - 1) {
+        var nextRow = rows[rowIdx + 1];
+        if (nextRow && nextRow.children[cellIdx]) targetCell = nextRow.children[cellIdx];
+      } else if (e.key === "ArrowUp" && rowIdx > 0) {
+        var prevRow = rows[rowIdx - 1];
+        if (prevRow && prevRow.children[cellIdx]) targetCell = prevRow.children[cellIdx];
+      } else if (e.key === "Enter" && td.hasAttribute("data-editable")) {
+        td.click();
+        e.preventDefault();
+        return;
+      } else if (e.key === "Escape") {
+        wrapper.focus();
+        return;
+      }
+
+      if (targetCell) {
+        e.preventDefault();
+        targetCell.setAttribute("tabindex", "-1");
+        targetCell.focus();
+      }
+    });
+
+    // Make cells focusable
+    table.querySelectorAll("tbody td").forEach(function (td) {
+      td.setAttribute("tabindex", "-1");
+    });
+  }
+
+  // ── Virtual Scrolling ──────────────────────────────────────────
+
+  function initVirtualScroll(wrapper) {
+    if (wrapper._dtVirtual) return;
+    wrapper._dtVirtual = true;
+
+    var table = wrapper.querySelector("table.data-table");
+    if (!table) return;
+
+    var tbody = table.querySelector("tbody");
+    if (!tbody) return;
+
+    var rowHeight = parseInt(wrapper.getAttribute("data-virtual-row-height") || "40", 10);
+    var buffer = parseInt(wrapper.getAttribute("data-virtual-buffer") || "5", 10);
+    var allRows = Array.from(tbody.querySelectorAll("tr"));
+    if (allRows.length < 50) return; // Only activate for 50+ rows
+
+    var totalHeight = allRows.length * rowHeight;
+    var viewport = document.createElement("div");
+    viewport.className = "data-table-virtual-viewport";
+    viewport.style.maxHeight = (rowHeight * 20) + "px";
+    viewport.style.overflowY = "auto";
+    viewport.style.position = "relative";
+
+    var spacer = document.createElement("div");
+    spacer.style.height = totalHeight + "px";
+    spacer.style.position = "relative";
+
+    // Move table into viewport
+    table.parentNode.insertBefore(viewport, table);
+    viewport.appendChild(spacer);
+    spacer.appendChild(table);
+
+    allRows.forEach(function (row) { row.style.display = "none"; });
+
+    function render() {
+      var scrollTop = viewport.scrollTop;
+      var viewportH = viewport.clientHeight;
+      var startIdx = Math.max(0, Math.floor(scrollTop / rowHeight) - buffer);
+      var endIdx = Math.min(allRows.length, Math.ceil((scrollTop + viewportH) / rowHeight) + buffer);
+
+      allRows.forEach(function (row, i) {
+        if (i >= startIdx && i < endIdx) {
+          row.style.display = "";
+          row.style.position = "absolute";
+          row.style.top = (i * rowHeight) + "px";
+          row.style.width = "100%";
+        } else {
+          row.style.display = "none";
+        }
+      });
+    }
+
+    viewport.addEventListener("scroll", render);
+    render();
+  }
+
+  // ── State Persistence ──────────────────────────────────────────
+
+  function initPersistence(wrapper) {
+    if (wrapper._dtPersist) return;
+    wrapper._dtPersist = true;
+
+    var key = wrapper.getAttribute("data-persist-key");
+    if (!key) return;
+
+    var storageKey = "dt_state_" + key;
+
+    // Restore state
+    try {
+      var saved = JSON.parse(localStorage.getItem(storageKey) || "null");
+      if (saved) {
+        // Apply density
+        if (saved.density) {
+          var table = wrapper.querySelector("table.data-table");
+          if (table) {
+            table.classList.remove("data-table-compact", "data-table-spacious");
+            if (saved.density === "compact") table.classList.add("data-table-compact");
+            if (saved.density === "spacious") table.classList.add("data-table-spacious");
+          }
+        }
+      }
+    } catch (e) { /* ignore */ }
+
+    // Observe changes and save
+    var observer = new MutationObserver(function () {
+      try {
+        var table = wrapper.querySelector("table.data-table");
+        var state = {};
+        if (table) {
+          if (table.classList.contains("data-table-compact")) state.density = "compact";
+          else if (table.classList.contains("data-table-spacious")) state.density = "spacious";
+          else state.density = "comfortable";
+        }
+        // Save visible columns
+        var visCheckboxes = wrapper.querySelectorAll(".data-table-visibility-menu input[type='checkbox']");
+        if (visCheckboxes.length) {
+          state.visible = [];
+          visCheckboxes.forEach(function (cb) {
+            if (cb.checked) state.visible.push(cb.getAttribute("data-col-key"));
+          });
+        }
+        localStorage.setItem(storageKey, JSON.stringify(state));
+      } catch (e) { /* ignore */ }
+    });
+    observer.observe(wrapper, { attributes: true, subtree: true, attributeFilter: ["class"] });
+  }
+
   // ── Init all features on a wrapper ─────────────────────────────
 
   function initDataTable(wrapper) {
@@ -304,6 +468,9 @@
     if (wrapper.querySelector(".data-table-visibility-btn")) initVisibility(wrapper);
     if (wrapper.querySelector(".data-table-density-btn")) initDensity(wrapper);
     if (wrapper.hasAttribute("data-edit-event")) initInlineEdit(wrapper);
+    if (wrapper.hasAttribute("data-keyboard-nav")) initKeyboardNav(wrapper);
+    if (wrapper.hasAttribute("data-virtual-scroll")) initVirtualScroll(wrapper);
+    if (wrapper.hasAttribute("data-persist-key")) initPersistence(wrapper);
   }
 
   function initAll() {

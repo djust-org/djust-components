@@ -1398,6 +1398,746 @@ class TestMixinPhase2Context:
 
 
 # ===========================================================================
+# Phase 3 — Row Expansion
+# ===========================================================================
+
+
+class TestRowExpansion:
+    """Row expansion with detail rows."""
+
+    def test_expand_column_header(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS,
+                       expandable=True)
+        assert "data-table-expand-col" in html
+
+    def test_expand_button_per_row(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS,
+                       expandable=True)
+        assert "data-table-expand-btn" in html
+        assert html.count("data-table-expand-btn") == 3
+
+    def test_expand_event_fires(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS,
+                       expandable=True, expand_event="my_expand")
+        assert 'dj-click="my_expand"' in html
+
+    def test_expanded_row_has_detail(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS,
+                       expandable=True, expanded_rows=[1])
+        assert "data-table-detail-row" in html
+        assert "data-table-detail-content" in html
+
+    def test_collapsed_row_no_detail(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS,
+                       expandable=True, expanded_rows=[])
+        assert "data-table-detail-row" not in html
+
+    def test_aria_expanded_true(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS,
+                       expandable=True, expanded_rows=[1])
+        assert 'aria-expanded="true"' in html
+
+    def test_aria_expanded_false(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS,
+                       expandable=True, expanded_rows=[])
+        assert 'aria-expanded="false"' in html
+
+    def test_no_expand_by_default(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS)
+        assert "data-table-expand-col" not in html
+        assert "data-table-expand-btn" not in html
+
+
+# ===========================================================================
+# Phase 3 — Bulk Actions
+# ===========================================================================
+
+
+class TestBulkActions:
+    """Bulk action toolbar when rows selected."""
+
+    def test_bulk_bar_shows_when_selected(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS,
+                       selectable=True, selected_rows=[1],
+                       bulk_actions=[{"key": "delete", "label": "Delete"}])
+        assert "data-table-bulk-bar" in html
+        assert "1 selected" in html
+        assert "Delete" in html
+
+    def test_bulk_bar_hidden_when_none_selected(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS,
+                       selectable=True, selected_rows=[],
+                       bulk_actions=[{"key": "delete", "label": "Delete"}])
+        assert "data-table-bulk-bar" not in html
+
+    def test_bulk_action_event(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS,
+                       selectable=True, selected_rows=[1],
+                       bulk_actions=[{"key": "delete", "label": "Delete"}],
+                       bulk_action_event="my_bulk")
+        assert 'dj-click="my_bulk"' in html
+
+    def test_multiple_bulk_actions(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS,
+                       selectable=True, selected_rows=[1, 2],
+                       bulk_actions=[
+                           {"key": "delete", "label": "Delete"},
+                           {"key": "archive", "label": "Archive"},
+                       ])
+        assert "Delete" in html
+        assert "Archive" in html
+        assert "2 selected" in html
+
+    def test_no_bulk_actions_by_default(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS,
+                       selectable=True, selected_rows=[1])
+        assert "data-table-bulk-bar" not in html
+
+
+# ===========================================================================
+# Phase 3 — Export
+# ===========================================================================
+
+
+class TestExport:
+    """Export buttons in toolbar."""
+
+    def test_export_buttons_rendered(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS,
+                       exportable=True)
+        assert "data-table-export-btn" in html
+        assert "Export CSV" in html
+        assert "Export JSON" in html
+
+    def test_export_event(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS,
+                       exportable=True, export_event="my_export")
+        assert 'dj-click="my_export"' in html
+
+    def test_custom_export_formats(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS,
+                       exportable=True, export_formats=["csv"])
+        assert "Export CSV" in html
+        assert "Export JSON" not in html
+
+    def test_no_export_by_default(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS)
+        assert "data-table-export-btn" not in html
+
+
+# ===========================================================================
+# Phase 3 — Row Grouping
+# ===========================================================================
+
+
+class TestRowGrouping:
+    """Row grouping by column value."""
+
+    def test_group_headers_rendered(self):
+        rows = [
+            {"id": 1, "name": "Alice", "dept": "Eng"},
+            {"id": 2, "name": "Bob", "dept": "Eng"},
+            {"id": 3, "name": "Charlie", "dept": "Sales"},
+        ]
+        cols = [{"key": "name", "label": "Name"}, {"key": "dept", "label": "Dept"}]
+        html = _render(rows=rows, columns=cols, group_by="dept")
+        assert "data-table-group-header" in html
+        assert "Eng" in html
+        assert "Sales" in html
+
+    def test_group_counts(self):
+        rows = [
+            {"id": 1, "name": "Alice", "dept": "Eng"},
+            {"id": 2, "name": "Bob", "dept": "Eng"},
+            {"id": 3, "name": "Charlie", "dept": "Sales"},
+        ]
+        cols = [{"key": "name", "label": "Name"}, {"key": "dept", "label": "Dept"}]
+        html = _render(rows=rows, columns=cols, group_by="dept")
+        assert "(2)" in html  # Eng count
+        assert "(1)" in html  # Sales count
+
+    def test_collapsed_group_hides_rows(self):
+        rows = [
+            {"id": 1, "name": "Alice", "dept": "Eng"},
+            {"id": 2, "name": "Bob", "dept": "Sales"},
+        ]
+        cols = [{"key": "name", "label": "Name"}, {"key": "dept", "label": "Dept"}]
+        html = _render(rows=rows, columns=cols, group_by="dept",
+                       collapsed_groups=["Eng"])
+        assert "data-table-group-collapsed" in html
+        # Alice's row should be hidden (not rendered)
+        assert "Alice" not in html
+        assert "Bob" in html
+
+    def test_group_toggle_event(self):
+        rows = [{"id": 1, "name": "Alice", "dept": "Eng"}]
+        cols = [{"key": "name", "label": "Name"}, {"key": "dept", "label": "Dept"}]
+        html = _render(rows=rows, columns=cols, group_by="dept",
+                       group_toggle_event="my_toggle")
+        assert 'dj-click="my_toggle"' in html
+
+    def test_no_grouping_by_default(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS)
+        assert "data-table-group-header" not in html
+
+
+# ===========================================================================
+# Phase 3 — Custom Cell Renderers
+# ===========================================================================
+
+
+class TestCellRenderers:
+    """Custom cell renderers via cell_template."""
+
+    def test_badge_renderer(self):
+        cols = [{"key": "status", "label": "Status", "cell_template": "badge"}]
+        rows = [{"id": 1, "status": "Active"}]
+        html = _render(rows=rows, columns=cols)
+        assert "cell-renderer-badge" in html
+        assert 'data-value="Active"' in html
+
+    def test_progress_renderer(self):
+        cols = [{"key": "progress", "label": "Progress", "cell_template": "progress"}]
+        rows = [{"id": 1, "progress": "75"}]
+        html = _render(rows=rows, columns=cols)
+        assert "cell-renderer-progress" in html
+
+    def test_avatar_renderer(self):
+        cols = [{"key": "initials", "label": "User", "cell_template": "avatar"}]
+        rows = [{"id": 1, "initials": "AB"}]
+        html = _render(rows=rows, columns=cols)
+        assert "cell-renderer-avatar" in html
+
+    def test_no_renderer_by_default(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS)
+        assert "cell-renderer" not in html
+
+
+# ===========================================================================
+# Phase 3 — Keyboard Navigation
+# ===========================================================================
+
+
+class TestKeyboardNav:
+    """Keyboard navigation attributes."""
+
+    def test_keyboard_nav_attr(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS,
+                       keyboard_nav=True)
+        assert 'data-keyboard-nav="true"' in html
+        assert 'tabindex="0"' in html
+
+    def test_no_keyboard_nav_by_default(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS)
+        assert "data-keyboard-nav" not in html
+
+
+# ===========================================================================
+# Phase 3 — Virtual Scrolling
+# ===========================================================================
+
+
+class TestVirtualScroll:
+    """Virtual scrolling attributes."""
+
+    def test_virtual_scroll_attr(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS,
+                       virtual_scroll=True)
+        assert 'data-virtual-scroll="true"' in html
+
+    def test_virtual_row_height(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS,
+                       virtual_scroll=True, virtual_row_height=50)
+        assert 'data-virtual-row-height="50"' in html
+
+    def test_virtual_buffer(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS,
+                       virtual_scroll=True, virtual_buffer=10)
+        assert 'data-virtual-buffer="10"' in html
+
+    def test_no_virtual_scroll_by_default(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS)
+        assert "data-virtual-scroll" not in html
+
+
+# ===========================================================================
+# Phase 3 — Server-Side Mode
+# ===========================================================================
+
+
+class TestServerMode:
+    """Server-side mode attribute."""
+
+    def test_server_mode_attr(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS,
+                       server_mode=True)
+        assert 'data-server-mode="true"' in html
+
+    def test_no_server_mode_by_default(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS)
+        assert "data-server-mode" not in html
+
+
+# ===========================================================================
+# Phase 3 — Faceted Filtering
+# ===========================================================================
+
+
+class TestFacetedFiltering:
+    """Faceted filtering with counts."""
+
+    def test_facet_counts_attr(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS,
+                       facets=True, facet_counts={"name": {"Alice": 1, "Bob": 1}})
+        assert "data-facet-counts" in html
+
+    def test_no_facets_by_default(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS)
+        assert "data-facet-counts" not in html
+
+
+# ===========================================================================
+# Phase 3 — State Persistence
+# ===========================================================================
+
+
+class TestStatePersistence:
+    """State persistence via localStorage key."""
+
+    def test_persist_key_attr(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS,
+                       persist_key="user_table")
+        assert 'data-persist-key="user_table"' in html
+
+    def test_no_persist_by_default(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS)
+        assert "data-persist-key" not in html
+
+
+# ===========================================================================
+# Phase 3 — Column Pinning
+# ===========================================================================
+
+
+class TestColumnPinning:
+    """Column pinning via per-column config."""
+
+    def test_pinned_left(self):
+        cols = [
+            {"key": "id", "label": "ID", "pinned": "left"},
+            {"key": "name", "label": "Name"},
+        ]
+        rows = [{"id": 1, "name": "Alice"}]
+        html = _render(rows=rows, columns=cols)
+        assert "data-table-pinned-left" in html
+
+    def test_pinned_right(self):
+        cols = [
+            {"key": "name", "label": "Name"},
+            {"key": "actions", "label": "Actions", "pinned": "right"},
+        ]
+        rows = [{"id": 1, "name": "Alice", "actions": "..."}]
+        html = _render(rows=rows, columns=cols)
+        assert "data-table-pinned-right" in html
+
+    def test_no_pinning_by_default(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS)
+        assert "data-table-pinned-left" not in html
+        assert "data-table-pinned-right" not in html
+
+
+# ===========================================================================
+# Phase 3 — Print-Friendly Mode
+# ===========================================================================
+
+
+class TestPrintMode:
+    """Print-friendly mode."""
+
+    def test_printable_class(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS,
+                       printable=True)
+        assert "data-table-printable" in html
+
+    def test_no_printable_by_default(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS)
+        assert "data-table-printable" not in html
+
+
+# ===========================================================================
+# Phase 3 — Column Statistics
+# ===========================================================================
+
+
+class TestColumnStats:
+    """Column statistics footer."""
+
+    def test_stats_footer_rendered(self):
+        cols = [
+            {"key": "name", "label": "Name"},
+            {"key": "score", "label": "Score", "stats": True},
+        ]
+        rows = [
+            {"id": 1, "name": "Alice", "score": 90},
+            {"id": 2, "name": "Bob", "score": 80},
+        ]
+        stats = {"score": {"min": 80, "max": 90, "avg": 85, "sum": 170, "count": 2}}
+        html = _render(rows=rows, columns=cols, column_stats=stats)
+        assert "data-table-stats-row" in html
+        assert "80" in html  # min
+        assert "90" in html  # max
+        assert "85" in html  # avg
+
+    def test_no_stats_by_default(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS)
+        assert "data-table-stats-row" not in html
+
+
+# ===========================================================================
+# Phase 3 — Mixin Event Handlers
+# ===========================================================================
+
+
+class TestMixinExpand:
+    """Row expansion mixin handler."""
+
+    def test_expand_toggles_on(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.init_table_state()
+        m.on_table_expand("1")
+        assert "1" in m.table_expanded_rows
+
+    def test_expand_toggles_off(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.init_table_state()
+        m.on_table_expand("1")
+        m.on_table_expand("1")
+        assert "1" not in m.table_expanded_rows
+
+
+class TestMixinBulkAction:
+    """Bulk action mixin handler."""
+
+    def test_bulk_action_calls_handler(self):
+        from djust_components.mixins.data_table import DataTableMixin
+
+        class MyMixin(DataTableMixin):
+            def __init__(self):
+                self.actions = []
+            def handle_bulk_action(self, action, selected):
+                self.actions.append((action, selected))
+
+        m = MyMixin()
+        m.init_table_state()
+        m.table_selected_rows = ["1", "2"]
+        m.on_table_bulk_action("delete")
+        assert m.actions == [("delete", ["1", "2"])]
+
+
+class TestMixinExport:
+    """Export mixin handler."""
+
+    def test_export_csv(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_columns = SAMPLE_COLUMNS
+        m.init_table_state()
+        m.table_rows = SAMPLE_ROWS
+        m.on_table_export("csv")
+        assert hasattr(m, "table_export_data")
+        assert "Alice" in m.table_export_data
+        assert m.table_export_format == "csv"
+
+    def test_export_json(self):
+        import json
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_columns = SAMPLE_COLUMNS
+        m.init_table_state()
+        m.table_rows = SAMPLE_ROWS
+        m.on_table_export("json")
+        data = json.loads(m.table_export_data)
+        assert len(data) == 3
+        assert data[0]["name"] == "Alice"
+
+
+class TestMixinGrouping:
+    """Grouping mixin handlers."""
+
+    def test_group_sets_column(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.init_table_state()
+        m.on_table_group("dept")
+        assert m.table_current_group_by == "dept"
+
+    def test_group_toggle(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.init_table_state()
+        m.on_table_group_toggle("Eng")
+        assert "Eng" in m.table_collapsed_groups
+        m.on_table_group_toggle("Eng")
+        assert "Eng" not in m.table_collapsed_groups
+
+    def test_group_rows_helper(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.init_table_state()
+        m.table_current_group_by = "dept"
+        rows = [
+            {"name": "Alice", "dept": "Eng"},
+            {"name": "Bob", "dept": "Sales"},
+            {"name": "Charlie", "dept": "Eng"},
+        ]
+        groups = m._group_rows(rows)
+        assert len(groups) == 2
+        assert groups[0][0] == "Eng"
+        assert len(groups[0][1]) == 2
+        assert groups[1][0] == "Sales"
+        assert len(groups[1][1]) == 1
+
+
+class TestMixinFacets:
+    """Facet counts helper."""
+
+    def test_get_facet_counts(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_columns = [
+            {"key": "status", "label": "Status", "filterable": True},
+            {"key": "name", "label": "Name"},
+        ]
+        m.init_table_state()
+        m.table_rows = [
+            {"status": "active", "name": "Alice"},
+            {"status": "active", "name": "Bob"},
+            {"status": "inactive", "name": "Charlie"},
+        ]
+        counts = m.get_facet_counts()
+        assert counts["status"]["active"] == 2
+        assert counts["status"]["inactive"] == 1
+
+
+class TestMixinColumnStats:
+    """Column statistics helper."""
+
+    def test_get_column_stats(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_columns = [
+            {"key": "name", "label": "Name"},
+            {"key": "score", "label": "Score", "stats": True},
+        ]
+        m.init_table_state()
+        m.table_rows = [
+            {"name": "Alice", "score": 90},
+            {"name": "Bob", "score": 80},
+            {"name": "Charlie", "score": 100},
+        ]
+        stats = m.get_column_stats()
+        assert stats["score"]["min"] == 80
+        assert stats["score"]["max"] == 100
+        assert stats["score"]["avg"] == 90.0
+        assert stats["score"]["sum"] == 270
+        assert stats["score"]["count"] == 3
+
+    def test_stats_empty_column(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_columns = [
+            {"key": "score", "label": "Score", "stats": True},
+        ]
+        m.init_table_state()
+        m.table_rows = [{"score": "not_a_number"}]
+        stats = m.get_column_stats()
+        assert stats["score"]["count"] == 0
+
+
+class TestMixinServerMode:
+    """Server mode skips client pipeline."""
+
+    def test_server_mode_calls_refresh_server(self):
+        from djust_components.mixins.data_table import DataTableMixin
+
+        class MyMixin(DataTableMixin):
+            table_server_mode = True
+            def __init__(self):
+                self.server_called = False
+            def refresh_table_server(self):
+                self.server_called = True
+
+        m = MyMixin()
+        m.init_table_state()
+        m.refresh_table()
+        assert m.server_called
+
+
+class TestMixinPhase3Init:
+    """Phase 3 mixin state initialization."""
+
+    def test_expanded_rows_init(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.init_table_state()
+        assert m.table_expanded_rows == []
+
+    def test_collapsed_groups_init(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.init_table_state()
+        assert m.table_collapsed_groups == []
+
+
+class TestMixinPhase3Context:
+    """get_table_context includes Phase 3 fields."""
+
+    def test_context_has_phase3_keys(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_columns = SAMPLE_COLUMNS
+        m.init_table_state()
+        ctx = m.get_table_context()
+        assert "expandable" in ctx
+        assert "expanded_rows" in ctx
+        assert "bulk_actions" in ctx
+        assert "exportable" in ctx
+        assert "group_by" in ctx
+        assert "keyboard_nav" in ctx
+        assert "virtual_scroll" in ctx
+        assert "server_mode" in ctx
+        assert "facets" in ctx
+        assert "persist_key" in ctx
+        assert "printable" in ctx
+        assert "column_stats" in ctx
+
+    def test_context_defaults(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_columns = SAMPLE_COLUMNS
+        m.init_table_state()
+        ctx = m.get_table_context()
+        assert ctx["expandable"] is False
+        assert ctx["expanded_rows"] == []
+        assert ctx["bulk_actions"] == []
+        assert ctx["exportable"] is False
+        assert ctx["group_by"] == ""
+        assert ctx["keyboard_nav"] is False
+        assert ctx["virtual_scroll"] is False
+        assert ctx["server_mode"] is False
+        assert ctx["facets"] is False
+        assert ctx["persist_key"] == ""
+        assert ctx["printable"] is False
+        assert ctx["column_stats"] == {}
+
+
+# ===========================================================================
+# Phase 3 — Template Tag
+# ===========================================================================
+
+
+class TestTemplateTagPhase3:
+    """Template tag includes Phase 3 params."""
+
+    def test_phase3_params_in_context(self):
+        from djust_components.templatetags.djust_components import data_table
+        ctx = data_table(
+            rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS,
+            expandable=True, expanded_rows=[1],
+            bulk_actions=[{"key": "delete", "label": "Delete"}],
+            exportable=True, export_formats=["csv"],
+            group_by="name", keyboard_nav=True,
+            virtual_scroll=True, virtual_row_height=50,
+            server_mode=True, facets=True,
+            persist_key="test", printable=True,
+            column_stats={"name": {"count": 3}},
+        )
+        assert ctx["expandable"] is True
+        assert ctx["expanded_rows"] == [1]
+        assert ctx["bulk_actions"] == [{"key": "delete", "label": "Delete"}]
+        assert ctx["exportable"] is True
+        assert ctx["export_formats"] == ["csv"]
+        assert ctx["group_by"] == "name"
+        assert ctx["keyboard_nav"] is True
+        assert ctx["virtual_scroll"] is True
+        assert ctx["virtual_row_height"] == 50
+        assert ctx["server_mode"] is True
+        assert ctx["facets"] is True
+        assert ctx["persist_key"] == "test"
+        assert ctx["printable"] is True
+        assert ctx["column_stats"] == {"name": {"count": 3}}
+
+    def test_phase3_defaults(self):
+        from djust_components.templatetags.djust_components import data_table
+        ctx = data_table(rows=[], columns=[])
+        assert ctx["expandable"] is False
+        assert ctx["expanded_rows"] == []
+        assert ctx["bulk_actions"] == []
+        assert ctx["exportable"] is False
+        assert ctx["export_formats"] == ["csv", "json"]
+        assert ctx["group_by"] == ""
+        assert ctx["keyboard_nav"] is False
+        assert ctx["virtual_scroll"] is False
+        assert ctx["virtual_row_height"] == 40
+        assert ctx["virtual_buffer"] == 5
+        assert ctx["server_mode"] is False
+        assert ctx["facets"] is False
+        assert ctx["facet_counts"] == {}
+        assert ctx["persist_key"] == ""
+        assert ctx["printable"] is False
+        assert ctx["column_stats"] == {}
+
+
+# ===========================================================================
+# Phase 3 — CSS
+# ===========================================================================
+
+
+class TestPhase3CSS:
+    """Phase 3 CSS class definitions exist."""
+
+    @pytest.fixture(autouse=True)
+    def load_css(self):
+        import pathlib
+        css_path = pathlib.Path(__file__).parent.parent / "src" / "djust_components" / "static" / "djust_components" / "components.css"
+        self.css = css_path.read_text()
+
+    def test_expand_classes(self):
+        assert ".data-table-expand-btn" in self.css
+        assert ".data-table-detail-row" in self.css
+
+    def test_bulk_action_classes(self):
+        assert ".data-table-bulk-bar" in self.css
+        assert ".data-table-bulk-btn" in self.css
+
+    def test_export_classes(self):
+        assert ".data-table-export-btn" in self.css
+
+    def test_group_classes(self):
+        assert ".data-table-group-header" in self.css
+        assert ".data-table-group-toggle" in self.css
+
+    def test_cell_renderer_classes(self):
+        assert ".cell-renderer-badge" in self.css
+        assert ".cell-renderer-progress" in self.css
+        assert ".cell-renderer-avatar" in self.css
+
+    def test_pinned_classes(self):
+        assert ".data-table-pinned-left" in self.css
+        assert ".data-table-pinned-right" in self.css
+
+    def test_stats_classes(self):
+        assert ".data-table-stats-row" in self.css
+        assert ".data-table-stats-cell" in self.css
+
+    def test_print_rules(self):
+        assert "@media print" in self.css
+        assert ".data-table-printable" in self.css
+
+
+# ===========================================================================
 # O. Phase 2 — Template Tag Phase 2 Params
 # ===========================================================================
 

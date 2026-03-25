@@ -27,6 +27,9 @@ Usage::
             return ctx
 """
 
+import csv
+import io
+import json
 import math
 
 __all__ = ["DataTableMixin"]
@@ -72,6 +75,28 @@ class DataTableMixin:
     table_save_row_event = "table_row_save"
     table_cancel_row_event = "table_row_cancel"
 
+    # Phase 3 class-level configuration
+    table_expandable = False
+    table_expand_event = "table_expand"
+    table_bulk_actions = []
+    table_bulk_action_event = "table_bulk_action"
+    table_exportable = False
+    table_export_event = "table_export"
+    table_export_formats = ["csv", "json"]
+    table_group_by = ""
+    table_group_event = "table_group"
+    table_group_toggle_event = "table_group_toggle"
+    table_collapsible_groups = True
+    table_keyboard_nav = False
+    table_virtual_scroll = False
+    table_virtual_row_height = 40
+    table_virtual_buffer = 5
+    table_server_mode = False
+    table_facets = False
+    table_persist_key = ""
+    table_printable = False
+    table_show_stats = False
+
     def init_table_state(self):
         """Initialize instance state. Call from mount()."""
         self.table_sort_by = self.table_default_sort
@@ -91,6 +116,12 @@ class DataTableMixin:
         ]
         self.table_visible_columns = list(self.table_column_order)
         self.table_current_density = self.table_density
+        # Phase 3 state
+        self.table_expanded_rows = []
+        self.table_collapsed_groups = []
+        self.table_current_group_by = self.table_group_by
+        self.table_facet_counts = {}
+        self.table_column_stats = {}
 
     # ── Event Handlers ──
 
@@ -205,6 +236,144 @@ class DataTableMixin:
         """Override this to persist row edits. Called by on_table_row_save."""
         pass
 
+    # ── Phase 3 Event Handlers ──
+
+    def on_table_expand(self, value, **kwargs):
+        """Handle row expansion toggle."""
+        row_id = str(value)
+        if row_id in self.table_expanded_rows:
+            self.table_expanded_rows.remove(row_id)
+        else:
+            self.table_expanded_rows.append(row_id)
+
+    def on_table_bulk_action(self, value, **kwargs):
+        """Handle bulk action on selected rows."""
+        action = str(value)
+        self.handle_bulk_action(action, list(self.table_selected_rows))
+
+    def handle_bulk_action(self, action, selected_rows):
+        """Override this to handle bulk actions. Called with action key and selected row IDs."""
+        pass
+
+    def on_table_export(self, value, **kwargs):
+        """Handle export request. value is the format (csv/json)."""
+        fmt = str(value)
+        self.handle_export(fmt)
+
+    def handle_export(self, fmt):
+        """Override this to handle exports. Called with 'csv' or 'json'.
+
+        Default implementation generates data and stores in table_export_data.
+        """
+        rows = self.table_rows
+        columns = self.table_columns
+        col_keys = [
+            col.get("key", col) if isinstance(col, dict) else str(col)
+            for col in columns
+        ]
+        col_labels = [
+            col.get("label", col.get("key", "")) if isinstance(col, dict) else str(col)
+            for col in columns
+        ]
+
+        if fmt == "csv":
+            output = io.StringIO()
+            writer = csv.writer(output)
+            writer.writerow(col_labels)
+            for row in rows:
+                writer.writerow([row.get(k, "") for k in col_keys])
+            self.table_export_data = output.getvalue()
+            self.table_export_format = "csv"
+        elif fmt == "json":
+            export_rows = [
+                {k: row.get(k, "") for k in col_keys}
+                for row in rows
+            ]
+            self.table_export_data = json.dumps(export_rows, default=str)
+            self.table_export_format = "json"
+
+    def on_table_group(self, value, **kwargs):
+        """Handle grouping by column."""
+        self.table_current_group_by = str(value)
+
+    def on_table_group_toggle(self, value, **kwargs):
+        """Handle group collapse/expand toggle."""
+        group_key = str(value)
+        if group_key in self.table_collapsed_groups:
+            self.table_collapsed_groups.remove(group_key)
+        else:
+            self.table_collapsed_groups.append(group_key)
+
+    # ── Phase 3 Computed Helpers ──
+
+    def get_facet_counts(self):
+        """Compute facet counts for filterable columns from current rows."""
+        counts = {}
+        for col in self.table_columns:
+            if not isinstance(col, dict):
+                continue
+            if not col.get("filterable", False):
+                continue
+            key = col.get("key", "")
+            col_counts = {}
+            for row in self.table_rows:
+                val = str(row.get(key, ""))
+                if val:
+                    col_counts[val] = col_counts.get(val, 0) + 1
+            counts[key] = col_counts
+        self.table_facet_counts = counts
+        return counts
+
+    def get_column_stats(self):
+        """Compute column statistics (min, max, avg, sum, count) for numeric columns."""
+        stats = {}
+        for col in self.table_columns:
+            if not isinstance(col, dict):
+                continue
+            if not col.get("stats", False):
+                continue
+            key = col.get("key", "")
+            values = []
+            for row in self.table_rows:
+                val = row.get(key)
+                if val is not None:
+                    try:
+                        values.append(float(val))
+                    except (ValueError, TypeError):
+                        pass
+            if values:
+                stats[key] = {
+                    "min": min(values),
+                    "max": max(values),
+                    "avg": round(sum(values) / len(values), 2),
+                    "sum": sum(values),
+                    "count": len(values),
+                }
+            else:
+                stats[key] = {
+                    "min": None,
+                    "max": None,
+                    "avg": None,
+                    "sum": None,
+                    "count": 0,
+                }
+        self.table_column_stats = stats
+        return stats
+
+    def _group_rows(self, rows):
+        """Group rows by the current group_by column. Returns list of (group_value, rows) tuples."""
+        if not self.table_current_group_by:
+            return [("", rows)]
+        groups = {}
+        group_order = []
+        for row in rows:
+            val = str(row.get(self.table_current_group_by, ""))
+            if val not in groups:
+                groups[val] = []
+                group_order.append(val)
+            groups[val].append(row)
+        return [(k, groups[k]) for k in group_order]
+
     # ── Context Generation ──
 
     def get_table_context(self):
@@ -254,6 +423,30 @@ class DataTableMixin:
             "save_row_event": self.table_save_row_event,
             "cancel_row_event": self.table_cancel_row_event,
             "editing_rows": self.table_editing_rows,
+            # Phase 3
+            "expandable": self.table_expandable,
+            "expand_event": self.table_expand_event,
+            "expanded_rows": self.table_expanded_rows,
+            "bulk_actions": self.table_bulk_actions,
+            "bulk_action_event": self.table_bulk_action_event,
+            "exportable": self.table_exportable,
+            "export_event": self.table_export_event,
+            "export_formats": self.table_export_formats,
+            "group_by": self.table_current_group_by,
+            "group_event": self.table_group_event,
+            "group_toggle_event": self.table_group_toggle_event,
+            "collapsible_groups": self.table_collapsible_groups,
+            "collapsed_groups": self.table_collapsed_groups,
+            "keyboard_nav": self.table_keyboard_nav,
+            "virtual_scroll": self.table_virtual_scroll,
+            "virtual_row_height": self.table_virtual_row_height,
+            "virtual_buffer": self.table_virtual_buffer,
+            "server_mode": self.table_server_mode,
+            "facets": self.table_facets,
+            "facet_counts": self.table_facet_counts,
+            "persist_key": self.table_persist_key,
+            "printable": self.table_printable,
+            "column_stats": self.table_column_stats,
         }
 
     # ── Queryset Pipeline ──
@@ -301,7 +494,13 @@ class DataTableMixin:
         return qs[start:end]
 
     def refresh_table(self):
-        """Run the full pipeline: queryset -> search -> filter -> sort -> paginate -> serialize."""
+        """Run the full pipeline: queryset -> search -> filter -> sort -> paginate -> serialize.
+
+        When table_server_mode is True, calls refresh_table_server() instead.
+        """
+        if self.table_server_mode:
+            self.refresh_table_server()
+            return
         qs = self.get_table_queryset()
         qs = self._apply_table_search(qs)
         qs = self._apply_table_filters(qs)
@@ -309,3 +508,15 @@ class DataTableMixin:
         qs = self._apply_table_pagination(qs)
         # Serialize to list of dicts
         self.table_rows = list(qs.values()) if hasattr(qs, "values") else list(qs)
+        # Compute facets and stats if enabled
+        if self.table_facets:
+            self.get_facet_counts()
+        if self.table_show_stats:
+            self.get_column_stats()
+
+    def refresh_table_server(self):
+        """Override this in server_mode to populate table_rows, table_total_pages, etc.
+
+        Called by refresh_table() when table_server_mode is True.
+        """
+        pass
