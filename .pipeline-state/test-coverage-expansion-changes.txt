@@ -1,0 +1,27 @@
+test: add 226 tests covering all 52 Rust handler classes
+
+Files changed:
+- tests/test_rust_handler_coverage.py (NEW) — 226 tests in 4 batches
+- CHANGELOG.md — Added test coverage expansion entry
+- .pipeline-state/test-coverage-expansion-plan.md (NEW) — Planning doc
+
+Batch 1 (Rendering): 33 previously untested handlers tested for HTML output,
+  CSS classes, and attribute handling — CardHandler, TabsHandler, AccordionHandler,
+  AccordionItemHandler, DropdownHandler, AlertHandler, FormGroupHandler,
+  TimelineHandler, TimelineItemHandler, TooltipHandler, ToastContainerHandler,
+  ProgressHandler, BadgeHandler, PaginationHandler, AvatarHandler, SpinnerHandler,
+  SkeletonHandler, BreadcrumbHandler, EmptyStateHandler, DividerHandler,
+  SwitchHandler, StatCardHandler, TagChipHandler, StepperHandler, DjButtonHandler,
+  DjInputHandler, DjSelectHandler, DjTextareaHandler, DjCheckboxHandler,
+  DjRadioHandler, DataTableHandler, plus 17 delegating handlers
+
+Batch 2 (Form Interaction): 12 tests verifying dj-input, dj-change, dj-click
+  event attribute emission for all form and interactive handlers
+
+Batch 3 (Complex State): 15 tests for DataTable sort indicators/selection/
+  pagination/search, Stepper active/complete states, Breadcrumb active items
+
+Batch 4 (Edge Cases): 26 empty-data tests + 43 XSS payload tests covering
+  every handler that accepts user-supplied text
+
+Test results: 817 passed (591 existing + 226 new), 0 failed
