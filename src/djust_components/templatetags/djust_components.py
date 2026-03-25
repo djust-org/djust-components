@@ -7868,3 +7868,336 @@ def do_feedback(parser, token):
     bits = token.split_contents()[1:]
     kwargs = _parse_kv_args(bits, parser)
     return FeedbackWidgetNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# AI Trust: Approval Gate
+# ---------------------------------------------------------------------------
+
+class ApprovalGateNode(template.Node):
+    VALID_RISKS = {"low", "medium", "high", "critical"}
+
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        message = kw.get("message", "")
+        risk = kw.get("risk", "medium")
+        approve_event = kw.get("approve_event", "approve")
+        reject_event = kw.get("reject_event", "reject")
+        approve_label = kw.get("approve_label", "Approve")
+        reject_label = kw.get("reject_label", "Reject")
+        custom_class = kw.get("class", "")
+
+        if risk not in self.VALID_RISKS:
+            risk = "medium"
+
+        e_msg = conditional_escape(str(message))
+        e_approve_evt = conditional_escape(str(approve_event))
+        e_reject_evt = conditional_escape(str(reject_event))
+        e_approve_lbl = conditional_escape(str(approve_label))
+        e_reject_lbl = conditional_escape(str(reject_label))
+        e_class = conditional_escape(str(custom_class))
+
+        cls = f"dj-approval dj-approval--{risk}"
+        if e_class:
+            cls += f" {e_class}"
+
+        risk_label = risk.capitalize()
+
+        if risk in ("high", "critical"):
+            icon = (
+                '<svg class="dj-approval__icon" viewBox="0 0 24 24" fill="none" '
+                'stroke="currentColor" stroke-width="2" width="20" height="20">'
+                '<path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>'
+                '<path d="M12 9v4M12 17h.01"/></svg>'
+            )
+        else:
+            icon = (
+                '<svg class="dj-approval__icon" viewBox="0 0 24 24" fill="none" '
+                'stroke="currentColor" stroke-width="2" width="20" height="20">'
+                '<circle cx="12" cy="12" r="10"/>'
+                '<path d="M12 16v-4M12 8h.01"/></svg>'
+            )
+
+        return mark_safe(
+            f'<div class="{cls}" role="alert">'
+            f'<div class="dj-approval__header">'
+            f'{icon}'
+            f'<span class="dj-approval__risk">{risk_label} Risk</span>'
+            f'</div>'
+            f'<div class="dj-approval__message">{e_msg}</div>'
+            f'<div class="dj-approval__actions">'
+            f'<button class="dj-approval__btn dj-approval__btn--reject" '
+            f'dj-click="{e_reject_evt}">{e_reject_lbl}</button>'
+            f'<button class="dj-approval__btn dj-approval__btn--approve" '
+            f'dj-click="{e_approve_evt}">{e_approve_lbl}</button>'
+            f'</div>'
+            f'</div>'
+        )
+
+
+@register.tag("approval_gate")
+def do_approval_gate(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return ApprovalGateNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# AI Trust: Source Citation
+# ---------------------------------------------------------------------------
+
+class SourceCitationNode(template.Node):
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        index = kw.get("index", 1)
+        title = kw.get("title", "")
+        url = kw.get("url", "")
+        relevance = kw.get("relevance", None)
+        custom_class = kw.get("class", "")
+
+        try:
+            idx = int(index)
+        except (ValueError, TypeError):
+            idx = 1
+
+        e_title = conditional_escape(str(title)) if title else ""
+        e_url = conditional_escape(str(url)) if url else ""
+        e_class = conditional_escape(str(custom_class))
+
+        cls = "dj-citation"
+        if e_class:
+            cls += f" {e_class}"
+
+        popover_parts = []
+        if e_title:
+            popover_parts.append(
+                f'<span class="dj-citation__title">{e_title}</span>'
+            )
+        if e_url:
+            popover_parts.append(
+                f'<a class="dj-citation__url" href="{e_url}" '
+                f'target="_blank" rel="noopener noreferrer">{e_url}</a>'
+            )
+        if relevance is not None:
+            try:
+                pct = min(100, max(0, float(relevance) * 100))
+                popover_parts.append(
+                    f'<span class="dj-citation__relevance">'
+                    f'Relevance: {pct:.0f}%</span>'
+                )
+            except (ValueError, TypeError):
+                pass
+
+        popover_html = "".join(popover_parts)
+
+        return mark_safe(
+            f'<span class="{cls}">'
+            f'<sup class="dj-citation__marker">[{idx}]</sup>'
+            f'<span class="dj-citation__popover">{popover_html}</span>'
+            f'</span>'
+        )
+
+
+@register.tag("source_citation")
+def do_source_citation(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return SourceCitationNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# AI Trust: Model Selector
+# ---------------------------------------------------------------------------
+
+class ModelSelectorNode(template.Node):
+    TIER_LABELS = {
+        "free": "Free",
+        "standard": "Standard",
+        "premium": "Premium",
+        "enterprise": "Enterprise",
+    }
+
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        name = kw.get("name", "model")
+        options = kw.get("options", [])
+        value = str(kw.get("value", "")) if kw.get("value") else ""
+        event = kw.get("event", "select_model")
+        placeholder = kw.get("placeholder", "Select a model...")
+        disabled = kw.get("disabled", False)
+        label = kw.get("label", "")
+        custom_class = kw.get("class", "")
+
+        e_name = conditional_escape(str(name))
+        e_event = conditional_escape(str(event or name))
+        e_placeholder = conditional_escape(str(placeholder))
+        e_class = conditional_escape(str(custom_class))
+        disabled_attr = " disabled" if disabled else ""
+        disabled_cls = " dj-model-sel--disabled" if disabled else ""
+
+        cls = f"dj-model-sel{disabled_cls}"
+        if e_class:
+            cls += f" {e_class}"
+
+        if not isinstance(options, list):
+            options = []
+
+        selected_opt = None
+        for opt in options:
+            if isinstance(opt, dict) and str(opt.get("value", "")) == value:
+                selected_opt = opt
+                break
+
+        if selected_opt:
+            selected_html = self._option_inner(selected_opt)
+        else:
+            selected_html = (
+                f'<span class="dj-model-sel__placeholder">{e_placeholder}</span>'
+            )
+
+        opt_parts = []
+        for opt in options:
+            if not isinstance(opt, dict):
+                continue
+            ov = str(opt.get("value", ""))
+            active_cls = " dj-model-sel__opt--active" if ov == value else ""
+            inner = self._option_inner(opt)
+            opt_parts.append(
+                f'<div class="dj-model-sel__opt{active_cls}" '
+                f'data-value="{conditional_escape(ov)}" '
+                f'dj-click="{e_event}" '
+                f'role="option" aria-selected="{"true" if ov == value else "false"}">'
+                f'{inner}</div>'
+            )
+
+        label_html = ""
+        if label:
+            label_html = (
+                f'<label class="dj-model-sel__label">'
+                f'{conditional_escape(str(label))}</label>'
+            )
+
+        return mark_safe(
+            f'<div class="{cls}">'
+            f'{label_html}'
+            f'<input type="hidden" name="{e_name}" value="{conditional_escape(value)}">'
+            f'<div class="dj-model-sel__trigger" tabindex="0" role="combobox" '
+            f'aria-expanded="false" aria-haspopup="listbox"{disabled_attr}>'
+            f'{selected_html}'
+            f'<span class="dj-model-sel__chevron">&#9662;</span>'
+            f'</div>'
+            f'<div class="dj-model-sel__dropdown" role="listbox">'
+            f'{"".join(opt_parts)}'
+            f'</div></div>'
+        )
+
+    def _option_inner(self, opt):
+        label = conditional_escape(str(opt.get("label", "")))
+        desc = conditional_escape(str(opt.get("description", ""))) if opt.get("description") else ""
+        ctx_win = conditional_escape(str(opt.get("context_window", ""))) if opt.get("context_window") else ""
+        tier = str(opt.get("tier", "")).lower()
+        tier_label = conditional_escape(
+            self.TIER_LABELS.get(tier, tier.capitalize())
+        ) if tier else ""
+
+        parts = [f'<span class="dj-model-sel__name">{label}</span>']
+        if desc:
+            parts.append(f'<span class="dj-model-sel__desc">{desc}</span>')
+
+        meta = []
+        if ctx_win:
+            meta.append(f'<span class="dj-model-sel__ctx">{ctx_win}</span>')
+        if tier_label:
+            safe_tier = conditional_escape(tier)
+            meta.append(
+                f'<span class="dj-model-sel__tier dj-model-sel__tier--{safe_tier}">'
+                f'{tier_label}</span>'
+            )
+        if meta:
+            parts.append(f'<span class="dj-model-sel__meta">{"".join(meta)}</span>')
+
+        return f'<span class="dj-model-sel__info">{"".join(parts)}</span>'
+
+
+@register.tag("model_selector")
+def do_model_selector(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return ModelSelectorNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# AI Trust: Token Counter
+# ---------------------------------------------------------------------------
+
+class TokenCounterNode(template.Node):
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        try:
+            current = int(kw.get("current", 0))
+        except (ValueError, TypeError):
+            current = 0
+        try:
+            max_tokens = int(kw.get("max", 4096))
+        except (ValueError, TypeError):
+            max_tokens = 4096
+
+        label = kw.get("label", None)
+        show_label = kw.get("show_label", True)
+        custom_class = kw.get("class", "")
+
+        e_class = conditional_escape(str(custom_class))
+
+        if max_tokens <= 0:
+            pct = 0.0
+        else:
+            pct = min(100.0, max(0.0, (current / max_tokens) * 100))
+
+        if pct >= 85:
+            threshold = "dj-token--danger"
+        elif pct >= 60:
+            threshold = "dj-token--warn"
+        else:
+            threshold = "dj-token--ok"
+
+        cls = f"dj-token {threshold}"
+        if e_class:
+            cls += f" {e_class}"
+
+        label_html = ""
+        if show_label:
+            if label:
+                display_label = conditional_escape(str(label))
+            else:
+                display_label = f"{current:,} / {max_tokens:,}"
+            label_html = f'<span class="dj-token__label">{display_label}</span>'
+
+        return mark_safe(
+            f'<div class="{cls}" role="meter" '
+            f'aria-valuenow="{current}" aria-valuemin="0" aria-valuemax="{max_tokens}" '
+            f'aria-label="Token usage">'
+            f'{label_html}'
+            f'<div class="dj-token__track">'
+            f'<div class="dj-token__bar" style="width:{pct:.1f}%"></div>'
+            f'</div>'
+            f'</div>'
+        )
+
+
+@register.tag("token_counter")
+def do_token_counter(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return TokenCounterNode(kwargs)
