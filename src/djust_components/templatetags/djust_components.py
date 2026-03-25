@@ -4892,3 +4892,115 @@ def do_theme_toggle(parser, token):
     bits = token.split_contents()[1:]
     kwargs = _parse_kv_args(bits, parser)
     return ThemeToggleNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Page Header (#179)
+# ---------------------------------------------------------------------------
+
+_page_header_actions_key = "__page_header_actions__"
+
+
+class PageHeaderActionsNode(template.Node):
+    """Renders the actions slot inside a page header."""
+    def __init__(self, nodelist):
+        self.nodelist = nodelist
+
+    def render(self, context):
+        content = self.nodelist.render(context)
+        # Stash the rendered actions content on the context for the parent
+        context[_page_header_actions_key] = content
+        return ""
+
+
+class PageHeaderNode(template.Node):
+    """Structured page-level header with title, optional subtitle/description,
+    optional breadcrumb slot, and right-aligned action buttons area."""
+    def __init__(self, nodelist, kwargs):
+        self.nodelist = nodelist
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        title = kw.get("title", "")
+        subtitle = kw.get("subtitle", "")
+        description = kw.get("description", "")
+        custom_class = kw.get("custom_class", "")
+
+        e_title = conditional_escape(str(title))
+        e_subtitle = conditional_escape(str(subtitle))
+        e_description = conditional_escape(str(description))
+        e_custom_class = conditional_escape(str(custom_class))
+
+        # Render child nodelist — this may include page_header_actions which
+        # stashes its content in the context.
+        context[_page_header_actions_key] = ""
+        breadcrumb_content = self.nodelist.render(context)
+        actions_html = context.get(_page_header_actions_key, "")
+
+        cls = "dj-page-header"
+        if e_custom_class:
+            cls += f" {e_custom_class}"
+
+        # Breadcrumb slot — any direct child content (not actions)
+        breadcrumb_html = ""
+        if breadcrumb_content.strip():
+            breadcrumb_html = (
+                f'<div class="dj-page-header__breadcrumb">'
+                f'{breadcrumb_content}'
+                f'</div>'
+            )
+
+        # Title
+        title_html = f'<h1 class="dj-page-header__title">{e_title}</h1>' if e_title else ""
+
+        # Subtitle
+        subtitle_html = ""
+        if e_subtitle:
+            subtitle_html = f'<p class="dj-page-header__subtitle">{e_subtitle}</p>'
+
+        # Description
+        description_html = ""
+        if e_description:
+            description_html = f'<p class="dj-page-header__description">{e_description}</p>'
+
+        # Actions
+        actions_section = ""
+        if actions_html.strip():
+            actions_section = (
+                f'<div class="dj-page-header__actions">'
+                f'{actions_html}'
+                f'</div>'
+            )
+
+        return mark_safe(
+            f'<header class="{cls}">'
+            f'{breadcrumb_html}'
+            f'<div class="dj-page-header__row">'
+            f'<div class="dj-page-header__text">'
+            f'{title_html}'
+            f'{subtitle_html}'
+            f'{description_html}'
+            f'</div>'
+            f'{actions_section}'
+            f'</div>'
+            f'</header>'
+        )
+
+
+@register.tag("page_header")
+def do_page_header(parser, token):
+    """{% page_header title="Products" subtitle="Manage inventory" %}...{% endpage_header %}"""
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    nodelist = parser.parse(("endpage_header",))
+    parser.delete_first_token()
+    return PageHeaderNode(nodelist, kwargs)
+
+
+@register.tag("page_header_actions")
+def do_page_header_actions(parser, token):
+    """{% page_header_actions %}...{% endpage_header_actions %}"""
+    nodelist = parser.parse(("endpage_header_actions",))
+    parser.delete_first_token()
+    return PageHeaderActionsNode(nodelist)

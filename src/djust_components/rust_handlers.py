@@ -3123,3 +3123,88 @@ INLINE_HANDLERS.extend([
     ("icon", IconHandler()),
     ("theme_toggle", ThemeToggleHandler()),
 ])
+
+
+# ===========================================================================
+# PAGE HEADER HANDLER (#179)
+# ===========================================================================
+
+class PageHeaderActionsHandler:
+    """Block handler for {% page_header_actions %}...{% endpage_header_actions %}"""
+    def render(self, args, content, context):
+        # Just wrap actions content in its container div
+        return mark_safe(
+            f'<div class="dj-page-header__actions">{content}</div>'
+        )
+
+
+class PageHeaderHandler:
+    """Block handler for {% page_header title=... %}...{% endpage_header %}"""
+    def render(self, args, content, context):
+        kw = _parse_args(args, context)
+        title = kw.get("title", "")
+        subtitle = kw.get("subtitle", "")
+        description = kw.get("description", "")
+        custom_class = kw.get("custom_class", "")
+
+        e_title = conditional_escape(str(title))
+        e_subtitle = conditional_escape(str(subtitle))
+        e_description = conditional_escape(str(description))
+        e_custom_class = conditional_escape(str(custom_class))
+
+        cls = "dj-page-header"
+        if e_custom_class:
+            cls += f" {e_custom_class}"
+
+        # In the Rust engine, nested block tags render inline.
+        # page_header_actions renders its own wrapper div, so we need to
+        # separate actions from breadcrumb content.
+        actions_marker = '<div class="dj-page-header__actions">'
+        actions_section = ""
+        breadcrumb_content = content
+        if actions_marker in content:
+            idx = content.index(actions_marker)
+            breadcrumb_content = content[:idx]
+            actions_section = content[idx:]
+
+        # Breadcrumb slot
+        breadcrumb_html = ""
+        if breadcrumb_content.strip():
+            breadcrumb_html = (
+                f'<div class="dj-page-header__breadcrumb">'
+                f'{breadcrumb_content}'
+                f'</div>'
+            )
+
+        # Title
+        title_html = f'<h1 class="dj-page-header__title">{e_title}</h1>' if e_title else ""
+
+        # Subtitle
+        subtitle_html = ""
+        if e_subtitle:
+            subtitle_html = f'<p class="dj-page-header__subtitle">{e_subtitle}</p>'
+
+        # Description
+        description_html = ""
+        if e_description:
+            description_html = f'<p class="dj-page-header__description">{e_description}</p>'
+
+        return mark_safe(
+            f'<header class="{cls}">'
+            f'{breadcrumb_html}'
+            f'<div class="dj-page-header__row">'
+            f'<div class="dj-page-header__text">'
+            f'{title_html}'
+            f'{subtitle_html}'
+            f'{description_html}'
+            f'</div>'
+            f'{actions_section}'
+            f'</div>'
+            f'</header>'
+        )
+
+
+BLOCK_HANDLERS.extend([
+    ("page_header_actions", "endpage_header_actions", PageHeaderActionsHandler()),
+    ("page_header", "endpage_header", PageHeaderHandler()),
+])
