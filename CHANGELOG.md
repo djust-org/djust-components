@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Icon System** (`{% icon name="check" size="md" set="heroicons" %}`): Shared SVG icon rendering primitive with bundled Heroicons Outline set (60+ icons). Four size presets: xs (12px), sm (16px), md (20px), lg (24px). Extensible via `DJUST_COMPONENTS_ICON_SETS` Django setting for custom icon sets. Python helper `render_icon(name, size, ...)` for use in Rust handlers and component classes — eliminates inline SVG paths. Template tag, Rust handler, CSS size classes, and 34 tests including XSS coverage (#178)
+- **Theme Toggle** (`{% theme_toggle current="system" event="set_theme" %}`): Light/dark/system mode switcher with sun/moon/monitor icons from the Icon System. Reads `prefers-color-scheme`, stores preference in `localStorage` under `djust-theme` key, applies `data-theme` attribute to `<html>`. Optional `dj-click` event for server-side persistence via `event` parameter. ARIA radiogroup with labeled buttons. Client-side JS with MutationObserver for LiveView compatibility, system theme media query listener. Template tag, Rust handler, CSS (inline-flex button group with active state), JS, and 24 tests including XSS coverage (#138)
+
 - **Utility Components**: 5 new utility components with Django template tags, Rust engine handlers, Python component classes, client-side JS, CSS, and tests (including XSS coverage):
   - **Scroll to Top** (`{% scroll_to_top threshold="300px" %}`) — Floating button appearing after scroll threshold, smooth-scrolls to top on click; supports `threshold`, `label`, `custom_class`; client-side only (#125)
   - **Code Snippet** (`{% code_snippet language="bash" code="pip install djust" %}`) — Code block with language badge and copy-to-clipboard button; supports `code`, `language`, `custom_class`; client-side JS for clipboard API (#139)

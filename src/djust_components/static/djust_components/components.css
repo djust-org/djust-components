@@ -1129,3 +1129,17 @@ button.rating-star:hover ~ .rating-star { color: hsl(var(--muted-foreground) / 0
 .dj-copyable-text:hover { background: hsl(var(--accent, 210 40% 96%)); }
 .dj-copyable-text__tooltip { position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%); padding: 0.25rem 0.5rem; background: var(--dj-copyable-tooltip-bg, hsl(var(--foreground, 222 47% 11%))); color: var(--dj-copyable-tooltip-fg, hsl(var(--background, 0 0% 100%))); font-size: var(--text-xs, 0.75rem); border-radius: var(--radius-sm, 0.25rem); white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity var(--duration-fast, 0.1s) ease; }
 .dj-copyable-text.dj-copied .dj-copyable-text__tooltip { opacity: 1; }
+
+/* Icon System */
+.dj-icon { display: inline-block; vertical-align: middle; flex-shrink: 0; }
+.dj-icon--xs { width: 12px; height: 12px; }
+.dj-icon--sm { width: 16px; height: 16px; }
+.dj-icon--md { width: 20px; height: 20px; }
+.dj-icon--lg { width: 24px; height: 24px; }
+
+/* Theme Toggle */
+.dj-theme-toggle { display: inline-flex; align-items: center; gap: var(--space-1, 0.25rem); padding: var(--space-1, 0.25rem); background: var(--dj-theme-toggle-bg, hsl(var(--muted, 210 40% 96%))); border: 1px solid var(--dj-theme-toggle-border, hsl(var(--border, 214 32% 91%))); border-radius: var(--radius-md, 0.375rem); }
+.dj-theme-toggle__btn { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 28px; padding: 0; border: none; border-radius: var(--radius-sm, 0.25rem); background: transparent; color: hsl(var(--muted-foreground, 215 16% 47%)); cursor: pointer; transition: all var(--duration-fast, 0.1s) ease; }
+.dj-theme-toggle__btn:hover { color: hsl(var(--foreground, 222 47% 11%)); background: hsl(var(--accent, 210 40% 96%)); }
+.dj-theme-toggle__btn[aria-pressed="true"],
+.dj-theme-toggle__btn.dj-theme-toggle__btn--active { background: hsl(var(--background, 0 0% 100%)); color: hsl(var(--foreground, 222 47% 11%)); box-shadow: var(--shadow-sm, 0 1px 2px 0 rgb(0 0 0 / 0.05)); }

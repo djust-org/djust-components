@@ -4802,3 +4802,93 @@ def do_copyable_text(parser, token):
     nodelist = parser.parse(("endcopyable_text",))
     parser.delete_first_token()
     return CopyableTextNode(nodelist, kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Icon System (#178)
+# ---------------------------------------------------------------------------
+
+@register.simple_tag
+def icon(name="", size="md", set="heroicons", **kwargs):
+    """Render an SVG icon from a bundled icon set.
+
+    Args:
+        name: icon name (e.g. "check", "x-mark", "sun", "moon")
+        size: xs (12px), sm (16px), md (20px), lg (24px)
+        set: icon set name (default "heroicons"); extensible via
+             DJUST_COMPONENTS_ICON_SETS setting
+        **kwargs: extra HTML attributes — ``class`` adds CSS classes,
+                  ``aria_label`` becomes ``aria-label``, etc.
+    """
+    from djust_components.icons import render_icon
+
+    custom_class = kwargs.pop("custom_class", "")
+    # Also accept 'class' as alias (but 'class' is a Python keyword,
+    # so callers from Rust handlers can pass custom_class)
+    return render_icon(
+        name=name,
+        size=size,
+        icon_set=conditional_escape(set),
+        custom_class=custom_class,
+        **kwargs,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Theme Toggle (#138)
+# ---------------------------------------------------------------------------
+
+class ThemeToggleNode(template.Node):
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        current = kw.get("current", "system")
+        event = kw.get("event", "")
+        custom_class = kw.get("custom_class", "")
+
+        e_event = conditional_escape(event) if event else ""
+        e_cls = conditional_escape(custom_class)
+        e_current = conditional_escape(current)
+
+        # CSS classes
+        cls = "dj-theme-toggle"
+        if e_cls:
+            cls += f" {e_cls}"
+
+        # Build dj-click attribute if server-side persistence is desired
+        click_attr = f' dj-click="{e_event}"' if e_event else ""
+
+        # Icon SVGs for light/dark/system (rendered inline via render_icon)
+        from djust_components.icons import render_icon
+        sun_svg = render_icon("sun", size="sm")
+        moon_svg = render_icon("moon", size="sm")
+        monitor_svg = render_icon("computer-desktop", size="sm")
+
+        # Generate a unique ID for this toggle instance
+        toggle_id = f"dj-theme-toggle-{uuid.uuid4().hex[:8]}"
+
+        return mark_safe(
+            f'<div class="{cls}" id="{toggle_id}" '
+            f'data-current="{e_current}"{click_attr} '
+            f'role="radiogroup" aria-label="Color theme">'
+            f'<button type="button" class="dj-theme-toggle__btn" '
+            f'data-theme="light" aria-label="Light theme" '
+            f'title="Light">{sun_svg}</button>'
+            f'<button type="button" class="dj-theme-toggle__btn" '
+            f'data-theme="dark" aria-label="Dark theme" '
+            f'title="Dark">{moon_svg}</button>'
+            f'<button type="button" class="dj-theme-toggle__btn" '
+            f'data-theme="system" aria-label="System theme" '
+            f'title="System">{monitor_svg}</button>'
+            f'</div>'
+        )
+
+
+@register.tag("theme_toggle")
+def do_theme_toggle(parser, token):
+    """{% theme_toggle current="system" event="set_theme" %}"""
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return ThemeToggleNode(kwargs)

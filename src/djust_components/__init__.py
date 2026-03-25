@@ -43,5 +43,6 @@ default_app_config = "djust_components.apps.DjustComponentsConfig"
 from .ttyd import TtydTerminalView  # noqa: E402
 from .mixins import DataTableMixin  # noqa: E402
 from .components.server_event_toast import ServerEventToastMixin  # noqa: E402
+from .icons import render_icon  # noqa: E402
 
-__all__ = ["TtydTerminalView", "DataTableMixin", "ServerEventToastMixin"]
+__all__ = ["TtydTerminalView", "DataTableMixin", "ServerEventToastMixin", "render_icon"]
