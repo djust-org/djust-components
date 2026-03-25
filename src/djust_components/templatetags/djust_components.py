@@ -3289,3 +3289,228 @@ def do_fieldset(parser, token):
     nodelist = parser.parse(("endfieldset",))
     parser.delete_first_token()
     return FieldsetNode(nodelist, kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Toggle Group (#61)
+# ---------------------------------------------------------------------------
+
+@register.simple_tag
+def toggle_group(name="", options=None, value="", event="toggle_select",
+                 mode="single", disabled=False, size="md"):
+    """Render a segmented toggle button group (radio-style or multi-select).
+
+    Args:
+        name: group name for identification
+        options: list of dicts with keys: value, label, icon (optional)
+        value: currently selected value (or list of values in multi mode)
+        event: dj-click event name
+        mode: "single" (radio) or "multi" (checkbox-style)
+        disabled: disables all buttons
+        size: sm, md, lg
+    """
+    if options is None:
+        options = []
+    if isinstance(disabled, str):
+        disabled = disabled.lower() not in ("false", "0", "")
+
+    e_name = conditional_escape(name)
+    e_event = conditional_escape(event)
+    e_mode = conditional_escape(mode)
+
+    size_cls = ""
+    if size and size != "md":
+        size_cls = f" toggle-group-{conditional_escape(size)}"
+    disabled_cls = " toggle-group-disabled" if disabled else ""
+
+    buttons = []
+    for opt in options:
+        if not isinstance(opt, dict):
+            continue
+        opt_value = conditional_escape(str(opt.get("value", "")))
+        opt_label = conditional_escape(str(opt.get("label", "")))
+        opt_icon = opt.get("icon", "")
+
+        if mode == "multi" and isinstance(value, (list, tuple)):
+            is_active = opt.get("value", "") in value
+        else:
+            is_active = str(opt.get("value", "")) == str(value)
+
+        active_cls = " toggle-group-btn--active" if is_active else ""
+        aria_pressed = "true" if is_active else "false"
+        disabled_attr = " disabled" if disabled else ""
+        click_attr = "" if disabled else f' dj-click="{e_event}" data-value="{opt_value}"'
+
+        icon_html = ""
+        if opt_icon:
+            icon_html = f'<span class="toggle-group-icon">{conditional_escape(str(opt_icon))}</span>'
+
+        buttons.append(
+            f'<button class="toggle-group-btn{active_cls}" '
+            f'aria-pressed="{aria_pressed}" '
+            f'data-name="{e_name}"{click_attr}{disabled_attr}>'
+            f'{icon_html}'
+            f'<span class="toggle-group-label">{opt_label}</span>'
+            f'</button>'
+        )
+
+    return mark_safe(
+        f'<div class="toggle-group{size_cls}{disabled_cls}" '
+        f'role="group" data-mode="{e_mode}">'
+        f'{"".join(buttons)}'
+        f'</div>'
+    )
+
+
+# ---------------------------------------------------------------------------
+# Floating Action Button (#65)
+# ---------------------------------------------------------------------------
+
+@register.simple_tag
+def fab(icon="+", event="", position="bottom-right", label="",
+        size="md", variant="primary", disabled=False, actions=None):
+    """Render a floating action button with optional speed-dial actions.
+
+    Args:
+        icon: icon text/emoji for the FAB
+        event: dj-click event name
+        position: bottom-right, bottom-left, top-right, top-left
+        label: accessible label / tooltip text
+        size: sm, md, lg
+        variant: primary, secondary, danger, success
+        disabled: disables the FAB
+        actions: list of dicts with keys: icon, event, label (speed-dial)
+    """
+    if actions is None:
+        actions = []
+    if isinstance(disabled, str):
+        disabled = disabled.lower() not in ("false", "0", "")
+
+    e_icon = conditional_escape(icon)
+    e_event = conditional_escape(event)
+    e_label = conditional_escape(label)
+
+    valid_positions = ("bottom-right", "bottom-left", "top-right", "top-left")
+    pos_cls = position if position in valid_positions else "bottom-right"
+    pos_cls = conditional_escape(pos_cls)
+
+    size_cls = ""
+    if size and size != "md":
+        size_cls = f" fab-{conditional_escape(size)}"
+    variant_cls = f" fab-{conditional_escape(variant)}"
+    disabled_attr = " disabled" if disabled else ""
+    click_attr = "" if disabled or not event else f' dj-click="{e_event}"'
+    aria_label = f' aria-label="{e_label}"' if label else ""
+
+    actions_html = ""
+    if actions:
+        action_items = []
+        for act in actions:
+            if not isinstance(act, dict):
+                continue
+            act_icon = conditional_escape(str(act.get("icon", "")))
+            act_event = conditional_escape(str(act.get("event", "")))
+            act_label = conditional_escape(str(act.get("label", "")))
+            act_click = f' dj-click="{act_event}"' if act_event and not disabled else ""
+            act_aria = f' aria-label="{act_label}"' if act_label else ""
+            action_items.append(
+                f'<button class="fab-action"{act_click}{act_aria}{disabled_attr}>'
+                f'<span class="fab-action-icon">{act_icon}</span>'
+                f'</button>'
+            )
+        if action_items:
+            actions_html = (
+                f'<div class="fab-actions">{"".join(action_items)}</div>'
+            )
+
+    return mark_safe(
+        f'<div class="fab-container fab-{pos_cls}">'
+        f'{actions_html}'
+        f'<button class="fab{size_cls}{variant_cls}"{click_attr}{aria_label}{disabled_attr}>'
+        f'<span class="fab-icon">{e_icon}</span>'
+        f'</button>'
+        f'</div>'
+    )
+
+
+# ---------------------------------------------------------------------------
+# Split Button (#133)
+# ---------------------------------------------------------------------------
+
+@register.simple_tag
+def split_button(label="", event="", options=None, variant="primary",
+                 size="md", disabled=False, loading=False, open=False,
+                 toggle_event="toggle_split_menu"):
+    """Render a split button with primary action and dropdown secondary actions.
+
+    Args:
+        label: primary button text
+        event: dj-click event for primary action
+        options: list of dicts with keys: label, event
+        variant: primary, secondary, danger, success
+        size: sm, md, lg
+        disabled: disables all buttons
+        loading: shows spinner on primary, disables all
+        open: whether the dropdown menu is open
+        toggle_event: dj-click event for toggle button
+    """
+    if options is None:
+        options = []
+    if isinstance(disabled, str):
+        disabled = disabled.lower() not in ("false", "0", "")
+    if isinstance(loading, str):
+        loading = loading.lower() not in ("false", "0", "")
+    if isinstance(open, str):
+        open = open.lower() not in ("false", "0", "")
+
+    e_label = conditional_escape(label)
+    e_event = conditional_escape(event)
+    e_toggle = conditional_escape(toggle_event)
+
+    variant_cls = f" split-btn-{conditional_escape(variant)}"
+    size_cls = ""
+    if size and size != "md":
+        size_cls = f" split-btn-{conditional_escape(size)}"
+    loading_cls = " split-btn-loading" if loading else ""
+    disabled_attr = " disabled" if disabled or loading else ""
+    click_attr = "" if disabled or loading or not event else f' dj-click="{e_event}"'
+
+    spinner_html = '<span class="split-btn-spinner"></span>' if loading else ""
+
+    option_items = []
+    for opt in options:
+        if not isinstance(opt, dict):
+            continue
+        opt_label = conditional_escape(str(opt.get("label", "")))
+        opt_event = conditional_escape(str(opt.get("event", "")))
+        opt_click = f' dj-click="{opt_event}"' if opt_event and not disabled else ""
+        opt_disabled = " disabled" if disabled else ""
+        option_items.append(
+            f'<button class="split-btn-option"{opt_click}{opt_disabled}>'
+            f'{opt_label}</button>'
+        )
+
+    open_data = "true" if open else "false"
+    toggle_disabled = " disabled" if disabled or loading else ""
+    toggle_click = "" if disabled or loading else f' dj-click="{e_toggle}"'
+
+    menu_html = ""
+    if option_items:
+        menu_html = (
+            f'<div class="split-btn-menu" data-open="{open_data}">'
+            f'{"".join(option_items)}'
+            f'</div>'
+        )
+
+    return mark_safe(
+        f'<div class="split-btn{variant_cls}{size_cls}{loading_cls}">'
+        f'<button class="split-btn-primary"{click_attr}{disabled_attr}>'
+        f'{spinner_html}'
+        f'<span class="split-btn-label">{e_label}</span>'
+        f'</button>'
+        f'<button class="split-btn-toggle"{toggle_click}{toggle_disabled}>'
+        f'<span class="split-btn-caret">&#9662;</span>'
+        f'</button>'
+        f'{menu_html}'
+        f'</div>'
+    )
