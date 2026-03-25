@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Confirmation Dialog** (`{% confirm_dialog message="Delete?" confirm_event="delete" %}`): Reusable yes/no modal pattern wrapping existing Modal conventions. Renders only when `open=True`. Supports `title`, `message`, `confirm_event`, `cancel_event`, `variant` (default/danger), `confirm_label`, `cancel_label`, `custom_class`. Danger variant highlights title and confirm button in destructive color. ARIA `alertdialog` role with `aria-modal`. Backdrop click dismisses. Template tag, Rust engine handler (`ConfirmDialogHandler`), CSS, and tests including XSS coverage (#75)
+- **Popconfirm** (`{% popconfirm message="Delete this item?" confirm_event="delete" %}...{% endpopconfirm %}`): Inline confirmation popover that appears next to the trigger element — less disruptive than a modal. Block tag wraps any trigger content. Auto-positioned with `placement` (top/bottom/left/right). Supports `message`, `confirm_event`, `cancel_event`, `confirm_label`, `cancel_label`, `variant` (default/danger), `custom_class`, `id`. Client-side toggle/dismiss via inline JS. CSS arrows for each placement direction. Template tag, Rust engine handler (`PopconfirmHandler`), CSS, and tests including XSS coverage (#180)
+
+### Added
 - **Form Essentials (v1.5)**: 4 new form input components with Django template tags, Rust engine handlers, CSS, and tests (including XSS coverage):
   - **Slider / Range** (`{% slider name="price" min=0 max=100 value=50 %}`) — Horizontal slider with optional dual-handle range mode (`value_end`), configurable `step`, tick marks (`show_ticks`), value display output, `dj-input` event; supports `label`, `disabled`, `custom_class` (#82)
   - **Search Input** (`{% search_input name="q" placeholder="Search..." event="search" %}`) — Input with search icon, clear button, loading spinner state (`loading`), debounced `dj-input` event (`debounce` ms); supports `label`, `value`, `disabled`, `custom_class` (#83)

@@ -3537,3 +3537,111 @@ INLINE_HANDLERS.extend([
     ("password_input", PasswordInputHandler()),
     ("autocomplete", AutocompleteHandler()),
 ])
+
+
+# ===========================================================================
+# CONFIRMATION PATTERNS
+# ===========================================================================
+
+class ConfirmDialogHandler:
+    """Inline handler for {% confirm_dialog message="Delete?" confirm_event="delete" %}"""
+    def render(self, args, context):
+        kw = _parse_args(args, context)
+        is_open = kw.get("open", False)
+        if not is_open:
+            return ""
+        message = conditional_escape(kw.get("message", "Are you sure?"))
+        confirm_event = conditional_escape(kw.get("confirm_event", "confirm"))
+        cancel_event = conditional_escape(kw.get("cancel_event", "cancel"))
+        title = conditional_escape(kw.get("title", "Confirm"))
+        variant = conditional_escape(kw.get("variant", "default"))
+        confirm_label = conditional_escape(kw.get("confirm_label", "Confirm"))
+        cancel_label = conditional_escape(kw.get("cancel_label", "Cancel"))
+        custom_class = conditional_escape(kw.get("custom_class", ""))
+
+        variant_cls = f" dj-confirm-dialog--{variant}" if variant != "default" else ""
+        extra_cls = f" {custom_class}" if custom_class else ""
+
+        return mark_safe(
+            f'<div class="dj-confirm-dialog-backdrop" dj-click="{cancel_event}">'
+            f'<div class="dj-confirm-dialog{variant_cls}{extra_cls}" '
+            f'role="alertdialog" aria-modal="true" aria-labelledby="dj-confirm-title" '
+            f'aria-describedby="dj-confirm-msg" onclick="event.stopPropagation()">'
+            f'<div class="dj-confirm-dialog__header">'
+            f'<h3 class="dj-confirm-dialog__title" id="dj-confirm-title">{title}</h3>'
+            f'<button class="dj-confirm-dialog__close" dj-click="{cancel_event}" '
+            f'aria-label="Close">&times;</button>'
+            f'</div>'
+            f'<div class="dj-confirm-dialog__body" id="dj-confirm-msg">'
+            f'<p class="dj-confirm-dialog__message">{message}</p>'
+            f'</div>'
+            f'<div class="dj-confirm-dialog__footer">'
+            f'<button class="dj-confirm-dialog__btn dj-confirm-dialog__btn--cancel" '
+            f'dj-click="{cancel_event}">{cancel_label}</button>'
+            f'<button class="dj-confirm-dialog__btn dj-confirm-dialog__btn--confirm" '
+            f'dj-click="{confirm_event}">{confirm_label}</button>'
+            f'</div>'
+            f'</div>'
+            f'</div>'
+        )
+
+
+class PopconfirmHandler:
+    """Block handler for {% popconfirm message="Delete?" %}...{% endpopconfirm %}"""
+    def render(self, args, content, context):
+        kw = _parse_args(args, context)
+        message = conditional_escape(kw.get("message", "Are you sure?"))
+        confirm_event = conditional_escape(kw.get("confirm_event", "confirm"))
+        cancel_event = conditional_escape(kw.get("cancel_event", "cancel"))
+        confirm_label = conditional_escape(kw.get("confirm_label", "Yes"))
+        cancel_label = conditional_escape(kw.get("cancel_label", "No"))
+        placement = conditional_escape(kw.get("placement", "top"))
+        variant = conditional_escape(kw.get("variant", "default"))
+        custom_class = conditional_escape(kw.get("custom_class", ""))
+
+        variant_cls = f" dj-popconfirm--{variant}" if variant != "default" else ""
+        extra_cls = f" {custom_class}" if custom_class else ""
+
+        js_toggle = (
+            "(function(el){"
+            "var w=el.closest('.dj-popconfirm-wrapper');"
+            "w.classList.toggle('dj-popconfirm-open');"
+            "document.addEventListener('click',function h(e){"
+            "if(!w.contains(e.target)){"
+            "w.classList.remove('dj-popconfirm-open');"
+            "document.removeEventListener('click',h);"
+            "}},true);"
+            "})(this)"
+        )
+
+        js_close = (
+            "(function(el){"
+            "el.closest('.dj-popconfirm-wrapper').classList.remove('dj-popconfirm-open');"
+            "})(this)"
+        )
+
+        return mark_safe(
+            f'<div class="dj-popconfirm-wrapper{variant_cls}{extra_cls}">'
+            f'<div class="dj-popconfirm-trigger" onclick="{js_toggle}">'
+            f'{content}'
+            f'</div>'
+            f'<div class="dj-popconfirm dj-popconfirm-{placement}" role="tooltip">'
+            f'<p class="dj-popconfirm__message">{message}</p>'
+            f'<div class="dj-popconfirm__actions">'
+            f'<button class="dj-popconfirm__btn dj-popconfirm__btn--cancel" '
+            f'onclick="{js_close}" dj-click="{cancel_event}">{cancel_label}</button>'
+            f'<button class="dj-popconfirm__btn dj-popconfirm__btn--confirm" '
+            f'onclick="{js_close}" dj-click="{confirm_event}">{confirm_label}</button>'
+            f'</div>'
+            f'</div>'
+            f'</div>'
+        )
+
+
+INLINE_HANDLERS.extend([
+    ("confirm_dialog", ConfirmDialogHandler()),
+])
+
+BLOCK_HANDLERS.extend([
+    ("popconfirm", "endpopconfirm", PopconfirmHandler()),
+])
