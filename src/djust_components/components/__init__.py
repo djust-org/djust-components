@@ -111,6 +111,12 @@ from .sparkline import Sparkline
 from .heatmap import Heatmap
 from .treemap import Treemap
 from .calendar_heatmap import CalendarHeatmap
+from .terminal import Terminal
+from .markdown_editor import MarkdownEditor
+from .json_viewer import JsonViewer
+from .log_viewer import LogViewer
+from .file_tree import FileTree
+from .tour import Tour
 
 __all__ = [
     "Alert",
@@ -192,4 +198,10 @@ __all__ = [
     "Heatmap",
     "Treemap",
     "CalendarHeatmap",
+    "Terminal",
+    "MarkdownEditor",
+    "JsonViewer",
+    "LogViewer",
+    "FileTree",
+    "Tour",
 ]

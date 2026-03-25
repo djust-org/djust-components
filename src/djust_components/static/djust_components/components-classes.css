@@ -792,4 +792,22 @@
 .dj-mentions__avatar-initials { font-size: 0.625rem; font-weight: 600; }
 .dj-mentions__name { font-size: 0.875rem; }
 
+/* --- Terminal (classes) --- */
+/* Shares styles from components.css — no additional class-only overrides needed */
+
+/* --- Markdown Editor (classes) --- */
+/* Shares styles from components.css — no additional class-only overrides needed */
+
+/* --- JSON Viewer (classes) --- */
+/* Shares styles from components.css — no additional class-only overrides needed */
+
+/* --- Log Viewer (classes) --- */
+/* Shares styles from components.css — no additional class-only overrides needed */
+
+/* --- File Tree (classes) --- */
+/* Shares styles from components.css — no additional class-only overrides needed */
+
+/* --- Tour (classes) --- */
+/* Shares styles from components.css — no additional class-only overrides needed */
+
 } /* end @layer djust-components */
