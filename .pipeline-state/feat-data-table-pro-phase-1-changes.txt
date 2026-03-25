@@ -1,0 +1,69 @@
+Data Table Pro Phase 1 — Core Interactivity Changes
+====================================================
+
+Files Modified:
+  src/djust_components/rust_handlers.py
+    - Enhanced DataTableHandler.render() with 18 new optional parameters
+    - Added: selectable, selected_rows, select_event, row_key, search, search_query,
+      search_event, search_debounce, filters, filter_event, loading, empty_title,
+      empty_description, empty_icon, paginate, page, total_pages, page_event,
+      striped, compact
+    - Added ARIA attributes: role="grid", aria-label, aria-sort, aria-selected,
+      aria-busy, role="searchbox", role="status", role="navigation"
+    - Added per-column sortable flag (default True for backward compat)
+    - Added per-column filterable with text and select filter types
+    - Added loading skeleton state (delegates to SkeletonHandler pattern)
+    - Added empty state with customizable title/description/icon
+    - Added integrated pagination with page_event
+    - Added column width support
+    - Full XSS escaping on all user-controlled values
+
+  src/djust_components/templatetags/djust_components.py
+    - Added all 18 new parameters to data_table() inclusion tag function signature
+    - All new params have defaults matching Rust handler defaults
+    - Backward compatible: old-style calls work unchanged
+
+  src/djust_components/templates/djust_components/table.html
+    - Rewritten to support all new features with conditional template blocks
+    - Search bar, selection checkboxes, column filters, loading state,
+      empty state, pagination, ARIA attributes, striped/compact variants
+    - Backward-compatible pagination via prev_event/next_event still works
+
+  src/djust_components/static/djust_components/components.css
+    - Added 24 new CSS rules for data table enhancements
+    - .data-table-container, .data-table-search, .data-table-filter,
+      .data-table-checkbox, .data-table-select-all, .data-table-header-cell,
+      .data-table-striped, .data-table-compact, .data-table-loading,
+      .data-table-empty, .data-table-pagination, tr[aria-selected="true"],
+      th[aria-sort]
+
+  src/djust_components/__init__.py
+    - Added DataTableMixin to imports and __all__
+
+  CHANGELOG.md
+    - Added Data Table Pro Phase 1 entries under [Unreleased]
+
+  components/templates/components/data_table.html
+    - Added deprecation notice pointing to {% data_table %} tag
+
+Files Created:
+  src/djust_components/mixins/__init__.py
+    - Exports DataTableMixin
+
+  src/djust_components/mixins/data_table.py
+    - DataTableMixin class (~180 lines)
+    - Provides: init_table_state(), on_table_sort(), on_table_search(),
+      on_table_filter(), on_table_select(), on_table_page(), get_table_context(),
+      get_table_queryset(), _apply_table_search(), _apply_table_filters(),
+      _apply_table_sort(), _apply_table_pagination(), refresh_table()
+
+  tests/test_data_table_pro.py
+    - 90 tests covering Rust handler, template tag, DataTableMixin, CSS, and exports
+    - Test categories: backward compat, ARIA, selection, search, filters,
+      loading, empty state, pagination, styling, column width, XSS, column sortable,
+      template tag context, mixin init/sort/search/filter/select/page/context/queryset,
+      CSS class definitions, exports
+
+Test Results:
+  440 total tests pass (90 new + 350 existing)
+  No regressions

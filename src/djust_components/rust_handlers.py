@@ -833,39 +833,251 @@ class DataTableHandler:
         sort_by = conditional_escape(str(kw.get("sort_by", "")))
         sort_desc = kw.get("sort_desc", False)
         sort_event = conditional_escape(kw.get("sort_event", "table_sort"))
+
+        # New Phase 1 parameters (all opt-in)
+        selectable = kw.get("selectable", False)
+        selected_rows = kw.get("selected_rows") or []
+        select_event = conditional_escape(kw.get("select_event", "table_select"))
+        row_key = str(kw.get("row_key", "id"))
+        search = kw.get("search", False)
+        search_query = conditional_escape(str(kw.get("search_query", "")))
+        search_event = conditional_escape(kw.get("search_event", "table_search"))
+        try:
+            search_debounce = int(kw.get("search_debounce", 300))
+        except (ValueError, TypeError):
+            search_debounce = 300
+        filters = kw.get("filters") or {}
+        filter_event = conditional_escape(kw.get("filter_event", "table_filter"))
+        loading = kw.get("loading", False)
+        empty_title = conditional_escape(str(kw.get("empty_title", "No data")))
+        empty_description = conditional_escape(str(kw.get("empty_description", "")))
+        empty_icon = conditional_escape(str(kw.get("empty_icon", "")))
+        paginate = kw.get("paginate", False)
+        try:
+            page = int(kw.get("page", 1))
+            total_pages = int(kw.get("total_pages", 1))
+        except (ValueError, TypeError):
+            page, total_pages = 1, 1
+        page_event = conditional_escape(kw.get("page_event", "table_page"))
+        striped = kw.get("striped", False)
+        compact = kw.get("compact", False)
+
         if not isinstance(rows, (list, tuple)):
             rows = []
         if not isinstance(columns, (list, tuple)):
             columns = []
+        if not isinstance(selected_rows, (list, tuple)):
+            selected_rows = []
+        if not isinstance(filters, dict):
+            filters = {}
+
+        # Convert selected_rows to a set of strings for fast lookup
+        selected_set = {str(v) for v in selected_rows}
+
+        # --- Table classes ---
+        table_classes = ["data-table"]
+        if striped:
+            table_classes.append("data-table-striped")
+        if compact:
+            table_classes.append("data-table-compact")
+        table_cls = " ".join(table_classes)
+
+        # --- Search bar ---
+        search_html = ""
+        if search:
+            search_html = (
+                f'<div class="data-table-search">'
+                f'<input type="text" role="searchbox" aria-label="Search table"'
+                f' class="table-search" placeholder="Search..."'
+                f' value="{search_query}"'
+                f' dj-input="{search_event}" dj-debounce="{search_debounce}">'
+                f'</div>'
+            )
+
+        # --- Loading state ---
+        if loading:
+            # Render skeleton instead of table body
+            skeleton_rows = "".join(
+                '<div class="skeleton skeleton-line" style="width:100%"></div>'
+                for _ in range(5)
+            )
+            return mark_safe(
+                f'<div class="data-table-wrapper data-table-container" role="grid"'
+                f' aria-label="Data table" aria-busy="true">'
+                f'{search_html}'
+                f'<div class="data-table-loading skeleton-table">'
+                f'{skeleton_rows}'
+                f'</div>'
+                f'</div>'
+            )
+
+        # --- Header cells ---
+        has_filters = any(
+            isinstance(col, dict) and col.get("filterable", False)
+            for col in columns
+        )
+        # Build a second header row for filters if needed
         header_cells = []
+        filter_cells = []
         for col in columns:
             if isinstance(col, dict):
                 key = conditional_escape(str(col.get("key", "")))
                 col_label = conditional_escape(str(col.get("label", key)))
+                sortable = col.get("sortable", True)
+                filterable = col.get("filterable", False)
+                filter_type = col.get("filter_type", "text")
+                filter_options = col.get("filter_options", [])
+                width = col.get("width", "")
             else:
                 key = col_label = conditional_escape(str(col))
-            active = "active" if key == sort_by else ""
-            arrow = " ↓" if (key == sort_by and sort_desc) else " ↑" if key == sort_by else ""
-            header_cells.append(
-                f'<th class="sortable {active}" dj-click="{sort_event}" data-value="{key}">'
-                f"{col_label}{arrow}</th>"
+                sortable = True
+                filterable = False
+                filter_type = "text"
+                filter_options = []
+                width = ""
+
+            # Width style
+            width_attr = f' style="width:{conditional_escape(width)}"' if width else ""
+
+            # Sort state
+            if sortable:
+                active = " active" if key == sort_by else ""
+                if key == sort_by:
+                    arrow = " &#8595;" if sort_desc else " &#8593;"
+                    aria_sort = "descending" if sort_desc else "ascending"
+                else:
+                    arrow = ""
+                    aria_sort = "none"
+                header_cells.append(
+                    f'<th class="sortable{active}" role="columnheader"'
+                    f' aria-sort="{aria_sort}"'
+                    f' dj-click="{sort_event}" data-value="{key}"{width_attr}>'
+                    f'{col_label}{arrow}</th>'
+                )
+            else:
+                header_cells.append(
+                    f'<th role="columnheader"{width_attr}>'
+                    f'{col_label}</th>'
+                )
+
+            # Filter cell
+            if has_filters:
+                if filterable:
+                    filter_val = conditional_escape(str(filters.get(key, "")))
+                    if filter_type == "select":
+                        opts_html = '<option value="">All</option>'
+                        for opt in filter_options:
+                            if isinstance(opt, dict):
+                                opt_val = conditional_escape(str(opt.get("value", "")))
+                                opt_label = conditional_escape(str(opt.get("label", opt_val)))
+                            else:
+                                opt_val = opt_label = conditional_escape(str(opt))
+                            selected = " selected" if opt_val == filter_val else ""
+                            opts_html += f'<option value="{opt_val}"{selected}>{opt_label}</option>'
+                        filter_cells.append(
+                            f'<th><select class="data-table-filter"'
+                            f' aria-label="Filter {col_label}"'
+                            f' dj-input="{filter_event}" data-column="{key}">'
+                            f'{opts_html}'
+                            f'</select></th>'
+                        )
+                    else:
+                        filter_cells.append(
+                            f'<th><input type="text" class="data-table-filter"'
+                            f' aria-label="Filter {col_label}"'
+                            f' placeholder="Filter..."'
+                            f' value="{filter_val}"'
+                            f' dj-input="{filter_event}" data-column="{key}">'
+                            f'</th>'
+                        )
+                else:
+                    filter_cells.append("<th></th>")
+
+        # Prepend selection column
+        if selectable:
+            header_cells.insert(0,
+                f'<th><input type="checkbox" class="data-table-select-all"'
+                f' aria-label="Select all rows"'
+                f' dj-click="{select_event}" data-value="__all__"></th>'
             )
+            if has_filters:
+                filter_cells.insert(0, "<th></th>")
+
+        # --- Header rows ---
+        thead_rows = f"<tr>{''.join(header_cells)}</tr>"
+        if has_filters:
+            thead_rows += f"<tr>{''.join(filter_cells)}</tr>"
+
+        # --- Body rows ---
         body_rows = []
-        for row in rows:
-            if not isinstance(row, dict):
-                continue
-            cells = ""
-            for col in columns:
-                key = col.get("key", col) if isinstance(col, dict) else col
-                cell_val = conditional_escape(str(row.get(str(key), "")))
-                cells += f"<td>{cell_val}</td>"
-            body_rows.append(f"<tr>{cells}</tr>")
+        if rows:
+            for row in rows:
+                if not isinstance(row, dict):
+                    continue
+                row_id = str(row.get(row_key, ""))
+                is_selected = row_id in selected_set
+                cells = ""
+                if selectable:
+                    checked = " checked" if is_selected else ""
+                    cells += (
+                        f'<td><input type="checkbox" class="data-table-checkbox"'
+                        f' aria-label="Select row"'
+                        f'{checked}'
+                        f' dj-click="{select_event}"'
+                        f' data-value="{conditional_escape(row_id)}"></td>'
+                    )
+                for col in columns:
+                    col_key = col.get("key", col) if isinstance(col, dict) else col
+                    cell_val = conditional_escape(str(row.get(str(col_key), "")))
+                    cells += f"<td>{cell_val}</td>"
+                if selectable:
+                    sel_attr = "true" if is_selected else "false"
+                    body_rows.append(f'<tr aria-selected="{sel_attr}">{cells}</tr>')
+                else:
+                    body_rows.append(f"<tr>{cells}</tr>")
+            tbody_html = "".join(body_rows)
+        else:
+            # Empty state
+            col_span = len(columns) + (1 if selectable else 0)
+            icon_html = f'<div class="data-table-empty-icon">{empty_icon}</div>' if empty_icon else ""
+            desc_html = f'<p class="data-table-empty-description">{empty_description}</p>' if empty_description else ""
+            tbody_html = (
+                f'<tr><td colspan="{col_span}">'
+                f'<div class="data-table-empty" role="status">'
+                f'{icon_html}'
+                f'<h3 class="data-table-empty-title">{empty_title}</h3>'
+                f'{desc_html}'
+                f'</div>'
+                f'</td></tr>'
+            )
+
+        # --- Pagination ---
+        pagination_html = ""
+        if paginate and total_pages > 1:
+            prev_disabled = " disabled" if page <= 1 else ""
+            next_disabled = " disabled" if page >= total_pages else ""
+            prev_page = max(1, page - 1)
+            next_page = min(total_pages, page + 1)
+            pagination_html = (
+                f'<div class="data-table-pagination" role="navigation"'
+                f' aria-label="Table pagination">'
+                f'<button class="pagination-btn"{prev_disabled}'
+                f' dj-click="{page_event}" data-value="{prev_page}">&#8592;</button>'
+                f'<span class="pagination-info">Page {page} of {total_pages}</span>'
+                f'<button class="pagination-btn"{next_disabled}'
+                f' dj-click="{page_event}" data-value="{next_page}">&#8594;</button>'
+                f'</div>'
+            )
+
         return mark_safe(
-            f'<div class="data-table-wrapper">'
-            f'<table class="data-table">'
-            f"<thead><tr>{''.join(header_cells)}</tr></thead>"
-            f"<tbody>{''.join(body_rows)}</tbody>"
+            f'<div class="data-table-wrapper data-table-container" role="grid"'
+            f' aria-label="Data table">'
+            f'{search_html}'
+            f'<table class="{table_cls}">'
+            f"<thead>{thead_rows}</thead>"
+            f"<tbody>{tbody_html}</tbody>"
             f"</table>"
+            f'{pagination_html}'
             f"</div>"
         )
 

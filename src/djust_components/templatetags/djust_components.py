@@ -429,12 +429,18 @@ def do_card(parser, token):
 
 @register.inclusion_tag("djust_components/table.html")
 def data_table(rows, columns, sort_by="", sort_desc=False, sort_event="table_sort",
-               page=1, total_pages=1, prev_event="table_prev", next_event="table_next"):
-    """Render a sortable data table with pagination.
+               page=1, total_pages=1, prev_event="table_prev", next_event="table_next",
+               selectable=False, selected_rows=None, select_event="table_select",
+               row_key="id", search=False, search_query="", search_event="table_search",
+               search_debounce=300, filters=None, filter_event="table_filter",
+               loading=False, empty_title="No data", empty_description="",
+               empty_icon="", paginate=False, page_event="table_page",
+               striped=False, compact=False):
+    """Render a sortable data table with search, filters, selection, and pagination.
 
     Args:
         rows: list of dicts
-        columns: list of dicts with keys: key, label
+        columns: list of dicts with keys: key, label, sortable, filterable, filter_type, filter_options, width
         sort_by: current sort column key
         sort_desc: sort descending?
         sort_event: djust event for sorting
@@ -442,6 +448,24 @@ def data_table(rows, columns, sort_by="", sort_desc=False, sort_event="table_sor
         total_pages: total pages
         prev_event: djust event for previous page
         next_event: djust event for next page
+        selectable: enable row selection checkboxes
+        selected_rows: list of selected row IDs/keys
+        select_event: selection event name
+        row_key: key field for row identity
+        search: show global search box
+        search_query: current search value
+        search_event: search event name
+        search_debounce: debounce ms for search input
+        filters: per-column filter values {col_key: value}
+        filter_event: filter event name
+        loading: show loading/skeleton state
+        empty_title: empty state title
+        empty_description: empty state description
+        empty_icon: empty state icon
+        paginate: show pagination controls
+        page_event: pagination event name
+        striped: alternating row backgrounds
+        compact: reduced padding
     """
     return {
         "rows": rows,
@@ -453,6 +477,24 @@ def data_table(rows, columns, sort_by="", sort_desc=False, sort_event="table_sor
         "total_pages": total_pages,
         "prev_event": prev_event,
         "next_event": next_event,
+        "selectable": selectable,
+        "selected_rows": selected_rows or [],
+        "select_event": select_event,
+        "row_key": row_key,
+        "search": search,
+        "search_query": search_query,
+        "search_event": search_event,
+        "search_debounce": search_debounce,
+        "filters": filters or {},
+        "filter_event": filter_event,
+        "loading": loading,
+        "empty_title": empty_title,
+        "empty_description": empty_description,
+        "empty_icon": empty_icon,
+        "paginate": paginate,
+        "page_event": page_event,
+        "striped": striped,
+        "compact": compact,
     }
 
 
