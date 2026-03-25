@@ -5875,3 +5875,331 @@ INLINE_HANDLERS.extend([
     ("presence_avatars", PresenceAvatarsHandler()),
     ("mentions_input", MentionsInputHandler()),
 ])
+
+
+# ===========================================================================
+# TEXT DISPLAY + LOADING PATTERN HANDLERS
+# ===========================================================================
+
+
+class ExpandableTextHandler:
+    """Block handler for {% expandable_text max_lines=3 %}...{% endexpandable_text %}"""
+
+    def render(self, args, content, context):
+        kw = _parse_args(args, context)
+        max_lines = int(kw.get("max_lines", 3))
+        expanded = kw.get("expanded", False)
+        toggle_event = kw.get("toggle_event", "toggle_expand")
+        more_label = kw.get("more_label", "Read more")
+        less_label = kw.get("less_label", "Show less")
+        custom_class = kw.get("class", "")
+
+        e_event = conditional_escape(str(toggle_event))
+        e_more = conditional_escape(str(more_label))
+        e_less = conditional_escape(str(less_label))
+        e_class = conditional_escape(str(custom_class))
+
+        cls = "dj-expandable-text"
+        if expanded:
+            cls += " dj-expandable-text--expanded"
+        if e_class:
+            cls += f" {e_class}"
+
+        if expanded:
+            style = ""
+            label = e_less
+        else:
+            style = (
+                f' style="-webkit-line-clamp:{max_lines};'
+                f'display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden"'
+            )
+            label = e_more
+
+        return mark_safe(
+            f'<div class="{cls}">'
+            f'<div class="dj-expandable-text__content"{style}>{content}</div>'
+            f'<button class="dj-expandable-text__toggle" dj-click="{e_event}">'
+            f'{label}</button>'
+            f'</div>'
+        )
+
+
+class TruncatedListHandler:
+    """Inline handler for {% truncated_list items=items max=3 %}"""
+
+    def render(self, args, context):
+        kw = _parse_args(args, context)
+        items = kw.get("items", [])
+        max_count = int(kw.get("max", 3))
+        expanded = kw.get("expanded", False)
+        toggle_event = kw.get("toggle_event", "toggle_list")
+        overflow_label = kw.get("overflow_label", "+{count} more")
+        custom_class = kw.get("class", "")
+
+        if not isinstance(items, (list, tuple)):
+            items = []
+
+        e_class = conditional_escape(str(custom_class))
+        cls = "dj-truncated-list"
+        if expanded:
+            cls += " dj-truncated-list--expanded"
+        if e_class:
+            cls += f" {e_class}"
+
+        total = len(items)
+        visible = items if expanded else items[:max_count]
+        hidden_count = max(0, total - max_count)
+
+        items_html = []
+        for item in visible:
+            if isinstance(item, dict):
+                label = conditional_escape(
+                    str(item.get("label", item.get("name", "")))
+                )
+            else:
+                label = conditional_escape(str(item))
+            items_html.append(
+                f'<span class="dj-truncated-list__item">{label}</span>'
+            )
+
+        overflow_html = ""
+        if hidden_count > 0:
+            e_event = conditional_escape(str(toggle_event))
+            if expanded:
+                overflow_text = conditional_escape("Show less")
+            else:
+                overflow_text = conditional_escape(
+                    str(overflow_label).replace("{count}", str(hidden_count))
+                )
+            overflow_html = (
+                f'<button class="dj-truncated-list__overflow" dj-click="{e_event}">'
+                f'{overflow_text}</button>'
+            )
+
+        return mark_safe(
+            f'<div class="{cls}" role="list">'
+            f'{"".join(items_html)}{overflow_html}'
+            f'</div>'
+        )
+
+
+class MarkdownTextareaHandler:
+    """Inline handler for {% markdown_textarea name="content" preview=True %}"""
+
+    def render(self, args, context):
+        kw = _parse_args(args, context)
+        name = kw.get("name", "content")
+        value = kw.get("value", "")
+        preview = kw.get("preview", False)
+        toggle_event = kw.get("toggle_event", "toggle_preview")
+        placeholder = kw.get("placeholder", "Write markdown here...")
+        rows = int(kw.get("rows", 6))
+        disabled = kw.get("disabled", False)
+        custom_class = kw.get("class", "")
+
+        e_name = conditional_escape(str(name))
+        e_value = conditional_escape(str(value))
+        e_event = conditional_escape(str(toggle_event))
+        e_placeholder = conditional_escape(str(placeholder))
+        e_class = conditional_escape(str(custom_class))
+        disabled_attr = " disabled" if disabled else ""
+
+        cls = "dj-md-textarea"
+        if preview:
+            cls += " dj-md-textarea--preview"
+        if e_class:
+            cls += f" {e_class}"
+
+        write_active = "" if preview else " dj-md-textarea__tab--active"
+        preview_active = " dj-md-textarea__tab--active" if preview else ""
+
+        toolbar = (
+            f'<div class="dj-md-textarea__toolbar">'
+            f'<button type="button" class="dj-md-textarea__tab{write_active}" '
+            f'dj-click="{e_event}" data-mode="write">Write</button>'
+            f'<button type="button" class="dj-md-textarea__tab{preview_active}" '
+            f'dj-click="{e_event}" data-mode="preview">Preview</button>'
+            f'</div>'
+        )
+
+        if preview:
+            body = (
+                f'<div class="dj-md-textarea__preview" data-raw="{e_value}">'
+                f'{e_value}</div>'
+                f'<input type="hidden" name="{e_name}" value="{e_value}">'
+            )
+        else:
+            body = (
+                f'<textarea class="dj-md-textarea__input" name="{e_name}" '
+                f'rows="{rows}" placeholder="{e_placeholder}"{disabled_attr}>'
+                f'{e_value}</textarea>'
+            )
+
+        return mark_safe(
+            f'<div class="{cls}" dj-hook="MarkdownTextarea">'
+            f'{toolbar}{body}'
+            f'</div>'
+        )
+
+
+class SkeletonForHandler:
+    """Inline handler for {% skeleton_for component="data_table" columns=5 rows=10 %}"""
+
+    def render(self, args, context):
+        kw = _parse_args(args, context)
+        component = kw.get("component", "text")
+        columns = int(kw.get("columns", 4))
+        rows = int(kw.get("rows", 5))
+        custom_class = kw.get("class", "")
+
+        e_class = conditional_escape(str(custom_class))
+        cls = "dj-skeleton"
+        if e_class:
+            cls += f" {e_class}"
+
+        supported = {"data_table", "card", "list", "text"}
+        if component not in supported:
+            component = "text"
+
+        if component == "data_table":
+            return mark_safe(self._render_table(cls, columns, rows))
+        elif component == "card":
+            return mark_safe(self._render_card(cls))
+        elif component == "list":
+            return mark_safe(self._render_list(cls, rows))
+        else:
+            return mark_safe(self._render_text(cls, rows))
+
+    def _render_table(self, cls, cols, rows):
+        header_cells = "".join(
+            '<th><span class="dj-skeleton__line dj-skeleton__pulse" '
+            'style="width:70%">&nbsp;</span></th>'
+            for _ in range(cols)
+        )
+        header = f'<thead><tr>{header_cells}</tr></thead>'
+        body_rows = []
+        for _ in range(rows):
+            cells = "".join(
+                '<td><span class="dj-skeleton__line dj-skeleton__pulse">'
+                '&nbsp;</span></td>'
+                for _ in range(cols)
+            )
+            body_rows.append(f'<tr>{cells}</tr>')
+        body = f'<tbody>{"".join(body_rows)}</tbody>'
+        return (
+            f'<div class="{cls} dj-skeleton--data-table" '
+            f'role="status" aria-label="Loading">'
+            f'<table class="dj-skeleton__table">{header}{body}</table>'
+            f'</div>'
+        )
+
+    def _render_card(self, cls):
+        return (
+            f'<div class="{cls} dj-skeleton--card" '
+            f'role="status" aria-label="Loading">'
+            f'<div class="dj-skeleton__card-image dj-skeleton__pulse">&nbsp;</div>'
+            f'<div class="dj-skeleton__card-body">'
+            f'<span class="dj-skeleton__line dj-skeleton__pulse" '
+            f'style="width:60%">&nbsp;</span>'
+            f'<span class="dj-skeleton__line dj-skeleton__pulse" '
+            f'style="width:90%">&nbsp;</span>'
+            f'<span class="dj-skeleton__line dj-skeleton__pulse" '
+            f'style="width:40%">&nbsp;</span>'
+            f'</div></div>'
+        )
+
+    def _render_list(self, cls, rows):
+        items = []
+        for _ in range(rows):
+            items.append(
+                '<div class="dj-skeleton__list-item">'
+                '<span class="dj-skeleton__circle dj-skeleton__pulse">&nbsp;</span>'
+                '<span class="dj-skeleton__line dj-skeleton__pulse" '
+                'style="width:80%">&nbsp;</span>'
+                '</div>'
+            )
+        return (
+            f'<div class="{cls} dj-skeleton--list" '
+            f'role="status" aria-label="Loading">'
+            f'{"".join(items)}</div>'
+        )
+
+    def _render_text(self, cls, rows):
+        widths = [95, 85, 90, 70, 80, 60, 75, 88, 65, 92]
+        lines = []
+        for i in range(rows):
+            w = widths[i % len(widths)]
+            lines.append(
+                f'<span class="dj-skeleton__line dj-skeleton__pulse" '
+                f'style="width:{w}%">&nbsp;</span>'
+            )
+        return (
+            f'<div class="{cls} dj-skeleton--text" '
+            f'role="status" aria-label="Loading">'
+            f'{"".join(lines)}</div>'
+        )
+
+
+class AwaitHandler:
+    """Block handler for {% await loading_event="data_loaded" %}...{% endawait %}"""
+
+    def render(self, args, content, context):
+        kw = _parse_args(args, context)
+        loading_event = kw.get("loading_event", "data_loaded")
+        loaded = kw.get("loaded", False)
+        error = kw.get("error", "")
+        error_event = kw.get("error_event", "")
+        custom_class = kw.get("class", "")
+
+        e_event = conditional_escape(str(loading_event))
+        e_class = conditional_escape(str(custom_class))
+
+        cls = "dj-content-loader"
+        if loaded:
+            cls += " dj-content-loader--loaded"
+        if error:
+            cls += " dj-content-loader--error"
+        if e_class:
+            cls += f" {e_class}"
+
+        if error:
+            e_error = conditional_escape(str(error))
+            retry_html = ""
+            if error_event:
+                e_retry = conditional_escape(str(error_event))
+                retry_html = (
+                    f'<button class="dj-content-loader__retry" '
+                    f'dj-click="{e_retry}">Retry</button>'
+                )
+            return mark_safe(
+                f'<div class="{cls}" data-loading-event="{e_event}">'
+                f'<div class="dj-content-loader__error" role="alert">'
+                f'<span class="dj-content-loader__error-msg">{e_error}</span>'
+                f'{retry_html}</div></div>'
+            )
+
+        if loaded:
+            return mark_safe(
+                f'<div class="{cls}" data-loading-event="{e_event}">'
+                f'<div class="dj-content-loader__content">{content}</div>'
+                f'</div>'
+            )
+
+        return mark_safe(
+            f'<div class="{cls}" data-loading-event="{e_event}" '
+            f'role="status" aria-label="Loading">'
+            f'<div class="dj-content-loader__placeholder">{content}</div>'
+            f'</div>'
+        )
+
+
+INLINE_HANDLERS.extend([
+    ("truncated_list", TruncatedListHandler()),
+    ("markdown_textarea", MarkdownTextareaHandler()),
+    ("skeleton_for", SkeletonForHandler()),
+])
+
+BLOCK_HANDLERS.extend([
+    ("expandable_text", "endexpandable_text", ExpandableTextHandler()),
+    ("await", "endawait", AwaitHandler()),
+])
