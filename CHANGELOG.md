@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Data Table Pro Phase 4 — Data Presentation**: 6 new opt-in features for `DataTableHandler`, `DataTableMixin`, and `{% data_table %}`:
+  - **Column Type Formatters**: Declare `type` on column config (`number`, `currency`, `date`, `percentage`, `boolean`) for automatic display formatting. Supports `decimals`, `currency_symbol`, `true_label`/`false_label`, `date_format`. Type-specific CSS classes (`data-table-type-number`, etc.) for alignment.
+  - **Footer Aggregation Row**: Optional `footer_aggregations` dict (`{col_key: "sum"|"avg"|"count"|"min"|"max"}`) renders a `<tfoot>` row with computed values per column.
+  - **Conditional Row/Cell Styling**: `row_class_map` (dict or callable) applies CSS classes to `<tr>` based on data values. `cell_class` on column config (string or value-keyed dict) applies classes to `<td>`.
+  - **Multi-Level Column Headers**: `column_groups` list of `{label, columns}` renders a grouped header row with `colspan` spanning sub-columns.
+  - **Row Drag-and-Drop Reorder**: `row_drag=True` adds a grip handle column; fires `row_drag_event` with `{old_index, new_index}`. Mixin auto-reorders `table_rows`.
+  - **Copy Row/Selection**: `copyable=True` adds a Copy toolbar button; fires `copy_event`. Mixin generates CSV/TSV in `table_copy_data`.
+
+### Added
 - **Cascading Form Components**: 3 new form components with Django template tags, Rust engine handlers, Python component classes, CSS, and tests (including XSS coverage):
   - **Dependent Select** (`{% dependent_select name="city" parent="country" source_event="load_cities" %}`) — Cascading dropdown that reloads options when parent field changes. Spinner while loading (`loading`). Supports `parent`, `source_event`, `options` (dict/string list), `value`, `placeholder`, `label`, `required`, `disabled`, `error`, `custom_class`. Uses `dj-change` event and `data-parent`/`data-source-event` attributes for wiring (#108)
   - **Currency Input** (`{% currency_input name="price" currency="USD" min=0 %}`) — Numeric input with currency symbol prefix, currency code suffix, and `type="number"` with configurable `step`/`min`/`max`. Built-in symbol lookup for 12 currencies (USD, EUR, GBP, JPY, etc.). Supports `currency`, `value`, `step`, `min`, `max`, `placeholder`, `label`, `required`, `disabled`, `error`, `event`, `custom_class`. Tabular-nums and hidden spin buttons in CSS (#109)

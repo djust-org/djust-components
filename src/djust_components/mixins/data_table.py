@@ -97,6 +97,16 @@ class DataTableMixin:
     table_printable = False
     table_show_stats = False
 
+    # Phase 4 class-level configuration
+    table_footer_aggregations = {}  # {col_key: "sum"|"avg"|"count"|"min"|"max"}
+    table_row_class_map = {}  # {col_key: {value: css_class}} or callable(row) -> css_class
+    table_column_groups = []  # list of {"label": "Q1", "columns": ["jan","feb","mar"]}
+    table_row_drag = False
+    table_row_drag_event = "table_row_drag"
+    table_copyable = False
+    table_copy_event = "table_copy"
+    table_copy_format = "csv"  # "csv" or "tsv"
+
     def init_table_state(self):
         """Initialize instance state. Call from mount()."""
         self.table_sort_by = self.table_default_sort
@@ -122,6 +132,8 @@ class DataTableMixin:
         self.table_current_group_by = self.table_group_by
         self.table_facet_counts = {}
         self.table_column_stats = {}
+        # Phase 4 state
+        self.table_row_order = []  # for drag reorder tracking
 
     # ── Event Handlers ──
 
@@ -304,6 +316,163 @@ class DataTableMixin:
         else:
             self.table_collapsed_groups.append(group_key)
 
+    # ── Phase 4 Event Handlers ──
+
+    def on_table_row_drag(self, value, **kwargs):
+        """Handle row drag-and-drop reorder. value is JSON: {old_index, new_index}."""
+        try:
+            data = json.loads(str(value)) if isinstance(value, str) else value
+        except (json.JSONDecodeError, TypeError):
+            return
+        if isinstance(data, dict):
+            try:
+                old_idx = int(data.get("old_index", -1))
+                new_idx = int(data.get("new_index", -1))
+            except (ValueError, TypeError):
+                return
+            if 0 <= old_idx < len(self.table_rows) and 0 <= new_idx < len(self.table_rows):
+                row = self.table_rows.pop(old_idx)
+                self.table_rows.insert(new_idx, row)
+                self.handle_row_drag(old_idx, new_idx)
+
+    def handle_row_drag(self, old_index, new_index):
+        """Override this to persist row reorder. Called by on_table_row_drag."""
+        pass
+
+    def on_table_copy(self, value, **kwargs):
+        """Handle copy event. value is JSON list of row keys to copy."""
+        try:
+            data = json.loads(str(value)) if isinstance(value, str) else value
+        except (json.JSONDecodeError, TypeError):
+            data = None
+        if isinstance(data, list):
+            row_keys = [str(k) for k in data]
+        else:
+            row_keys = list(str(v) for v in self.table_selected_rows)
+        self.handle_copy(row_keys)
+
+    def handle_copy(self, row_keys):
+        """Override this to handle copy. Default generates CSV/TSV in table_copy_data."""
+        rows_to_copy = [
+            row for row in self.table_rows
+            if str(row.get(self.table_row_key, "")) in row_keys
+        ] if row_keys else self.table_rows
+        col_keys = [
+            col.get("key", col) if isinstance(col, dict) else str(col)
+            for col in self.table_columns
+        ]
+        col_labels = [
+            col.get("label", col.get("key", "")) if isinstance(col, dict) else str(col)
+            for col in self.table_columns
+        ]
+        sep = "\t" if self.table_copy_format == "tsv" else ","
+        lines = [sep.join(col_labels)]
+        for row in rows_to_copy:
+            lines.append(sep.join(str(row.get(k, "")) for k in col_keys))
+        self.table_copy_data = "\n".join(lines)
+
+    # ── Phase 4 Computed Helpers ──
+
+    def get_footer_aggregations(self):
+        """Compute footer aggregation values based on table_footer_aggregations config.
+
+        Returns dict of {col_key: formatted_value}.
+        """
+        result = {}
+        for col_key, agg_type in self.table_footer_aggregations.items():
+            values = []
+            for row in self.table_rows:
+                val = row.get(col_key)
+                if val is not None:
+                    try:
+                        values.append(float(val))
+                    except (ValueError, TypeError):
+                        pass
+            if not values:
+                result[col_key] = ""
+                continue
+            if agg_type == "sum":
+                result[col_key] = sum(values)
+            elif agg_type == "avg":
+                result[col_key] = round(sum(values) / len(values), 2)
+            elif agg_type == "count":
+                result[col_key] = len(values)
+            elif agg_type == "min":
+                result[col_key] = min(values)
+            elif agg_type == "max":
+                result[col_key] = max(values)
+            else:
+                result[col_key] = ""
+        return result
+
+    def get_row_class(self, row):
+        """Compute CSS class for a row based on row_class_map.
+
+        table_row_class_map can be:
+          - a dict: {col_key: {value: css_class}}
+          - a callable: fn(row) -> css_class_string
+        """
+        if callable(self.table_row_class_map):
+            return self.table_row_class_map(row)
+        classes = []
+        for col_key, value_map in self.table_row_class_map.items():
+            val = str(row.get(col_key, ""))
+            if isinstance(value_map, dict) and val in value_map:
+                classes.append(value_map[val])
+        return " ".join(classes)
+
+    def _format_cell_value(self, value, col):
+        """Format a cell value based on column type declaration.
+
+        Supported types: number, currency, date, percentage, boolean.
+        """
+        if not isinstance(col, dict):
+            return str(value) if value is not None else ""
+        col_type = col.get("type", "")
+        if not col_type or value is None or value == "":
+            return str(value) if value is not None else ""
+
+        if col_type == "number":
+            try:
+                num = float(value)
+                decimals = col.get("decimals", 0)
+                if decimals > 0:
+                    return f"{num:,.{decimals}f}"
+                if num == int(num):
+                    return f"{int(num):,}"
+                return f"{num:,.2f}"
+            except (ValueError, TypeError):
+                return str(value)
+        elif col_type == "currency":
+            try:
+                num = float(value)
+                symbol = col.get("currency_symbol", "$")
+                decimals = col.get("decimals", 2)
+                return f"{symbol}{num:,.{decimals}f}"
+            except (ValueError, TypeError):
+                return str(value)
+        elif col_type == "percentage":
+            try:
+                num = float(value)
+                decimals = col.get("decimals", 1)
+                return f"{num:.{decimals}f}%"
+            except (ValueError, TypeError):
+                return str(value)
+        elif col_type == "boolean":
+            truthy = str(value).lower() in ("true", "1", "yes")
+            true_label = col.get("true_label", "Yes")
+            false_label = col.get("false_label", "No")
+            return true_label if truthy else false_label
+        elif col_type == "date":
+            fmt = col.get("date_format", "")
+            if fmt and hasattr(value, "strftime"):
+                try:
+                    return value.strftime(fmt)
+                except (ValueError, AttributeError):
+                    return str(value)
+            return str(value)
+        return str(value)
+
     # ── Phase 3 Computed Helpers ──
 
     def get_facet_counts(self):
@@ -447,6 +616,15 @@ class DataTableMixin:
             "persist_key": self.table_persist_key,
             "printable": self.table_printable,
             "column_stats": self.table_column_stats,
+            # Phase 4
+            "footer_aggregations": self.table_footer_aggregations,
+            "row_class_map": self.table_row_class_map,
+            "column_groups": self.table_column_groups,
+            "row_drag": self.table_row_drag,
+            "row_drag_event": self.table_row_drag_event,
+            "copyable": self.table_copyable,
+            "copy_event": self.table_copy_event,
+            "copy_format": self.table_copy_format,
         }
 
     # ── Queryset Pipeline ──
