@@ -1,0 +1,49 @@
+Data Table Pro Phase 2 — Editing & Layout
+==========================================
+
+Files modified:
+  src/djust_components/rust_handlers.py
+    - DataTableHandler.render() extended with 8 new opt-in features:
+      inline cell editing, column resize, column reorder, frozen columns,
+      column visibility, density toggle, responsive card collapse, editable row mode
+    - All Phase 2 params escaped with conditional_escape() for XSS safety
+    - Hidden trigger buttons for JS-to-server event communication
+
+  src/djust_components/templatetags/djust_components.py
+    - data_table() tag gets 17 new keyword args for Phase 2 features
+    - All default to off, fully backward compatible
+
+  src/djust_components/mixins/data_table.py
+    - 17 new class-level config attrs for Phase 2 features
+    - init_table_state() initializes Phase 2 state (editing_rows, column_order, etc.)
+    - 7 new event handlers: on_table_cell_edit, on_table_reorder,
+      on_table_visibility, on_table_density, on_table_row_edit,
+      on_table_row_save, on_table_row_cancel
+    - 2 override hooks: handle_cell_edit(), handle_row_save()
+    - get_table_context() includes all Phase 2 fields
+
+  src/djust_components/static/djust_components/components.css
+    - 60+ lines of Phase 2 CSS: frozen columns (sticky), spacious density,
+      resize handles, drag-over indicators, toolbar, visibility dropdown,
+      density toggle, row actions, row editing inputs, responsive card collapse
+      (@container query + @media fallback)
+
+Files created:
+  src/djust_components/static/djust_components/data-table.js
+    - Client-side JS module for column resize, reorder, visibility, density,
+      inline edit activation
+    - Auto-initializes on DOMContentLoaded + MutationObserver for LiveView patches
+    - Uses hidden trigger buttons to bridge JS events to djust server events
+
+  .pipeline-state/feat-data-table-pro-phase-2-plan.md
+
+Tests:
+  tests/test_data_table_pro.py
+    - 80 new tests across 16 test classes (F through Q)
+    - Covers all 8 features: inline editing, resize, reorder, frozen columns,
+      visibility, density, responsive cards, editable row mode
+    - Mixin handler tests, template tag param passthrough, CSS existence,
+      XSS escaping for Phase 2 event names
+    - Total: 170 tests (90 Phase 1 + 80 Phase 2), all passing
+
+CHANGELOG.md updated with Phase 2 entry.
