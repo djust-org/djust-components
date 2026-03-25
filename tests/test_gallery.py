@@ -98,7 +98,7 @@ class TestDiscovery:
         from djust_components.gallery.registry import discover_component_classes
 
         classes = discover_component_classes()
-        expected = {"Alert", "Badge", "Button", "Card", "Markdown", "Progress", "Spinner", "StatCard", "StatusDot", "Switch", "Tag", "Toast"}
+        expected = {"Alert", "Badge", "Button", "Card", "Markdown", "NotificationBadge", "Progress", "ProgressCircle", "SegmentedProgress", "Spinner", "StatCard", "StatusDot", "StatusIndicator", "Switch", "Tag", "Toast"}
         assert set(classes.keys()) == expected
 
     def test_all_examples_have_matching_tag_or_class(self):

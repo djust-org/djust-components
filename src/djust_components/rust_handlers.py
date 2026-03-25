@@ -2447,3 +2447,180 @@ INLINE_HANDLERS.extend([
     ("fab", FabHandler()),
     ("split_button", SplitButtonHandler()),
 ])
+
+
+# ===========================================================================
+# STATUS / PROGRESS INDICATOR HANDLERS
+# ===========================================================================
+
+class NotificationBadgeHandler:
+    """Inline handler for {% notification_badge count=5 %}"""
+    def render(self, args, context):
+        kw = _parse_args(args, context)
+        try:
+            count = int(kw.get("count", 0))
+        except (ValueError, TypeError):
+            count = 0
+        try:
+            max_count = int(kw.get("max", 99))
+        except (ValueError, TypeError):
+            max_count = 99
+        dot = kw.get("dot", False)
+        pulse = kw.get("pulse", False)
+        size = conditional_escape(kw.get("size", "md"))
+
+        cls = f"dj-notification-badge dj-notification-badge--{size}"
+        if pulse:
+            cls += " dj-notification-badge--pulse"
+
+        if dot:
+            return mark_safe(f'<span class="{cls} dj-notification-badge--dot"></span>')
+
+        if count <= 0:
+            return ""
+
+        display = f"{max_count}+" if count > max_count else str(count)
+        return mark_safe(f'<span class="{cls}">{display}</span>')
+
+
+class SegmentedProgressHandler:
+    """Inline handler for {% segmented_progress steps=steps current=2 %}"""
+    def render(self, args, context):
+        kw = _parse_args(args, context)
+        steps = kw.get("steps", [])
+        if not isinstance(steps, (list, tuple)):
+            steps = []
+        try:
+            current = int(kw.get("current", 0))
+        except (ValueError, TypeError):
+            current = 0
+        size = conditional_escape(kw.get("size", "md"))
+
+        cls = f"dj-segmented-progress dj-segmented-progress--{size}"
+
+        segments = []
+        for i, step in enumerate(steps):
+            if isinstance(step, dict):
+                label = conditional_escape(str(step.get("label", "")))
+            else:
+                label = conditional_escape(str(step))
+            step_num = i + 1
+            if step_num < current:
+                state = "completed"
+            elif step_num == current:
+                state = "active"
+            else:
+                state = "pending"
+            segments.append(
+                f'<div class="dj-segmented-progress__step dj-segmented-progress__step--{state}">'
+                f'<div class="dj-segmented-progress__indicator">{step_num}</div>'
+                f'<div class="dj-segmented-progress__label">{label}</div>'
+                f'</div>'
+            )
+
+        parts = []
+        for i, seg in enumerate(segments):
+            parts.append(seg)
+            if i < len(segments) - 1:
+                step_num = i + 1
+                line_state = "completed" if step_num < current else "pending"
+                parts.append(
+                    f'<div class="dj-segmented-progress__connector '
+                    f'dj-segmented-progress__connector--{line_state}"></div>'
+                )
+
+        return mark_safe(f'<div class="{cls}">{"".join(parts)}</div>')
+
+
+class ProgressCircleHandler:
+    """Inline handler for {% progress_circle value=65 size="md" %}"""
+    def render(self, args, context):
+        kw = _parse_args(args, context)
+        try:
+            value = max(0, min(100, int(kw.get("value", 0))))
+        except (ValueError, TypeError):
+            value = 0
+        size = str(kw.get("size", "md"))
+        color = conditional_escape(kw.get("color", "primary"))
+        show_value = kw.get("show_value", True)
+
+        sizes = {"sm": 48, "md": 80, "lg": 120}
+        dim = sizes.get(size, 80)
+        stroke_widths = {"sm": 4, "md": 6, "lg": 8}
+        stroke_w = stroke_widths.get(size, 6)
+
+        radius = (dim - stroke_w) / 2
+        circumference = 2 * 3.14159265 * radius
+        dash_offset = circumference * (1 - value / 100)
+
+        e_size = conditional_escape(size)
+        cls = f"dj-progress-circle dj-progress-circle--{e_size} dj-progress-circle--{color}"
+
+        value_html = ""
+        if show_value:
+            font_sizes = {"sm": "0.625rem", "md": "1rem", "lg": "1.5rem"}
+            fs = font_sizes.get(size, "1rem")
+            value_html = (
+                f'<text x="{dim / 2}" y="{dim / 2}" '
+                f'class="dj-progress-circle__value" '
+                f'text-anchor="middle" dominant-baseline="central" '
+                f'style="font-size:{fs}">'
+                f'{value}%</text>'
+            )
+
+        return mark_safe(
+            f'<div class="{cls}" role="progressbar" '
+            f'aria-valuenow="{value}" aria-valuemin="0" aria-valuemax="100">'
+            f'<svg width="{dim}" height="{dim}" viewBox="0 0 {dim} {dim}">'
+            f'<circle class="dj-progress-circle__track" '
+            f'cx="{dim / 2}" cy="{dim / 2}" r="{radius}" '
+            f'fill="none" stroke-width="{stroke_w}"/>'
+            f'<circle class="dj-progress-circle__fill" '
+            f'cx="{dim / 2}" cy="{dim / 2}" r="{radius}" '
+            f'fill="none" stroke-width="{stroke_w}" '
+            f'stroke-dasharray="{circumference:.2f}" '
+            f'stroke-dashoffset="{dash_offset:.2f}" '
+            f'stroke-linecap="round" '
+            f'transform="rotate(-90 {dim / 2} {dim / 2})"/>'
+            f'{value_html}'
+            f'</svg></div>'
+        )
+
+
+class StatusIndicatorHandler:
+    """Inline handler for {% status_indicator status="online" label="API" %}"""
+    def render(self, args, context):
+        kw = _parse_args(args, context)
+        status = str(kw.get("status", "offline"))
+        label = kw.get("label", "")
+        pulse = kw.get("pulse", False)
+        size = conditional_escape(kw.get("size", "md"))
+
+        e_status = conditional_escape(status)
+        e_label = conditional_escape(str(label))
+
+        status_colors = {
+            "online": "green",
+            "degraded": "yellow",
+            "offline": "red",
+            "maintenance": "blue",
+        }
+        color = status_colors.get(status, "gray")
+
+        cls = f"dj-status-indicator dj-status-indicator--{size} dj-status-indicator--{color}"
+        if pulse:
+            cls += " dj-status-indicator--pulse"
+
+        dot_html = '<span class="dj-status-indicator__dot"></span>'
+        label_html = f'<span class="dj-status-indicator__label">{e_label}</span>' if label else ""
+
+        return mark_safe(f'<span class="{cls}">{dot_html}{label_html}</span>')
+
+
+# Register status/progress indicator inline handlers
+INLINE_HANDLERS.extend([
+    ("notification_badge", NotificationBadgeHandler()),
+    ("segmented_progress", SegmentedProgressHandler()),
+    ("progress_circle", ProgressCircleHandler()),
+    ("status_indicator", StatusIndicatorHandler()),
+])

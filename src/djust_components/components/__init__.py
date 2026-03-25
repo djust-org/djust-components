@@ -38,10 +38,14 @@ from .badge import Badge
 from .button import Button
 from .card import Card
 from .markdown import Markdown
+from .notification_badge import NotificationBadge
 from .progress import Progress
+from .progress_circle import ProgressCircle
+from .segmented_progress import SegmentedProgress
 from .spinner import Spinner
 from .stat_card import StatCard
 from .status_dot import StatusDot
+from .status_indicator import StatusIndicator
 from .switch import Switch
 from .tag import Tag
 from .toast import Toast
@@ -52,10 +56,14 @@ __all__ = [
     "Button",
     "Card",
     "Markdown",
+    "NotificationBadge",
     "Progress",
+    "ProgressCircle",
+    "SegmentedProgress",
     "Spinner",
     "StatCard",
     "StatusDot",
+    "StatusIndicator",
     "Switch",
     "Tag",
     "Toast",

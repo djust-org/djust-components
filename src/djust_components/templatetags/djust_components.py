@@ -3746,3 +3746,240 @@ def do_sticky_header(parser, token):
     nodelist = parser.parse(("endsticky_header",))
     parser.delete_first_token()
     return StickyHeaderNode(nodelist, kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Notification Badge
+# ---------------------------------------------------------------------------
+
+class NotificationBadgeNode(template.Node):
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        try:
+            count = int(kw.get("count", 0))
+        except (ValueError, TypeError):
+            count = 0
+        try:
+            max_count = int(kw.get("max", 99))
+        except (ValueError, TypeError):
+            max_count = 99
+        dot = kw.get("dot", False)
+        pulse = kw.get("pulse", False)
+        size = kw.get("size", "md")
+        custom_class = kw.get("custom_class", "")
+
+        e_size = conditional_escape(str(size))
+        e_custom_class = conditional_escape(str(custom_class))
+
+        cls = f"dj-notification-badge dj-notification-badge--{e_size}"
+        if pulse:
+            cls += " dj-notification-badge--pulse"
+        if e_custom_class:
+            cls += f" {e_custom_class}"
+
+        if dot:
+            return mark_safe(f'<span class="{cls} dj-notification-badge--dot"></span>')
+
+        display = f"{max_count}+" if count > max_count else str(count)
+        if count <= 0:
+            return ""
+
+        return mark_safe(f'<span class="{cls}">{display}</span>')
+
+
+@register.tag("notification_badge")
+def do_notification_badge(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return NotificationBadgeNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Segmented Progress
+# ---------------------------------------------------------------------------
+
+class SegmentedProgressNode(template.Node):
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        steps = kw.get("steps", [])
+        if not isinstance(steps, (list, tuple)):
+            steps = []
+        try:
+            current = int(kw.get("current", 0))
+        except (ValueError, TypeError):
+            current = 0
+        size = kw.get("size", "md")
+        custom_class = kw.get("custom_class", "")
+
+        e_size = conditional_escape(str(size))
+        e_custom_class = conditional_escape(str(custom_class))
+
+        cls = f"dj-segmented-progress dj-segmented-progress--{e_size}"
+        if e_custom_class:
+            cls += f" {e_custom_class}"
+
+        segments = []
+        for i, step in enumerate(steps):
+            label = conditional_escape(str(step)) if isinstance(step, str) else conditional_escape(str(step.get("label", ""))) if isinstance(step, dict) else conditional_escape(str(step))
+            step_num = i + 1
+            if step_num < current:
+                state = "completed"
+            elif step_num == current:
+                state = "active"
+            else:
+                state = "pending"
+            segments.append(
+                f'<div class="dj-segmented-progress__step dj-segmented-progress__step--{state}">'
+                f'<div class="dj-segmented-progress__indicator">{step_num}</div>'
+                f'<div class="dj-segmented-progress__label">{label}</div>'
+                f'</div>'
+            )
+
+        # Connector lines between steps
+        parts = []
+        for i, seg in enumerate(segments):
+            parts.append(seg)
+            if i < len(segments) - 1:
+                step_num = i + 1
+                line_state = "completed" if step_num < current else "pending"
+                parts.append(
+                    f'<div class="dj-segmented-progress__connector dj-segmented-progress__connector--{line_state}"></div>'
+                )
+
+        return mark_safe(f'<div class="{cls}">{"".join(parts)}</div>')
+
+
+@register.tag("segmented_progress")
+def do_segmented_progress(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return SegmentedProgressNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Progress Circle
+# ---------------------------------------------------------------------------
+
+class ProgressCircleNode(template.Node):
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        try:
+            value = max(0, min(100, int(kw.get("value", 0))))
+        except (ValueError, TypeError):
+            value = 0
+        size = kw.get("size", "md")
+        color = kw.get("color", "primary")
+        show_value = kw.get("show_value", True)
+        custom_class = kw.get("custom_class", "")
+
+        e_size = conditional_escape(str(size))
+        e_color = conditional_escape(str(color))
+        e_custom_class = conditional_escape(str(custom_class))
+
+        sizes = {"sm": 48, "md": 80, "lg": 120}
+        dim = sizes.get(str(size), 80)
+        stroke_widths = {"sm": 4, "md": 6, "lg": 8}
+        stroke_w = stroke_widths.get(str(size), 6)
+
+        radius = (dim - stroke_w) / 2
+        circumference = 2 * 3.14159265 * radius
+        dash_offset = circumference * (1 - value / 100)
+
+        cls = f"dj-progress-circle dj-progress-circle--{e_size} dj-progress-circle--{e_color}"
+        if e_custom_class:
+            cls += f" {e_custom_class}"
+
+        value_html = ""
+        if show_value:
+            font_sizes = {"sm": "0.625rem", "md": "1rem", "lg": "1.5rem"}
+            fs = font_sizes.get(str(size), "1rem")
+            value_html = (
+                f'<text x="{dim / 2}" y="{dim / 2}" '
+                f'class="dj-progress-circle__value" '
+                f'text-anchor="middle" dominant-baseline="central" '
+                f'style="font-size:{fs}">'
+                f'{value}%</text>'
+            )
+
+        return mark_safe(
+            f'<div class="{cls}" role="progressbar" '
+            f'aria-valuenow="{value}" aria-valuemin="0" aria-valuemax="100">'
+            f'<svg width="{dim}" height="{dim}" viewBox="0 0 {dim} {dim}">'
+            f'<circle class="dj-progress-circle__track" '
+            f'cx="{dim / 2}" cy="{dim / 2}" r="{radius}" '
+            f'fill="none" stroke-width="{stroke_w}"/>'
+            f'<circle class="dj-progress-circle__fill" '
+            f'cx="{dim / 2}" cy="{dim / 2}" r="{radius}" '
+            f'fill="none" stroke-width="{stroke_w}" '
+            f'stroke-dasharray="{circumference:.2f}" '
+            f'stroke-dashoffset="{dash_offset:.2f}" '
+            f'stroke-linecap="round" '
+            f'transform="rotate(-90 {dim / 2} {dim / 2})"/>'
+            f'{value_html}'
+            f'</svg></div>'
+        )
+
+
+@register.tag("progress_circle")
+def do_progress_circle(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return ProgressCircleNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Status Indicator
+# ---------------------------------------------------------------------------
+
+class StatusIndicatorNode(template.Node):
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        status = kw.get("status", "offline")
+        label = kw.get("label", "")
+        pulse = kw.get("pulse", False)
+        size = kw.get("size", "md")
+        custom_class = kw.get("custom_class", "")
+
+        e_status = conditional_escape(str(status))
+        e_label = conditional_escape(str(label))
+        e_size = conditional_escape(str(size))
+        e_custom_class = conditional_escape(str(custom_class))
+
+        # Map statuses to colors
+        status_colors = {
+            "online": "green",
+            "degraded": "yellow",
+            "offline": "red",
+            "maintenance": "blue",
+        }
+        color = status_colors.get(str(status), "gray")
+
+        cls = f"dj-status-indicator dj-status-indicator--{e_size} dj-status-indicator--{color}"
+        if pulse:
+            cls += " dj-status-indicator--pulse"
+        if e_custom_class:
+            cls += f" {e_custom_class}"
+
+        dot_html = f'<span class="dj-status-indicator__dot"></span>'
+        label_html = f'<span class="dj-status-indicator__label">{e_label}</span>' if label else ""
+
+        return mark_safe(f'<span class="{cls}">{dot_html}{label_html}</span>')
+
+
+@register.tag("status_indicator")
+def do_status_indicator(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return StatusIndicatorNode(kwargs)
