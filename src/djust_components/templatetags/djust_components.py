@@ -8201,3 +8201,282 @@ def do_token_counter(parser, token):
     bits = token.split_contents()[1:]
     kwargs = _parse_kv_args(bits, parser)
     return TokenCounterNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Collaboration: Chat Bubble
+# ---------------------------------------------------------------------------
+
+class ChatBubbleNode(template.Node):
+    VALID_STATUSES = {"sending", "sent", "delivered", "read", "error"}
+
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        message = kw.get("message", {})
+        custom_class = kw.get("class", "")
+
+        if not isinstance(message, dict):
+            message = {}
+
+        sender = message.get("sender", "user")
+        name = message.get("name", "")
+        text = message.get("text", "")
+        time_str = message.get("time", "")
+        avatar_src = message.get("avatar", "")
+        status = message.get("status", "")
+
+        e_name = conditional_escape(str(name))
+        e_text = conditional_escape(str(text))
+        e_time = conditional_escape(str(time_str))
+        e_avatar = conditional_escape(str(avatar_src))
+        e_class = conditional_escape(str(custom_class))
+
+        side = "dj-bubble--user" if sender == "user" else "dj-bubble--other"
+        cls = f"dj-bubble {side}"
+        if e_class:
+            cls += f" {e_class}"
+
+        # Avatar
+        initials = conditional_escape(
+            "".join(w[0].upper() for w in str(name).split()[:2] if w) or "?"
+        )
+        if e_avatar:
+            avatar_html = (
+                f'<span class="dj-bubble__avatar">'
+                f'<img src="{e_avatar}" alt="{e_name}" class="dj-bubble__avatar-img">'
+                f'</span>'
+            )
+        else:
+            avatar_html = (
+                f'<span class="dj-bubble__avatar dj-bubble__avatar--initials">'
+                f'{initials}</span>'
+            )
+
+        # Status
+        status_html = ""
+        if status and status in self.VALID_STATUSES:
+            e_status = conditional_escape(str(status))
+            status_icons = {
+                "sending": "&#8987;",
+                "sent": "&#10003;",
+                "delivered": "&#10003;&#10003;",
+                "read": "&#10003;&#10003;",
+                "error": "&#9888;",
+            }
+            icon = status_icons.get(status, "")
+            status_html = (
+                f'<span class="dj-bubble__status dj-bubble__status--{e_status}" '
+                f'aria-label="{e_status}">{icon}</span>'
+            )
+
+        # Header
+        header_html = ""
+        if e_name or e_time:
+            name_part = f'<span class="dj-bubble__name">{e_name}</span>' if e_name else ""
+            time_part = f'<span class="dj-bubble__time">{e_time}</span>' if e_time else ""
+            header_html = f'<div class="dj-bubble__header">{name_part}{time_part}</div>'
+
+        # Footer
+        footer_html = ""
+        if status_html:
+            footer_html = f'<div class="dj-bubble__footer">{status_html}</div>'
+
+        return mark_safe(
+            f'<div class="{cls}">'
+            f'{avatar_html}'
+            f'<div class="dj-bubble__content">'
+            f'{header_html}'
+            f'<div class="dj-bubble__text">{e_text}</div>'
+            f'{footer_html}'
+            f'</div>'
+            f'</div>'
+        )
+
+
+@register.tag("chat_bubble")
+def do_chat_bubble(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return ChatBubbleNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Collaboration: Presence Avatars
+# ---------------------------------------------------------------------------
+
+class PresenceAvatarsNode(template.Node):
+    VALID_STATUSES = {"online", "away", "busy", "offline"}
+
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        users = kw.get("users", [])
+        max_display = int(kw.get("max", 5))
+        custom_class = kw.get("class", "")
+
+        if not isinstance(users, list):
+            users = []
+
+        e_class = conditional_escape(str(custom_class))
+
+        visible = users[:max_display]
+        overflow = len(users) - max_display
+
+        parts = []
+        for i, user in enumerate(visible):
+            if isinstance(user, dict):
+                name = user.get("name", "")
+                src = user.get("avatar", "") or user.get("src", "")
+                status = user.get("status", "online")
+            else:
+                name = str(user)
+                src = ""
+                status = "online"
+
+            e_name = conditional_escape(str(name))
+            e_src = conditional_escape(str(src))
+            safe_status = status if status in self.VALID_STATUSES else "online"
+            initials = conditional_escape(
+                "".join(w[0].upper() for w in str(name).split()[:2] if w) or "?"
+            )
+            z = len(visible) - i
+
+            if e_src:
+                avatar_inner = (
+                    f'<img src="{e_src}" alt="{e_name}" '
+                    f'class="dj-presence__img">'
+                )
+            else:
+                avatar_inner = (
+                    f'<span class="dj-presence__initials">{initials}</span>'
+                )
+
+            dot = (
+                f'<span class="dj-presence__dot '
+                f'dj-presence__dot--{safe_status}"></span>'
+            )
+
+            parts.append(
+                f'<span class="dj-presence__item" title="{e_name}" '
+                f'style="z-index:{z}">'
+                f'{avatar_inner}{dot}'
+                f'</span>'
+            )
+
+        if overflow > 0:
+            parts.append(
+                f'<span class="dj-presence__item dj-presence__overflow">'
+                f'+{overflow}</span>'
+            )
+
+        cls = "dj-presence"
+        if e_class:
+            cls += f" {e_class}"
+
+        total = len(users)
+        label = f'{total} user{"s" if total != 1 else ""} present'
+
+        return mark_safe(
+            f'<div class="{cls}" role="group" aria-label="{label}">'
+            f'{"".join(parts)}'
+            f'</div>'
+        )
+
+
+@register.tag("presence_avatars")
+def do_presence_avatars(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return PresenceAvatarsNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Collaboration: Mentions Input
+# ---------------------------------------------------------------------------
+
+class MentionsInputNode(template.Node):
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def render(self, context):
+        import json as _json
+
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        name = kw.get("name", "message")
+        users = kw.get("users", [])
+        event = kw.get("event", "send")
+        placeholder = kw.get("placeholder", "Type @ to mention...")
+        disabled = kw.get("disabled", False)
+        custom_class = kw.get("class", "")
+
+        if not isinstance(users, list):
+            users = []
+
+        e_name = conditional_escape(str(name))
+        e_event = conditional_escape(str(event))
+        e_placeholder = conditional_escape(str(placeholder))
+        e_class = conditional_escape(str(custom_class))
+        disabled_attr = " disabled" if disabled else ""
+
+        cls = "dj-mentions"
+        if disabled:
+            cls += " dj-mentions--disabled"
+        if e_class:
+            cls += f" {e_class}"
+
+        # Render suggestion items
+        items_html = []
+        for user in users:
+            if not isinstance(user, dict):
+                continue
+            uid = conditional_escape(str(user.get("id", "")))
+            uname = conditional_escape(str(user.get("name", "")))
+            avatar_src = conditional_escape(str(user.get("avatar", "")))
+
+            initials = conditional_escape(
+                "".join(w[0].upper() for w in str(user.get("name", "")).split()[:2] if w)
+            ) or "?"
+
+            if avatar_src:
+                avatar_html = (
+                    f'<img src="{avatar_src}" alt="{uname}" '
+                    f'class="dj-mentions__avatar-img">'
+                )
+            else:
+                avatar_html = (
+                    f'<span class="dj-mentions__avatar-initials">{initials}</span>'
+                )
+
+            items_html.append(
+                f'<li class="dj-mentions__item" data-user-id="{uid}" '
+                f'data-user-name="{uname}" role="option">'
+                f'<span class="dj-mentions__avatar">{avatar_html}</span>'
+                f'<span class="dj-mentions__name">{uname}</span>'
+                f'</li>'
+            )
+
+        users_json = conditional_escape(_json.dumps(users, default=str))
+
+        return mark_safe(
+            f'<div class="{cls}" dj-hook="MentionsInput" '
+            f'data-users="{users_json}">'
+            f'<input type="text" class="dj-mentions__input" name="{e_name}" '
+            f'placeholder="{e_placeholder}" autocomplete="off"{disabled_attr} '
+            f'dj-keydown.enter="{e_event}">'
+            f'<ul class="dj-mentions__dropdown" role="listbox">'
+            f'{"".join(items_html)}'
+            f'</ul>'
+            f'</div>'
+        )
+
+
+@register.tag("mentions_input")
+def do_mentions_input(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return MentionsInputNode(kwargs)
