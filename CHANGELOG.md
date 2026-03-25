@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Overlay/Feedback Components**: 2 new components with Django template tags, Rust engine handlers, CSS, and tests (including XSS coverage):
+  - **Loading Overlay** (`{% loading_overlay active=is_loading %}...{% endloading_overlay %}`) — Semi-transparent overlay with centered spinner that blocks interaction; supports `active`, `text`, `spinner_size` (sm/md/lg), `custom_class`
+  - **Announcement Bar** (`{% announcement_bar type="info" dismissible=True %}...{% endannouncement_bar %}`) — Full-width sticky top bar for site-wide announcements; supports `type` (info/success/warning/danger), `dismissible`, `dismiss_event`, `custom_class`; uses `dj-click` for dismissal
+
 - **Status/Progress Indicators**: 4 new components with Django template tags, Rust engine handlers, component classes, CSS, and 74 tests (including XSS coverage):
   - **Notification Badge** (`{% notification_badge count=5 %}`) — Small count badge for icons/buttons with dot-only mode, max count overflow (99+), pulse animation; supports `count`, `max`, `dot`, `pulse`, `size`, `custom_class`
   - **Segmented Progress** (`{% segmented_progress steps=steps current=2 %}`) — Multi-step progress bar with labeled segments, numbered indicators, and connector lines; supports string or dict steps, `current`, `size`, `custom_class`
