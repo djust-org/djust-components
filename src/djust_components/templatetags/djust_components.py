@@ -4086,3 +4086,311 @@ def do_announcement_bar(parser, token):
     nodelist = parser.parse(("endannouncement_bar",))
     parser.delete_first_token()
     return AnnouncementBarNode(nodelist, kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Rich Select (#103)
+# ---------------------------------------------------------------------------
+
+@register.simple_tag
+def rich_select(name="", options=None, value="", event="", placeholder="Select...",
+                disabled=False, searchable=False, label=""):
+    """Render a rich select dropdown where each option can include icons, images,
+    descriptions, or badges alongside the label.
+
+    Args:
+        name: form field name
+        options: list of dicts with keys: value, label, and optional icon, image,
+                 description, badge
+        value: currently selected value
+        event: dj-click event name for selection
+        placeholder: text shown when nothing is selected
+        disabled: disables the control
+        searchable: adds a search input to filter options
+        label: optional label above the control
+    """
+    if isinstance(disabled, str):
+        disabled = disabled.lower() not in ("false", "0", "")
+    if isinstance(searchable, str):
+        searchable = searchable.lower() not in ("false", "0", "")
+    if options is None:
+        options = []
+
+    value = str(value) if value else ""
+
+    e_name = conditional_escape(name)
+    e_placeholder = conditional_escape(placeholder)
+    e_label = conditional_escape(label)
+    dj_event = conditional_escape(event or name)
+    disabled_attr = " disabled" if disabled else ""
+    disabled_cls = " rich-select--disabled" if disabled else ""
+
+    uid = f"rs-{uuid.uuid4().hex[:6]}"
+
+    # Build selected display
+    selected_opt = None
+    for opt in options:
+        if isinstance(opt, dict) and str(opt.get("value", "")) == value:
+            selected_opt = opt
+            break
+
+    if selected_opt:
+        selected_html = _rich_select_option_html(selected_opt, is_display=True)
+    else:
+        selected_html = f'<span class="rich-select-placeholder">{e_placeholder}</span>'
+
+    # Build option list
+    opt_parts = []
+    for opt in options:
+        if not isinstance(opt, dict):
+            continue
+        ov = str(opt.get("value", ""))
+        active_cls = " rich-select-option--active" if ov == value else ""
+        opt_html = _rich_select_option_html(opt, is_display=False)
+        opt_parts.append(
+            f'<div class="rich-select-option{active_cls}" '
+            f'data-value="{conditional_escape(ov)}" '
+            f'dj-click="{dj_event}" '
+            f'role="option" aria-selected="{"true" if ov == value else "false"}">'
+            f'{opt_html}'
+            f'</div>'
+        )
+
+    search_html = ""
+    if searchable:
+        search_html = (
+            f'<div class="rich-select-search">'
+            f'<input type="text" class="rich-select-search-input" '
+            f'placeholder="Search..." '
+            f'oninput="(function(el){{var items=el.closest(\'.rich-select-dropdown\').'
+            f'querySelectorAll(\'.rich-select-option\');'
+            f'var q=el.value.toLowerCase();items.forEach(function(item){{item.style.display='
+            f'item.textContent.toLowerCase().indexOf(q)>=0?\'\':\'none\';}});}})(this)">'
+            f'</div>'
+        )
+
+    label_html = f'<label class="form-label">{e_label}</label>' if label else ""
+
+    return mark_safe(
+        f'<div class="rich-select{disabled_cls}" id="{uid}">'
+        f'{label_html}'
+        f'<input type="hidden" name="{e_name}" value="{conditional_escape(value)}">'
+        f'<div class="rich-select-trigger" tabindex="0" role="combobox" '
+        f'aria-expanded="false" aria-haspopup="listbox"{disabled_attr} '
+        f'onclick="this.parentElement.classList.toggle(\'rich-select--open\')" '
+        f'onkeydown="if(event.key===\'Enter\'||event.key===\' \'){{event.preventDefault();'
+        f'this.parentElement.classList.toggle(\'rich-select--open\');}}">'
+        f'{selected_html}'
+        f'<span class="rich-select-chevron">&#9662;</span>'
+        f'</div>'
+        f'<div class="rich-select-dropdown" role="listbox">'
+        f'{search_html}'
+        f'{"".join(opt_parts)}'
+        f'</div>'
+        f'</div>'
+    )
+
+
+def _rich_select_option_html(opt, is_display=False):
+    """Render the inner HTML for a rich select option."""
+    parts = []
+    icon = opt.get("icon", "")
+    image = opt.get("image", "")
+    label = conditional_escape(str(opt.get("label", "")))
+    description = opt.get("description", "")
+    badge_text = opt.get("badge", "")
+
+    if image:
+        parts.append(
+            f'<img class="rich-select-option-image" '
+            f'src="{conditional_escape(str(image))}" alt="">'
+        )
+    elif icon:
+        parts.append(
+            f'<span class="rich-select-option-icon">'
+            f'{conditional_escape(str(icon))}</span>'
+        )
+
+    text_parts = [f'<span class="rich-select-option-label">{label}</span>']
+    if description:
+        text_parts.append(
+            f'<span class="rich-select-option-desc">'
+            f'{conditional_escape(str(description))}</span>'
+        )
+
+    parts.append(f'<span class="rich-select-option-text">{"".join(text_parts)}</span>')
+
+    if badge_text:
+        parts.append(
+            f'<span class="rich-select-option-badge">'
+            f'{conditional_escape(str(badge_text))}</span>'
+        )
+
+    return "".join(parts)
+
+
+# ---------------------------------------------------------------------------
+# Data Grid (#54)
+# ---------------------------------------------------------------------------
+
+@register.simple_tag
+def data_grid(columns=None, rows=None, row_key="id", edit_event="grid_cell_edit",
+              resizable=True, frozen_left=0, frozen_right=0,
+              striped=False, compact=False, keyboard_nav=True,
+              new_row_event="", delete_row_event="",
+              custom_class=""):
+    """Render an editable data grid — spreadsheet-like component.
+
+    Distinct from data_table: the grid is optimised for cell-level editing with
+    keyboard navigation, column resize, and frozen columns.
+
+    Args:
+        columns: list of dicts with keys: key, label, width (optional),
+                 editable (bool, default True), type (text|number|select),
+                 options (for select type), frozen (left|right|None)
+        rows: list of dicts keyed by column keys
+        row_key: key field for row identity (default "id")
+        edit_event: dj-click event fired on cell edit commit
+        resizable: enable column resize handles
+        frozen_left: number of columns frozen on the left
+        frozen_right: number of columns frozen on the right
+        striped: alternating row backgrounds
+        compact: reduced cell padding
+        keyboard_nav: enable arrow-key cell navigation
+        new_row_event: event name for Add Row button (hidden if empty)
+        delete_row_event: event name for row deletion
+        custom_class: additional CSS classes
+    """
+    if columns is None:
+        columns = []
+    if rows is None:
+        rows = []
+    if isinstance(resizable, str):
+        resizable = resizable.lower() not in ("false", "0", "")
+    if isinstance(striped, str):
+        striped = striped.lower() not in ("false", "0", "")
+    if isinstance(compact, str):
+        compact = compact.lower() not in ("false", "0", "")
+    if isinstance(keyboard_nav, str):
+        keyboard_nav = keyboard_nav.lower() not in ("false", "0", "")
+
+    e_edit_event = conditional_escape(edit_event)
+    e_custom_class = conditional_escape(custom_class)
+    e_new_row_event = conditional_escape(new_row_event)
+    e_delete_row_event = conditional_escape(delete_row_event)
+
+    wrapper_cls = "data-grid-wrapper"
+    if striped:
+        wrapper_cls += " data-grid-striped"
+    if compact:
+        wrapper_cls += " data-grid-compact"
+    if e_custom_class:
+        wrapper_cls += f" {e_custom_class}"
+
+    wrapper_attrs = f'class="{wrapper_cls}"'
+    if resizable:
+        wrapper_attrs += ' data-resizable="true"'
+    if keyboard_nav:
+        wrapper_attrs += ' data-keyboard-nav="true"'
+    wrapper_attrs += f' data-edit-event="{e_edit_event}"'
+
+    # --- Header ---
+    header_cells = []
+    for idx, col in enumerate(columns):
+        if not isinstance(col, dict):
+            continue
+        col_key = conditional_escape(str(col.get("key", "")))
+        col_label = conditional_escape(str(col.get("label", col.get("key", ""))))
+        width = col.get("width", "")
+        style = f' style="width:{conditional_escape(str(width))};min-width:{conditional_escape(str(width))}"' if width else ""
+        frozen_cls = ""
+        if idx < frozen_left:
+            frozen_cls = " data-grid-frozen-left"
+        elif frozen_right and idx >= len(columns) - frozen_right:
+            frozen_cls = " data-grid-frozen-right"
+        resize_attr = ' data-resizable="true"' if resizable else ""
+        header_cells.append(
+            f'<th class="data-grid-header-cell{frozen_cls}" '
+            f'data-col-key="{col_key}"{style}{resize_attr}>'
+            f'{col_label}</th>'
+        )
+
+    # Add delete column header if delete_row_event is set
+    if delete_row_event:
+        header_cells.append('<th class="data-grid-header-cell data-grid-actions-col"></th>')
+
+    # --- Body rows ---
+    body_rows = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        rk = conditional_escape(str(row.get(row_key, "")))
+        cells = []
+        for idx, col in enumerate(columns):
+            if not isinstance(col, dict):
+                continue
+            col_key_raw = str(col.get("key", ""))
+            col_key = conditional_escape(col_key_raw)
+            cell_val = conditional_escape(str(row.get(col_key_raw, "")))
+            editable = col.get("editable", True)
+            if isinstance(editable, str):
+                editable = editable.lower() not in ("false", "0", "")
+            col_type = col.get("type", "text")
+
+            frozen_cls = ""
+            if idx < frozen_left:
+                frozen_cls = " data-grid-frozen-left"
+            elif frozen_right and idx >= len(columns) - frozen_right:
+                frozen_cls = " data-grid-frozen-right"
+
+            edit_attr = ' data-editable="true"' if editable else ""
+            type_attr = f' data-type="{conditional_escape(str(col_type))}"'
+
+            cells.append(
+                f'<td class="data-grid-cell{frozen_cls}" '
+                f'data-col-key="{col_key}" tabindex="-1"'
+                f'{edit_attr}{type_attr}>'
+                f'{cell_val}</td>'
+            )
+
+        # Delete button cell
+        if delete_row_event:
+            cells.append(
+                f'<td class="data-grid-cell data-grid-actions-col">'
+                f'<button class="data-grid-delete-btn" '
+                f'dj-click="{e_delete_row_event}" data-value="{rk}" '
+                f'title="Delete row">&times;</button>'
+                f'</td>'
+            )
+
+        body_rows.append(
+            f'<tr class="data-grid-row" data-row-key="{rk}">{"".join(cells)}</tr>'
+        )
+
+    # --- Add Row button ---
+    add_row_html = ""
+    if new_row_event:
+        add_row_html = (
+            f'<div class="data-grid-toolbar">'
+            f'<button class="data-grid-add-btn" dj-click="{e_new_row_event}">+ Add Row</button>'
+            f'</div>'
+        )
+
+    # Hidden triggers for edit events
+    trigger_html = (
+        f'<button class="data-grid-edit-trigger" style="display:none" '
+        f'dj-click="{e_edit_event}"></button>'
+    )
+
+    return mark_safe(
+        f'<div {wrapper_attrs}>'
+        f'<div class="data-grid-scroll">'
+        f'<table class="data-grid" role="grid">'
+        f'<thead><tr>{"".join(header_cells)}</tr></thead>'
+        f'<tbody>{"".join(body_rows)}</tbody>'
+        f'</table>'
+        f'</div>'
+        f'{trigger_html}'
+        f'{add_row_html}'
+        f'</div>'
+    )

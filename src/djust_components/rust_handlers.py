@@ -2702,3 +2702,53 @@ BLOCK_HANDLERS.extend([
     ("loading_overlay", "endloading_overlay", LoadingOverlayHandler()),
     ("announcement_bar", "endannouncement_bar", AnnouncementBarHandler()),
 ])
+
+
+# ===========================================================================
+# RICH SELECT & DATA GRID HANDLERS
+# ===========================================================================
+
+
+class RichSelectHandler:
+    """Inline handler for {% rich_select name=... options=... %}"""
+    def render(self, args, context):
+        from djust_components.templatetags.djust_components import rich_select as _rs
+        kwargs = _parse_args(args, context)
+        return str(_rs(
+            name=kwargs.get("name", ""),
+            options=kwargs.get("options"),
+            value=kwargs.get("value", ""),
+            event=kwargs.get("event", ""),
+            placeholder=kwargs.get("placeholder", "Select..."),
+            disabled=kwargs.get("disabled", False),
+            searchable=kwargs.get("searchable", False),
+            label=kwargs.get("label", ""),
+        ))
+
+
+class DataGridHandler:
+    """Inline handler for {% data_grid columns=cols rows=rows %}"""
+    def render(self, args, context):
+        from djust_components.templatetags.djust_components import data_grid as _dg
+        kwargs = _parse_args(args, context)
+        return str(_dg(
+            columns=kwargs.get("columns"),
+            rows=kwargs.get("rows"),
+            row_key=kwargs.get("row_key", "id"),
+            edit_event=kwargs.get("edit_event", "grid_cell_edit"),
+            resizable=kwargs.get("resizable", True),
+            frozen_left=kwargs.get("frozen_left", 0),
+            frozen_right=kwargs.get("frozen_right", 0),
+            striped=kwargs.get("striped", False),
+            compact=kwargs.get("compact", False),
+            keyboard_nav=kwargs.get("keyboard_nav", True),
+            new_row_event=kwargs.get("new_row_event", ""),
+            delete_row_event=kwargs.get("delete_row_event", ""),
+            custom_class=kwargs.get("custom_class", ""),
+        ))
+
+
+INLINE_HANDLERS.extend([
+    ("rich_select", RichSelectHandler()),
+    ("data_grid", DataGridHandler()),
+])
