@@ -3514,3 +3514,235 @@ def split_button(label="", event="", options=None, variant="primary",
         f'{menu_html}'
         f'</div>'
     )
+
+
+# ---------------------------------------------------------------------------
+# Scroll Area
+# ---------------------------------------------------------------------------
+
+class ScrollAreaNode(template.Node):
+    def __init__(self, nodelist, kwargs):
+        self.nodelist = nodelist
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        max_height = kw.get("max_height", "400px")
+        custom_class = kw.get("custom_class", "")
+
+        e_max_height = conditional_escape(str(max_height))
+        e_custom_class = conditional_escape(str(custom_class))
+
+        content = self.nodelist.render(context)
+
+        cls = "dj-scroll-area"
+        if e_custom_class:
+            cls += f" {e_custom_class}"
+
+        return mark_safe(
+            f'<div class="{cls}" style="--dj-scroll-area-max-height: {e_max_height}; '
+            f'max-height: var(--dj-scroll-area-max-height); overflow-y: auto;">'
+            f'{content}</div>'
+        )
+
+
+@register.tag("scroll_area")
+def do_scroll_area(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    nodelist = parser.parse(("endscroll_area",))
+    parser.delete_first_token()
+    return ScrollAreaNode(nodelist, kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Callout / Blockquote
+# ---------------------------------------------------------------------------
+
+class CalloutNode(template.Node):
+    ICONS = {
+        "info": "&#9432;",       # circled i
+        "warning": "&#9888;",    # warning sign
+        "danger": "&#9888;",     # warning sign
+        "success": "&#10004;",   # check mark
+    }
+
+    def __init__(self, nodelist, kwargs):
+        self.nodelist = nodelist
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        callout_type = kw.get("type", "default")
+        title = kw.get("title", "")
+        icon = kw.get("icon", "")
+        custom_class = kw.get("custom_class", "")
+
+        e_type = conditional_escape(str(callout_type))
+        e_title = conditional_escape(str(title))
+        e_icon = conditional_escape(str(icon))
+        e_custom_class = conditional_escape(str(custom_class))
+
+        content = self.nodelist.render(context)
+
+        cls = "dj-callout"
+        if callout_type != "default":
+            cls += f" dj-callout--{e_type}"
+        if e_custom_class:
+            cls += f" {e_custom_class}"
+
+        icon_html = ""
+        if e_icon:
+            icon_html = f'<span class="dj-callout__icon">{e_icon}</span>'
+        elif callout_type in self.ICONS:
+            icon_html = f'<span class="dj-callout__icon">{self.ICONS[callout_type]}</span>'
+
+        title_html = ""
+        if e_title:
+            title_html = f'<div class="dj-callout__title">{e_title}</div>'
+
+        return mark_safe(
+            f'<div class="{cls}">'
+            f'{icon_html}'
+            f'<div class="dj-callout__body">'
+            f'{title_html}'
+            f'<div class="dj-callout__content">{content}</div>'
+            f'</div>'
+            f'</div>'
+        )
+
+
+@register.tag("callout")
+def do_callout(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    nodelist = parser.parse(("endcallout",))
+    parser.delete_first_token()
+    return CalloutNode(nodelist, kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Aspect Ratio
+# ---------------------------------------------------------------------------
+
+class AspectRatioNode(template.Node):
+    def __init__(self, nodelist, kwargs):
+        self.nodelist = nodelist
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        ratio = kw.get("ratio", "16/9")
+        custom_class = kw.get("custom_class", "")
+
+        e_ratio = conditional_escape(str(ratio))
+        e_custom_class = conditional_escape(str(custom_class))
+
+        content = self.nodelist.render(context)
+
+        cls = "dj-aspect-ratio"
+        if e_custom_class:
+            cls += f" {e_custom_class}"
+
+        return mark_safe(
+            f'<div class="{cls}" style="aspect-ratio: {e_ratio};">'
+            f'{content}</div>'
+        )
+
+
+@register.tag("aspect_ratio")
+def do_aspect_ratio(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    nodelist = parser.parse(("endaspect_ratio",))
+    parser.delete_first_token()
+    return AspectRatioNode(nodelist, kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Description List
+# ---------------------------------------------------------------------------
+
+class DescriptionListNode(template.Node):
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        items = kw.get("items", [])
+        layout = kw.get("layout", "vertical")
+        custom_class = kw.get("custom_class", "")
+
+        e_layout = conditional_escape(str(layout))
+        e_custom_class = conditional_escape(str(custom_class))
+
+        cls = "dj-dl"
+        if layout == "horizontal":
+            cls += " dj-dl--horizontal"
+        if e_custom_class:
+            cls += f" {e_custom_class}"
+
+        dl_items = []
+        if isinstance(items, (list, tuple)):
+            for item in items:
+                if isinstance(item, dict):
+                    term = conditional_escape(str(item.get("term", "")))
+                    detail = conditional_escape(str(item.get("detail", "")))
+                    dl_items.append(
+                        f'<div class="dj-dl__pair">'
+                        f'<dt class="dj-dl__term">{term}</dt>'
+                        f'<dd class="dj-dl__detail">{detail}</dd>'
+                        f'</div>'
+                    )
+
+        return mark_safe(
+            f'<dl class="{cls}">{"".join(dl_items)}</dl>'
+        )
+
+
+@register.tag("description_list")
+def do_description_list(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return DescriptionListNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Sticky Header
+# ---------------------------------------------------------------------------
+
+class StickyHeaderNode(template.Node):
+    def __init__(self, nodelist, kwargs):
+        self.nodelist = nodelist
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        offset = kw.get("offset", "0")
+        z_index = kw.get("z_index", "10")
+        custom_class = kw.get("custom_class", "")
+
+        e_offset = conditional_escape(str(offset))
+        e_z_index = conditional_escape(str(z_index))
+        e_custom_class = conditional_escape(str(custom_class))
+
+        content = self.nodelist.render(context)
+
+        cls = "dj-sticky-header"
+        if e_custom_class:
+            cls += f" {e_custom_class}"
+
+        return mark_safe(
+            f'<div class="{cls}" style="position: sticky; top: {e_offset}; '
+            f'z-index: {e_z_index};">'
+            f'{content}</div>'
+        )
+
+
+@register.tag("sticky_header")
+def do_sticky_header(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    nodelist = parser.parse(("endsticky_header",))
+    parser.delete_first_token()
+    return StickyHeaderNode(nodelist, kwargs)

@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Display/Layout Primitives**: 5 new components with Django template tags, CSS, and full test + XSS coverage:
+  - **Scroll Area** (`{% scroll_area %}...{% endscroll_area %}`) — Custom-styled scrollbar container with `max_height` prop, CSS custom properties for thumb/track colors, and thin-scrollbar support; `max_height`, `custom_class`
+  - **Callout / Blockquote** (`{% callout %}...{% endcallout %}`) — Styled content block with colored left border, icon, and title; type variants (info/warning/danger/success) with auto-icons; `type`, `title`, `icon`, `custom_class`
+  - **Aspect Ratio** (`{% aspect_ratio %}...{% endaspect_ratio %}`) — CSS `aspect-ratio` container for responsive media; `ratio` (e.g. "16/9", "4/3", "1/1"), `custom_class`
+  - **Description List** (`{% description_list items=items %}`) — Key-value display with vertical/horizontal layout modes using `<dl>`/`<dt>`/`<dd>` semantics; `items` (list of `{term, detail}` dicts), `layout`, `custom_class`
+  - **Sticky Header** (`{% sticky_header %}...{% endsticky_header %}`) — `position: sticky` container with configurable top offset, z-index, and shadow-on-scroll CSS class; `offset`, `z_index`, `custom_class`
+
 - **Button & Control Variants**: 3 new components with Django template tags, Rust engine handlers, CSS, and full test + XSS coverage:
   - **Toggle Group** (`{% toggle_group %}`) — Segmented button group with single/multi select mode, icon support, size variants, ARIA pressed state; supports `name`, `options`, `value`, `event`, `mode`, `disabled`, `size`
   - **Floating Action Button** (`{% fab %}`) — Fixed-position FAB with optional speed-dial sub-actions, position variants (4 corners), size/variant/disabled support; supports `icon`, `event`, `position`, `label`, `size`, `variant`, `disabled`, `actions`
