@@ -3983,3 +3983,106 @@ def do_status_indicator(parser, token):
     bits = token.split_contents()[1:]
     kwargs = _parse_kv_args(bits, parser)
     return StatusIndicatorNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Loading Overlay
+# ---------------------------------------------------------------------------
+
+class LoadingOverlayNode(template.Node):
+    def __init__(self, nodelist, kwargs):
+        self.nodelist = nodelist
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        active = kw.get("active", False)
+        text = kw.get("text", "")
+        spinner_size = kw.get("spinner_size", "md")
+        custom_class = kw.get("custom_class", "")
+
+        content = self.nodelist.render(context)
+
+        e_spinner_size = conditional_escape(str(spinner_size))
+        e_custom_class = conditional_escape(str(custom_class))
+        e_text = conditional_escape(str(text))
+
+        cls = "dj-loading-overlay-wrap"
+        if e_custom_class:
+            cls += f" {e_custom_class}"
+
+        overlay_html = ""
+        if active:
+            text_html = f'<span class="dj-loading-overlay__text">{e_text}</span>' if text else ""
+            overlay_html = (
+                f'<div class="dj-loading-overlay">'
+                f'<div class="dj-loading-overlay__spinner dj-loading-overlay__spinner--{e_spinner_size}"></div>'
+                f'{text_html}'
+                f'</div>'
+            )
+
+        return mark_safe(
+            f'<div class="{cls}">'
+            f'{content}'
+            f'{overlay_html}'
+            f'</div>'
+        )
+
+
+@register.tag("loading_overlay")
+def do_loading_overlay(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    nodelist = parser.parse(("endloading_overlay",))
+    parser.delete_first_token()
+    return LoadingOverlayNode(nodelist, kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Announcement Bar
+# ---------------------------------------------------------------------------
+
+class AnnouncementBarNode(template.Node):
+    def __init__(self, nodelist, kwargs):
+        self.nodelist = nodelist
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        bar_type = kw.get("type", "info")
+        dismissible = kw.get("dismissible", False)
+        dismiss_event = kw.get("dismiss_event", "dismiss_announcement")
+        custom_class = kw.get("custom_class", "")
+
+        content = self.nodelist.render(context)
+
+        e_bar_type = conditional_escape(str(bar_type))
+        e_dismiss_event = conditional_escape(str(dismiss_event))
+        e_custom_class = conditional_escape(str(custom_class))
+
+        cls = f"dj-announcement-bar dj-announcement-bar--{e_bar_type}"
+        if e_custom_class:
+            cls += f" {e_custom_class}"
+
+        close_html = ""
+        if dismissible:
+            close_html = (
+                f'<button class="dj-announcement-bar__close" '
+                f'dj-click="{e_dismiss_event}">&times;</button>'
+            )
+
+        return mark_safe(
+            f'<div class="{cls}" role="banner">'
+            f'<div class="dj-announcement-bar__content">{content}</div>'
+            f'{close_html}'
+            f'</div>'
+        )
+
+
+@register.tag("announcement_bar")
+def do_announcement_bar(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    nodelist = parser.parse(("endannouncement_bar",))
+    parser.delete_first_token()
+    return AnnouncementBarNode(nodelist, kwargs)
