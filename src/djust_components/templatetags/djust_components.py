@@ -792,7 +792,7 @@ def do_alert(parser, token):
 
 @register.simple_tag
 def dj_button(label="", variant="primary", event="", icon="",
-              disabled=False, loading=False, size="md"):
+              disabled=False, loading=False, size="md", preset=""):
     """Render a button element.
 
     Args:
@@ -803,7 +803,32 @@ def dj_button(label="", variant="primary", event="", icon="",
         disabled: disables the button
         loading: shows spinner and disables button
         size: sm, md, lg (md emits no extra class)
+        preset: optional preset name (see ``djust_components.presets``)
     """
+    # Apply preset defaults — explicit kwargs take precedence.
+    if preset:
+        from djust_components.presets import get_preset
+
+        preset_params = get_preset("dj_button", preset)
+        if preset_params:
+            # Only apply preset values for args the caller left at defaults.
+            _defaults = {"variant": "primary", "event": "", "icon": "",
+                         "disabled": False, "loading": False, "size": "md"}
+            if label == "" and "label" in preset_params:
+                label = preset_params["label"]
+            if variant == _defaults["variant"] and "variant" in preset_params:
+                variant = preset_params["variant"]
+            if event == _defaults["event"] and "event" in preset_params:
+                event = preset_params["event"]
+            if icon == _defaults["icon"] and "icon" in preset_params:
+                icon = preset_params["icon"]
+            if disabled == _defaults["disabled"] and "disabled" in preset_params:
+                disabled = preset_params["disabled"]
+            if loading == _defaults["loading"] and "loading" in preset_params:
+                loading = preset_params["loading"]
+            if size == _defaults["size"] and "size" in preset_params:
+                size = preset_params["size"]
+
     if isinstance(disabled, str):
         disabled = disabled.lower() not in ("false", "0", "")
     if isinstance(loading, str):

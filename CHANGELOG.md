@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Composition Guide** (`docs/COMPOSITION_GUIDE.md`) — Documents common component nesting patterns: Card + Tabs, Modal + Form, Toolbar + Data Table, Sidebar + Breadcrumb, Modal + Approval Gate, Dashboard stat cards, and toast notifications from LiveView handlers. (#COMP-GUIDE)
+- **Server-side Helpers Module** (`from djust_components.helpers import push_toast, confirm_action`) — Python utilities that pair with component template tags to reduce boilerplate in LiveView event handlers. `push_toast()` builds a dict for `{% dj_toast %}`, `confirm_action()` builds a dict for `{% approval_gate %}`. Input validation for type/risk/duration. (#HELPERS)
+- **Component Presets** (`{% dj_button preset="danger-confirm" %}`) — Preset registry that maps short names to predefined parameter sets. Ships with built-in button presets: `danger-confirm`, `danger-sm`, `primary-lg`, `ghost-sm`, `success`, `warning`, `link`, `loading`. Custom presets via `register_preset()`. Explicit kwargs override preset values. (#PRESETS)
+
+### Added
 - **v1.5 Remaining Components**: 15 new components with Django template tags, Rust engine handlers, Python component classes, CSS, and tests (including XSS coverage):
   - **Time Picker** (`{% time_picker name="start_time" value="14:30" event="set_time" %}`) -- Hour/minute selector with AM/PM toggle or 24h format. Supports `name`, `value`, `event`, `format_24h`, `step`, `disabled`, `label`, `class`. Also available as Python class `TimePicker(name=..., value=...)`. (#117)
   - **Wizard / Multi-step Form** (`{% wizard steps=steps active=current %}...{% endwizard %}`) -- Form split across numbered steps with per-step validation. Step indicators with completed/active states and connector lines. Supports `steps`, `active`, `event`, `show_numbers`, `class`. Also available as Python class `Wizard(steps=..., active=...)`. (#111)
