@@ -334,3 +334,140 @@ class TestCollapsibleHandlerCSS:
         assert "collapsible-open" in result
         assert "collapsible-trigger" in result
         assert "collapsible-content" in result
+
+
+# ─── CSS class presence tests for Batch 2 (overlay/positioning) components ───
+
+
+class TestPopoverHandlerCSS:
+    def test_popover_classes_present(self):
+        from djust_components.rust_handlers import PopoverHandler
+        handler = PopoverHandler()
+        result = handler.render(['trigger="Info"', 'title="Details"'], "popover body", {})
+        assert "popover-wrapper" in result
+        assert "popover-trigger" in result
+        assert "popover-title" in result
+        assert "popover-content" in result
+
+    def test_popover_placement_class(self):
+        from djust_components.rust_handlers import PopoverHandler
+        handler = PopoverHandler()
+        result = handler.render(['placement="top"'], "content", {})
+        assert "popover-top" in result
+
+    def test_popover_default_placement(self):
+        from djust_components.rust_handlers import PopoverHandler
+        handler = PopoverHandler()
+        result = handler.render([], "content", {})
+        assert "popover-bottom" in result
+
+
+class TestSheetHandlerCSS:
+    def test_sheet_classes_present(self):
+        from djust_components.rust_handlers import SheetHandler
+        handler = SheetHandler()
+        result = handler.render(['title="Settings"', "open=True"], "sheet body", {})
+        assert "sheet-overlay" in result
+        assert "sheet-header" in result
+        assert "sheet-title" in result
+        assert "sheet-close" in result
+        assert "sheet-body" in result
+
+    def test_sheet_side_class(self):
+        from djust_components.rust_handlers import SheetHandler
+        handler = SheetHandler()
+        result = handler.render(['side="left"', "open=True"], "body", {})
+        assert "sheet-left" in result
+
+    def test_sheet_default_side(self):
+        from djust_components.rust_handlers import SheetHandler
+        handler = SheetHandler()
+        result = handler.render(["open=True"], "body", {})
+        assert "sheet-right" in result
+
+    def test_sheet_no_title_has_close(self):
+        from djust_components.rust_handlers import SheetHandler
+        handler = SheetHandler()
+        result = handler.render(["open=True"], "body", {})
+        assert "sheet-header-close" in result
+        assert "sheet-close" in result
+
+    def test_sheet_open_attr(self):
+        from djust_components.rust_handlers import SheetHandler
+        handler = SheetHandler()
+        result = handler.render(["open=True"], "body", {})
+        assert 'data-open="true"' in result
+
+    def test_sheet_closed_no_attr(self):
+        from djust_components.rust_handlers import SheetHandler
+        handler = SheetHandler()
+        result = handler.render(["open=False"], "body", {})
+        assert 'data-open="true"' not in result
+
+
+class TestContextMenuHandlerCSS:
+    def test_context_menu_classes_present(self):
+        from djust_components.rust_handlers import ContextMenuHandler
+        handler = ContextMenuHandler()
+        result = handler.render(['label="Options"'], "items", {})
+        assert "ctx-wrapper" in result
+        assert "ctx-trigger" in result
+        assert "ctx-menu" in result
+
+    def test_context_menu_item_classes(self):
+        from djust_components.rust_handlers import ContextMenuItemHandler
+        handler = ContextMenuItemHandler()
+        result = handler.render(['label="Copy"', 'event="copy"', 'icon="📋"'], {})
+        assert "ctx-item" in result
+        assert "ctx-item-icon" in result
+
+    def test_context_menu_item_danger_class(self):
+        from djust_components.rust_handlers import ContextMenuItemHandler
+        handler = ContextMenuItemHandler()
+        result = handler.render(['label="Delete"', 'event="delete"', "danger=True"], {})
+        assert "ctx-item-danger" in result
+
+    def test_context_menu_item_divider_class(self):
+        from djust_components.rust_handlers import ContextMenuItemHandler
+        handler = ContextMenuItemHandler()
+        result = handler.render(["divider=True"], {})
+        assert "ctx-divider" in result
+
+
+class TestCommandPaletteHandlerCSS:
+    def test_palette_classes_present(self):
+        from djust_components.rust_handlers import CommandPaletteHandler
+        handler = CommandPaletteHandler()
+        result = handler.render(["open=True"], "items", {})
+        assert "palette-overlay" in result
+        assert "palette" in result
+        assert "palette-search" in result
+        assert "palette-search-icon" in result
+        assert "palette-input" in result
+        assert "palette-close" in result
+        assert "palette-results" in result
+
+    def test_palette_open_attr(self):
+        from djust_components.rust_handlers import CommandPaletteHandler
+        handler = CommandPaletteHandler()
+        result = handler.render(["open=True"], "items", {})
+        assert 'data-open="true"' in result
+
+    def test_palette_closed_no_attr(self):
+        from djust_components.rust_handlers import CommandPaletteHandler
+        handler = CommandPaletteHandler()
+        result = handler.render(["open=False"], "items", {})
+        assert 'data-open="true"' not in result
+
+    def test_palette_item_classes(self):
+        from djust_components.rust_handlers import PaletteItemHandler
+        handler = PaletteItemHandler()
+        result = handler.render(
+            ['label="Open File"', 'shortcut="Ctrl+O"', 'description="Open a file"', 'icon="📂"', 'event="open_file"'],
+            {},
+        )
+        assert "palette-item" in result
+        assert "palette-item-icon" in result
+        assert "palette-item-body" in result
+        assert "palette-item-label" in result
+        assert "palette-item-desc" in result
