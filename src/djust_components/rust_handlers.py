@@ -4634,3 +4634,211 @@ BLOCK_HANDLERS.extend([
     ("app_header", "endapp_header", AppHeaderHandler()),
     ("app_content", "endapp_content", AppContentHandler()),
 ])
+
+
+# ---------------------------------------------------------------------------
+# Toolbar (#87)
+# ---------------------------------------------------------------------------
+
+class ToolbarHandler:
+    """Block handler for {% toolbar %}...{% endtoolbar %}
+
+    Horizontal action bar with grouped buttons, separators, overflow menu.
+    """
+
+    def render(self, args, content, context):
+        kw = _parse_args(args, context)
+        toolbar_id = conditional_escape(kw.get("id", "toolbar"))
+        custom_class = conditional_escape(kw.get("class", ""))
+        size = conditional_escape(kw.get("size", "md"))
+        variant = conditional_escape(kw.get("variant", "default"))
+
+        cls = f"dj-toolbar dj-toolbar--{size} dj-toolbar--{variant}"
+        if custom_class:
+            cls += f" {custom_class}"
+
+        return mark_safe(
+            f'<div class="{cls}" id="{toolbar_id}" role="toolbar">'
+            f'{content}</div>'
+        )
+
+
+class ToolbarSeparatorHandler:
+    """Inline handler for {% toolbar_separator %}"""
+
+    def render(self, args, context):
+        return mark_safe('<div class="dj-toolbar__separator" role="separator"></div>')
+
+
+class ToolbarOverflowHandler:
+    """Block handler for {% toolbar_overflow %}...{% endtoolbar_overflow %}"""
+
+    def render(self, args, content, context):
+        return mark_safe(
+            f'<div class="dj-toolbar__overflow">'
+            f'<button class="dj-toolbar__overflow-trigger" aria-label="More actions">'
+            f'<span class="dj-toolbar__overflow-icon">&#8942;</span></button>'
+            f'<div class="dj-toolbar__overflow-menu">{content}</div></div>'
+        )
+
+
+# ---------------------------------------------------------------------------
+# Inline Edit (#88)
+# ---------------------------------------------------------------------------
+
+class InlineEditHandler:
+    """Inline handler for {% inline_edit value=title event="update_title" %}
+
+    Click text to edit in-place. Shows input on click, saves on Enter/blur,
+    cancels on Escape.
+    """
+
+    def render(self, args, context):
+        kw = _parse_args(args, context)
+        value = conditional_escape(str(kw.get("value", "")))
+        event = conditional_escape(kw.get("event", "inline_edit"))
+        field = conditional_escape(kw.get("field", ""))
+        input_type = conditional_escape(kw.get("type", "text"))
+        placeholder = conditional_escape(kw.get("placeholder", ""))
+        custom_class = conditional_escape(kw.get("class", ""))
+        editing = kw.get("editing", False)
+
+        cls = "dj-inline-edit"
+        if editing:
+            cls += " dj-inline-edit--editing"
+        if custom_class:
+            cls += f" {custom_class}"
+
+        if editing:
+            return mark_safe(
+                f'<span class="{cls}">'
+                f'<input class="dj-inline-edit__input" type="{input_type}" '
+                f'value="{value}" placeholder="{placeholder}" '
+                f'data-field="{field}" '
+                f'dj-keydown.enter="{event}" '
+                f'dj-blur="{event}" '
+                f'dj-keydown.escape="inline_edit_cancel" '
+                f'autofocus></span>'
+            )
+        else:
+            return mark_safe(
+                f'<span class="{cls}" dj-click="inline_edit_start" '
+                f'data-field="{field}" title="Click to edit">'
+                f'<span class="dj-inline-edit__display">{value}</span>'
+                f'<span class="dj-inline-edit__icon">&#9998;</span></span>'
+            )
+
+
+# ---------------------------------------------------------------------------
+# Filter Bar (#166)
+# ---------------------------------------------------------------------------
+
+class FilterBarHandler:
+    """Block handler for {% filter_bar %}...{% endfilter_bar %}
+
+    Horizontal bar composing filter controls with responsive collapse.
+    """
+
+    def render(self, args, content, context):
+        kw = _parse_args(args, context)
+        bar_id = conditional_escape(kw.get("id", "filter-bar"))
+        event = conditional_escape(kw.get("event", "filter_change"))
+        custom_class = conditional_escape(kw.get("class", ""))
+        clear_event = conditional_escape(kw.get("clear_event", "filter_clear"))
+
+        cls = "dj-filter-bar"
+        if custom_class:
+            cls += f" {custom_class}"
+
+        return mark_safe(
+            f'<div class="{cls}" id="{bar_id}" role="search">'
+            f'<div class="dj-filter-bar__controls">{content}</div></div>'
+        )
+
+
+class FilterSelectHandler:
+    """Inline handler for {% filter_select name="status" options=statuses %}"""
+
+    def render(self, args, context):
+        kw = _parse_args(args, context)
+        name = conditional_escape(kw.get("name", ""))
+        label = conditional_escape(kw.get("label", kw.get("name", "")))
+        options = kw.get("options", [])
+        value = kw.get("value", "")
+        event = conditional_escape(kw.get("event", "filter_change"))
+
+        opt_html = f'<option value="">{label}</option>'
+        if isinstance(options, list):
+            for opt in options:
+                if isinstance(opt, dict):
+                    ov = conditional_escape(str(opt.get("value", "")))
+                    ol = conditional_escape(str(opt.get("label", ov)))
+                    raw_v = str(opt.get("value", ""))
+                else:
+                    ov = conditional_escape(str(opt))
+                    ol = ov
+                    raw_v = str(opt)
+                selected = " selected" if raw_v == str(value) else ""
+                opt_html += f'<option value="{ov}"{selected}>{ol}</option>'
+
+        return mark_safe(
+            f'<div class="dj-filter-bar__control dj-filter-bar__select-wrap">'
+            f'<select class="dj-filter-bar__select" name="{name}" '
+            f'dj-change="{event}">{opt_html}</select></div>'
+        )
+
+
+class FilterDateRangeHandler:
+    """Inline handler for {% filter_date_range name="dates" %}"""
+
+    def render(self, args, context):
+        kw = _parse_args(args, context)
+        name = conditional_escape(kw.get("name", ""))
+        label = conditional_escape(kw.get("label", kw.get("name", "")))
+        start = conditional_escape(str(kw.get("start", "")))
+        end = conditional_escape(str(kw.get("end", "")))
+        event = conditional_escape(kw.get("event", "filter_change"))
+
+        return mark_safe(
+            f'<div class="dj-filter-bar__control dj-filter-bar__date-range">'
+            f'<label class="dj-filter-bar__label">{label}</label>'
+            f'<input class="dj-filter-bar__date" type="date" name="{name}_start" '
+            f'value="{start}" dj-change="{event}">'
+            f'<span class="dj-filter-bar__date-sep">&ndash;</span>'
+            f'<input class="dj-filter-bar__date" type="date" name="{name}_end" '
+            f'value="{end}" dj-change="{event}"></div>'
+        )
+
+
+class FilterSearchHandler:
+    """Inline handler for {% filter_search name="q" %}"""
+
+    def render(self, args, context):
+        kw = _parse_args(args, context)
+        name = conditional_escape(kw.get("name", ""))
+        placeholder = conditional_escape(kw.get("placeholder", "Search\u2026"))
+        value = conditional_escape(str(kw.get("value", "")))
+        debounce = kw.get("debounce", 300)
+        event = conditional_escape(kw.get("event", "filter_change"))
+
+        return mark_safe(
+            f'<div class="dj-filter-bar__control dj-filter-bar__search-wrap">'
+            f'<input class="dj-filter-bar__search" type="search" name="{name}" '
+            f'placeholder="{placeholder}" value="{value}" '
+            f'dj-input="{event}" dj-debounce="{int(debounce)}"></div>'
+        )
+
+
+INLINE_HANDLERS.extend([
+    ("toolbar_separator", ToolbarSeparatorHandler()),
+    ("inline_edit", InlineEditHandler()),
+    ("filter_select", FilterSelectHandler()),
+    ("filter_date_range", FilterDateRangeHandler()),
+    ("filter_search", FilterSearchHandler()),
+])
+
+BLOCK_HANDLERS.extend([
+    ("toolbar", "endtoolbar", ToolbarHandler()),
+    ("toolbar_overflow", "endtoolbar_overflow", ToolbarOverflowHandler()),
+    ("filter_bar", "endfilter_bar", FilterBarHandler()),
+])

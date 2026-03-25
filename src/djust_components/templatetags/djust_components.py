@@ -7025,3 +7025,286 @@ def do_app_content(parser, token):
     nodelist = parser.parse(("endapp_content",))
     parser.delete_first_token()
     return AppContentNode(nodelist)
+
+
+# ---------------------------------------------------------------------------
+# Toolbar (#87)
+# ---------------------------------------------------------------------------
+
+class ToolbarSeparatorNode(template.Node):
+    def render(self, context):
+        return ""  # rendered by ToolbarNode
+
+
+class ToolbarOverflowNode(template.Node):
+    def __init__(self, nodelist):
+        self.nodelist = nodelist
+    def render(self, context):
+        return ""  # rendered by ToolbarNode
+
+
+class ToolbarNode(template.Node):
+    def __init__(self, nodelist, kwargs):
+        self.nodelist = nodelist
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        toolbar_id = kw.get("id", f"toolbar-{uuid.uuid4().hex[:8]}")
+        custom_class = kw.get("class", "")
+        size = kw.get("size", "md")
+        variant = kw.get("variant", "default")
+
+        cls = f"dj-toolbar dj-toolbar--{conditional_escape(size)} dj-toolbar--{conditional_escape(variant)}"
+        if custom_class:
+            cls += f" {conditional_escape(custom_class)}"
+
+        parts = []
+        for node in self.nodelist:
+            if isinstance(node, ToolbarSeparatorNode):
+                parts.append('<div class="dj-toolbar__separator" role="separator"></div>')
+            elif isinstance(node, ToolbarOverflowNode):
+                overflow_content = node.nodelist.render(context)
+                parts.append(
+                    f'<div class="dj-toolbar__overflow">'
+                    f'<button class="dj-toolbar__overflow-trigger" aria-label="More actions">'
+                    f'<span class="dj-toolbar__overflow-icon">&#8942;</span></button>'
+                    f'<div class="dj-toolbar__overflow-menu">{overflow_content}</div></div>'
+                )
+            else:
+                rendered = node.render(context)
+                if rendered.strip():
+                    parts.append(f'<div class="dj-toolbar__group">{rendered}</div>')
+
+        return mark_safe(
+            f'<div class="{cls}" id="{conditional_escape(toolbar_id)}" role="toolbar">'
+            f'{"".join(parts)}</div>'
+        )
+
+
+@register.tag("toolbar")
+def do_toolbar(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    nodelist = parser.parse(("endtoolbar",))
+    parser.delete_first_token()
+    return ToolbarNode(nodelist, kwargs)
+
+
+@register.tag("toolbar_separator")
+def do_toolbar_separator(parser, token):
+    return ToolbarSeparatorNode()
+
+
+@register.tag("toolbar_overflow")
+def do_toolbar_overflow(parser, token):
+    nodelist = parser.parse(("endtoolbar_overflow",))
+    parser.delete_first_token()
+    return ToolbarOverflowNode(nodelist)
+
+
+# ---------------------------------------------------------------------------
+# Inline Edit (#88)
+# ---------------------------------------------------------------------------
+
+class InlineEditNode(template.Node):
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        value = kw.get("value", "")
+        event = kw.get("event", "inline_edit")
+        field = kw.get("field", "")
+        input_type = kw.get("type", "text")
+        placeholder = kw.get("placeholder", "")
+        custom_class = kw.get("class", "")
+        editing = kw.get("editing", False)
+
+        e_value = conditional_escape(str(value))
+        e_event = conditional_escape(event)
+        e_field = conditional_escape(field)
+        e_placeholder = conditional_escape(placeholder)
+        e_input_type = conditional_escape(input_type)
+
+        cls = "dj-inline-edit"
+        if editing:
+            cls += " dj-inline-edit--editing"
+        if custom_class:
+            cls += f" {conditional_escape(custom_class)}"
+
+        if editing:
+            return mark_safe(
+                f'<span class="{cls}">'
+                f'<input class="dj-inline-edit__input" type="{e_input_type}" '
+                f'value="{e_value}" placeholder="{e_placeholder}" '
+                f'data-field="{e_field}" '
+                f'dj-keydown.enter="{e_event}" '
+                f'dj-blur="{e_event}" '
+                f'dj-keydown.escape="inline_edit_cancel" '
+                f'autofocus></span>'
+            )
+        else:
+            return mark_safe(
+                f'<span class="{cls}" dj-click="inline_edit_start" '
+                f'data-field="{e_field}" title="Click to edit">'
+                f'<span class="dj-inline-edit__display">{e_value}</span>'
+                f'<span class="dj-inline-edit__icon">&#9998;</span></span>'
+            )
+
+
+@register.tag("inline_edit")
+def do_inline_edit(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return InlineEditNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Filter Bar (#166)
+# ---------------------------------------------------------------------------
+
+class FilterSelectNode(template.Node):
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+    def render(self, context):
+        return ""  # rendered by FilterBarNode
+
+
+class FilterDateRangeNode(template.Node):
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+    def render(self, context):
+        return ""  # rendered by FilterBarNode
+
+
+class FilterSearchNode(template.Node):
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+    def render(self, context):
+        return ""  # rendered by FilterBarNode
+
+
+class FilterBarNode(template.Node):
+    def __init__(self, nodelist, kwargs):
+        self.nodelist = nodelist
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        bar_id = kw.get("id", f"filter-bar-{uuid.uuid4().hex[:8]}")
+        event = kw.get("event", "filter_change")
+        custom_class = kw.get("class", "")
+        clear_event = kw.get("clear_event", "filter_clear")
+
+        cls = "dj-filter-bar"
+        if custom_class:
+            cls += f" {conditional_escape(custom_class)}"
+
+        e_event = conditional_escape(event)
+        e_clear = conditional_escape(clear_event)
+
+        filter_nodes = [
+            n for n in self.nodelist
+            if isinstance(n, (FilterSelectNode, FilterDateRangeNode, FilterSearchNode))
+        ]
+
+        parts = []
+        has_values = False
+        for node in filter_nodes:
+            nkw = {k: _resolve(v, context) for k, v in node.kwargs.items()}
+            if isinstance(node, FilterSelectNode):
+                name = conditional_escape(nkw.get("name", ""))
+                label = conditional_escape(nkw.get("label", name))
+                options = nkw.get("options", [])
+                value = nkw.get("value", "")
+                if value:
+                    has_values = True
+                opt_html = f'<option value="">{label}</option>'
+                if isinstance(options, list):
+                    for opt in options:
+                        if isinstance(opt, dict):
+                            ov = conditional_escape(str(opt.get("value", "")))
+                            ol = conditional_escape(str(opt.get("label", ov)))
+                        else:
+                            ov = conditional_escape(str(opt))
+                            ol = ov
+                        selected = " selected" if str(opt.get("value", opt) if isinstance(opt, dict) else opt) == str(value) else ""
+                        opt_html += f'<option value="{ov}"{selected}>{ol}</option>'
+                parts.append(
+                    f'<div class="dj-filter-bar__control dj-filter-bar__select-wrap">'
+                    f'<select class="dj-filter-bar__select" name="{name}" '
+                    f'dj-change="{e_event}">{opt_html}</select></div>'
+                )
+            elif isinstance(node, FilterDateRangeNode):
+                name = conditional_escape(nkw.get("name", ""))
+                label = conditional_escape(nkw.get("label", name))
+                value_start = conditional_escape(str(nkw.get("start", "")))
+                value_end = conditional_escape(str(nkw.get("end", "")))
+                if value_start or value_end:
+                    has_values = True
+                parts.append(
+                    f'<div class="dj-filter-bar__control dj-filter-bar__date-range">'
+                    f'<label class="dj-filter-bar__label">{label}</label>'
+                    f'<input class="dj-filter-bar__date" type="date" name="{name}_start" '
+                    f'value="{value_start}" dj-change="{e_event}">'
+                    f'<span class="dj-filter-bar__date-sep">&ndash;</span>'
+                    f'<input class="dj-filter-bar__date" type="date" name="{name}_end" '
+                    f'value="{value_end}" dj-change="{e_event}"></div>'
+                )
+            elif isinstance(node, FilterSearchNode):
+                name = conditional_escape(nkw.get("name", ""))
+                placeholder = conditional_escape(nkw.get("placeholder", "Search\u2026"))
+                value = conditional_escape(str(nkw.get("value", "")))
+                debounce = nkw.get("debounce", 300)
+                if value:
+                    has_values = True
+                parts.append(
+                    f'<div class="dj-filter-bar__control dj-filter-bar__search-wrap">'
+                    f'<input class="dj-filter-bar__search" type="search" name="{name}" '
+                    f'placeholder="{placeholder}" value="{value}" '
+                    f'dj-input="{e_event}" dj-debounce="{int(debounce)}"></div>'
+                )
+
+        clear_html = ""
+        if has_values:
+            clear_html = (
+                f'<div class="dj-filter-bar__actions">'
+                f'<button class="dj-filter-bar__clear" dj-click="{e_clear}">Clear filters</button></div>'
+            )
+
+        return mark_safe(
+            f'<div class="{cls}" id="{conditional_escape(bar_id)}" role="search">'
+            f'<div class="dj-filter-bar__controls">{"".join(parts)}</div>'
+            f'{clear_html}</div>'
+        )
+
+
+@register.tag("filter_bar")
+def do_filter_bar(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    nodelist = parser.parse(("endfilter_bar",))
+    parser.delete_first_token()
+    return FilterBarNode(nodelist, kwargs)
+
+
+@register.tag("filter_select")
+def do_filter_select(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return FilterSelectNode(kwargs)
+
+
+@register.tag("filter_date_range")
+def do_filter_date_range(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return FilterDateRangeNode(kwargs)
+
+
+@register.tag("filter_search")
+def do_filter_search(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return FilterSearchNode(kwargs)
