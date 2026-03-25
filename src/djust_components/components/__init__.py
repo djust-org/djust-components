@@ -6,6 +6,7 @@ Alternative to template tags for programmatic use in LiveViews.
 Usage::
 
     from djust_components.components import Badge, Button, Card, StatusDot
+    from djust_components.components import Alert, StatCard, Tag, Toast, Progress, Spinner, Switch
 
     class MyView(LiveView):
         def mount(self, **kwargs):
@@ -14,6 +15,13 @@ Usage::
             self.agent_status = StatusDot("completed")
             self.submit_btn = Button("Save", variant="primary", action="save")
             self.info_card = Card(content="<p>Info</p>", variant="elevated")
+            self.notice = Alert.success("Saved!")
+            self.revenue = StatCard(label="Revenue", value="$12,345", trend="up")
+            self.tag = Tag("Python", variant="info")
+            self.toast = Toast.success("Done!")
+            self.progress = Progress(value=75)
+            self.loading = Spinner()
+            self.toggle = Switch(name="dark_mode", label="Dark mode")
 
 In template::
 
@@ -22,12 +30,33 @@ In template::
     {{ agent_status|safe }}
     {{ submit_btn|safe }}
     {{ info_card|safe }}
+    {{ notice|safe }}
 """
 
+from .alert import Alert
 from .badge import Badge
 from .button import Button
 from .card import Card
 from .markdown import Markdown
+from .progress import Progress
+from .spinner import Spinner
+from .stat_card import StatCard
 from .status_dot import StatusDot
+from .switch import Switch
+from .tag import Tag
+from .toast import Toast
 
-__all__ = ["Badge", "Button", "Card", "Markdown", "StatusDot"]
+__all__ = [
+    "Alert",
+    "Badge",
+    "Button",
+    "Card",
+    "Markdown",
+    "Progress",
+    "Spinner",
+    "StatCard",
+    "StatusDot",
+    "Switch",
+    "Tag",
+    "Toast",
+]
