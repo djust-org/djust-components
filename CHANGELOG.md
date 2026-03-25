@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Django Integration Components**: 2 new template tags bridging Django's form/model system with djust-components:
+  - **Django Form Renderer** (`{% dj_form form=form %}`) — Auto-renders any Django Form or ModelForm using djust-components. Maps field types to components: `CharField`->`dj_input`, `EmailField`->`email input`, `ChoiceField`/`ModelChoiceField`->`dj_select`, `BooleanField`->`dj_checkbox`, `Textarea` widget->`dj_textarea`, `RadioSelect`->radio group, `FileField`->file input, `PasswordInput`->password input, and more. Handles non-field errors, per-field errors, help text, required markers, disabled state, hidden fields. Supports `event_prefix`, `action`, `method`, `submit_label`, `submit_event`, `custom_class`, `show_errors`. All user values escaped via `conditional_escape()` (#73)
+  - **Django ModelForm Table** (`{% model_table queryset=qs %}`) — Auto-generates a data table from a Django QuerySet. Introspects model `_meta` to infer columns with labels, sortable/filterable flags, and filter types. Converts QuerySet rows to table data. Supports `exclude`/`include` for column selection, sorting, search, pagination, row selection, loading state, filters (text/select/number), striped/compact styling, `custom_class`. Skips reverse relations, handles ForeignKey display via `str()`, choice fields with filter options. All output escaped (#74)
+
+### Added
 - **Data Table Pro Phase 5 — Data Import & Computed**: 5 new opt-in features for `DataTableHandler`, `DataTableMixin`, and `{% data_table %}`:
   - **CSV/JSON Import**: `importable=True` adds Import CSV/JSON toolbar buttons with file upload. Parsed rows are validated against table columns and staged for preview before confirming. `import_event` fires with parsed rows. Supports `import_formats`, `import_preview` (preview before confirm), and `handle_import()` override hook.
   - **Computed Columns**: `computed_columns` list of `{key, label, expression}` dicts defines virtual columns evaluated server-side. Expressions support basic arithmetic (`revenue - cost`, `qty * price`) with column references. `evaluate_computed_columns()` injects values into rows. Computed columns render with italic styling.

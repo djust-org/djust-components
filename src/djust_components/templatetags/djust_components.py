@@ -5897,3 +5897,732 @@ def field_error(field=None, custom_class=""):
     return mark_safe(
         f'<div class="{cls}" role="alert">{"".join(items)}</div>'
     )
+
+
+# ---------------------------------------------------------------------------
+# DJANGO INTEGRATION COMPONENTS
+# ---------------------------------------------------------------------------
+
+# --- Django Form Renderer (#73) ---
+
+# Mapping of Django form field class names to djust component renderers.
+_FIELD_TYPE_MAP = {
+    "CharField": "text",
+    "EmailField": "email",
+    "URLField": "url",
+    "IntegerField": "number",
+    "FloatField": "number",
+    "DecimalField": "number",
+    "DateField": "date",
+    "DateTimeField": "datetime-local",
+    "TimeField": "time",
+    "SlugField": "text",
+    "UUIDField": "text",
+    "GenericIPAddressField": "text",
+    "FilePathField": "text",
+    "TypedChoiceField": "select",
+    "ChoiceField": "select",
+    "ModelChoiceField": "select",
+    "BooleanField": "checkbox",
+    "NullBooleanField": "checkbox",
+    "FileField": "file",
+    "ImageField": "file",
+    "TypedMultipleChoiceField": "select_multiple",
+    "MultipleChoiceField": "select_multiple",
+    "ModelMultipleChoiceField": "select_multiple",
+}
+
+
+def _get_field_type(bound_field):
+    """Determine the djust component type for a Django BoundField."""
+    field = bound_field.field
+    cls_name = type(field).__name__
+
+    # Check widget override — textarea widget means textarea
+    widget_cls = type(field.widget).__name__ if hasattr(field, "widget") else ""
+    if widget_cls in ("Textarea", "AdminTextareaWidget"):
+        return "textarea"
+    if widget_cls in ("CheckboxInput",):
+        return "checkbox"
+    if widget_cls in ("RadioSelect",):
+        return "radio_group"
+    if widget_cls in ("CheckboxSelectMultiple",):
+        return "checkbox_group"
+    if widget_cls in ("Select", "NullBooleanSelect"):
+        if cls_name not in ("BooleanField", "NullBooleanField"):
+            return "select"
+    if widget_cls in ("SelectMultiple",):
+        return "select_multiple"
+    if widget_cls in ("PasswordInput",):
+        return "password"
+    if widget_cls in ("HiddenInput", "MultipleHiddenInput"):
+        return "hidden"
+    if widget_cls in ("FileInput", "ClearableFileInput"):
+        return "file"
+
+    return _FIELD_TYPE_MAP.get(cls_name, "text")
+
+
+def _get_choices(bound_field):
+    """Extract choices from a Django BoundField as list of (value, label) tuples."""
+    field = bound_field.field
+    if hasattr(field, "choices"):
+        choices = field.choices
+        # choices can be a callable
+        if callable(choices):
+            choices = choices()
+        return [(str(v), str(l)) for v, l in choices]
+    return []
+
+
+def _render_field(bound_field, event_prefix=""):
+    """Render a single Django BoundField as the appropriate djust component HTML."""
+    field_type = _get_field_type(bound_field)
+    name = bound_field.html_name if hasattr(bound_field, "html_name") else bound_field.name
+    label = bound_field.label or ""
+    help_text = str(bound_field.help_text) if hasattr(bound_field, "help_text") and bound_field.help_text else ""
+    required = bound_field.field.required if hasattr(bound_field, "field") else False
+    disabled = getattr(bound_field.field, "disabled", False) if hasattr(bound_field, "field") else False
+    errors = list(bound_field.errors) if hasattr(bound_field, "errors") and bound_field.errors else []
+    error_msg = errors[0] if errors else ""
+
+    # Get current value
+    value = ""
+    if hasattr(bound_field, "value"):
+        v = bound_field.value()
+        if v is not None:
+            value = str(v)
+
+    e_name = conditional_escape(name)
+    e_label = conditional_escape(label)
+    e_value = conditional_escape(value)
+    e_helper = conditional_escape(help_text)
+    e_error = conditional_escape(error_msg)
+    dj_event = conditional_escape(event_prefix + name if event_prefix else name)
+
+    required_attr = " required" if required else ""
+    disabled_attr = " disabled" if disabled else ""
+
+    required_span = '<span class="form-required"> *</span>' if required else ""
+    error_cls = " form-input-error" if error_msg else ""
+    label_html = (
+        f'<label class="form-label" for="{e_name}">{e_label}{required_span}</label>'
+        if label else ""
+    )
+    error_html = f'<span class="form-error-message">{e_error}</span>' if error_msg else ""
+    helper_html = f'<span class="form-helper">{e_helper}</span>' if help_text else ""
+
+    # Render all field errors (multiple) below the first
+    extra_errors_html = ""
+    if len(errors) > 1:
+        extra_items = "".join(
+            f'<span class="form-error-message">{conditional_escape(str(e))}</span>'
+            for e in errors[1:]
+        )
+        extra_errors_html = extra_items
+
+    if field_type == "hidden":
+        return f'<input type="hidden" name="{e_name}" id="{e_name}" value="{e_value}">'
+
+    if field_type == "checkbox":
+        checked_attr = " checked" if value and value not in ("False", "false", "0", "") else ""
+        return (
+            f'<div class="form-group">'
+            f'<div class="form-checkbox-wrapper">'
+            f'<input class="form-checkbox" type="checkbox" '
+            f'name="{e_name}" id="{e_name}" value="on" '
+            f'dj-change="{dj_event}"{checked_attr}{required_attr}{disabled_attr}>'
+            f'<label class="form-checkbox-label" for="{e_name}">{e_label}</label>'
+            f'</div>'
+            f'{error_html}{extra_errors_html}{helper_html}'
+            f'</div>'
+        )
+
+    if field_type == "textarea":
+        return (
+            f'<div class="form-group">'
+            f'{label_html}'
+            f'<textarea class="form-input{error_cls}" name="{e_name}" id="{e_name}" '
+            f'rows="4" dj-input="{dj_event}"{required_attr}{disabled_attr}>'
+            f'{e_value}</textarea>'
+            f'{error_html}{extra_errors_html}{helper_html}'
+            f'</div>'
+        )
+
+    if field_type in ("select", "select_multiple"):
+        choices = _get_choices(bound_field)
+        multiple_attr = " multiple" if field_type == "select_multiple" else ""
+        select_error_cls = " form-select-error" if error_msg else ""
+        options_html = ""
+        for ov, ol in choices:
+            selected_attr = ' selected' if str(ov) == str(value) else ""
+            options_html += (
+                f'<option value="{conditional_escape(ov)}"{selected_attr}>'
+                f'{conditional_escape(ol)}</option>'
+            )
+        return (
+            f'<div class="form-group">'
+            f'{label_html}'
+            f'<select class="form-select{select_error_cls}" name="{e_name}" id="{e_name}" '
+            f'dj-change="{dj_event}"{required_attr}{disabled_attr}{multiple_attr}>'
+            f'{options_html}'
+            f'</select>'
+            f'{error_html}{extra_errors_html}{helper_html}'
+            f'</div>'
+        )
+
+    if field_type == "radio_group":
+        choices = _get_choices(bound_field)
+        radios = ""
+        for ov, ol in choices:
+            checked_attr = " checked" if str(ov) == str(value) else ""
+            radio_id = conditional_escape(f"{name}_{ov}")
+            radios += (
+                f'<div class="form-radio-wrapper">'
+                f'<input class="form-radio" type="radio" '
+                f'name="{e_name}" id="{radio_id}" value="{conditional_escape(ov)}" '
+                f'dj-change="{dj_event}"{checked_attr}{disabled_attr}>'
+                f'<label class="form-radio-label" for="{radio_id}">{conditional_escape(ol)}</label>'
+                f'</div>'
+            )
+        return (
+            f'<div class="form-group">'
+            f'{label_html}'
+            f'{radios}'
+            f'{error_html}{extra_errors_html}{helper_html}'
+            f'</div>'
+        )
+
+    if field_type == "checkbox_group":
+        choices = _get_choices(bound_field)
+        # value might be a list for multiple checkboxes
+        selected_values = value.split(",") if value else []
+        checks = ""
+        for ov, ol in choices:
+            checked_attr = " checked" if ov in selected_values else ""
+            cb_id = conditional_escape(f"{name}_{ov}")
+            checks += (
+                f'<div class="form-checkbox-wrapper">'
+                f'<input class="form-checkbox" type="checkbox" '
+                f'name="{e_name}" id="{cb_id}" value="{conditional_escape(ov)}" '
+                f'dj-change="{dj_event}"{checked_attr}{disabled_attr}>'
+                f'<label class="form-checkbox-label" for="{cb_id}">{conditional_escape(ol)}</label>'
+                f'</div>'
+            )
+        return (
+            f'<div class="form-group">'
+            f'{label_html}'
+            f'{checks}'
+            f'{error_html}{extra_errors_html}{helper_html}'
+            f'</div>'
+        )
+
+    if field_type == "file":
+        return (
+            f'<div class="form-group">'
+            f'{label_html}'
+            f'<input class="form-input" type="file" '
+            f'name="{e_name}" id="{e_name}"{required_attr}{disabled_attr}>'
+            f'{error_html}{extra_errors_html}{helper_html}'
+            f'</div>'
+        )
+
+    if field_type == "password":
+        return (
+            f'<div class="form-group">'
+            f'{label_html}'
+            f'<input class="form-input{error_cls}" type="password" '
+            f'name="{e_name}" id="{e_name}" '
+            f'dj-input="{dj_event}"{required_attr}{disabled_attr}>'
+            f'{error_html}{extra_errors_html}{helper_html}'
+            f'</div>'
+        )
+
+    # Default: text-like input (text, email, url, number, date, etc.)
+    input_type = field_type if field_type in (
+        "email", "url", "number", "date", "datetime-local", "time"
+    ) else "text"
+    e_type = conditional_escape(input_type)
+    placeholder = ""
+    if hasattr(bound_field.field, "widget") and hasattr(bound_field.field.widget, "attrs"):
+        placeholder = bound_field.field.widget.attrs.get("placeholder", "")
+    e_placeholder = conditional_escape(placeholder)
+
+    return (
+        f'<div class="form-group">'
+        f'{label_html}'
+        f'<input class="form-input{error_cls}" type="{e_type}" '
+        f'name="{e_name}" id="{e_name}" value="{e_value}" '
+        f'placeholder="{e_placeholder}" '
+        f'dj-input="{dj_event}"{required_attr}{disabled_attr}>'
+        f'{error_html}{extra_errors_html}{helper_html}'
+        f'</div>'
+    )
+
+
+@register.simple_tag
+def dj_form(form=None, event_prefix="", action="", method="post",
+            submit_label="Submit", submit_event="", custom_class="",
+            show_errors=True):
+    """Auto-render a Django Form or ModelForm using djust-components.
+
+    Maps Django field types to djust input components:
+      CharField -> dj_input (text)
+      EmailField -> dj_input (email)
+      ChoiceField -> dj_select
+      BooleanField -> dj_checkbox
+      TextField/Textarea widget -> dj_textarea
+      etc.
+
+    Args:
+        form: A Django Form or ModelForm instance.
+        event_prefix: Prefix for dj-input/dj-change event names (e.g. "myform_").
+        action: Form action URL (empty = no action attribute).
+        method: Form method (default "post").
+        submit_label: Label for the submit button.
+        submit_event: djust event for the submit button (if empty, uses standard form submit).
+        custom_class: Extra CSS class for the form wrapper.
+        show_errors: Show non-field errors at the top (default True).
+    """
+    if form is None:
+        return ""
+
+    e_class = conditional_escape(custom_class)
+    e_action = conditional_escape(action)
+    e_method = conditional_escape(method)
+    e_submit_label = conditional_escape(submit_label)
+    e_submit_event = conditional_escape(submit_event)
+
+    cls = "dj-form"
+    if e_class:
+        cls += f" {e_class}"
+
+    # Non-field errors
+    errors_html = ""
+    if show_errors and hasattr(form, "non_field_errors"):
+        non_field = form.non_field_errors()
+        if non_field:
+            items = "".join(
+                f'<li class="dj-form-errors__item">{conditional_escape(str(e))}</li>'
+                for e in non_field
+            )
+            errors_html = (
+                f'<div class="dj-form-errors" role="alert">'
+                f'<ul class="dj-form-errors__list">{items}</ul>'
+                f'</div>'
+            )
+
+    # Render each visible field
+    fields_html = ""
+    visible_fields = form.visible_fields() if hasattr(form, "visible_fields") else []
+    for bf in visible_fields:
+        fields_html += _render_field(bf, event_prefix=event_prefix)
+
+    # Hidden fields
+    hidden_html = ""
+    hidden_fields = form.hidden_fields() if hasattr(form, "hidden_fields") else []
+    for bf in hidden_fields:
+        h_name = bf.html_name if hasattr(bf, "html_name") else bf.name
+        h_value = ""
+        if hasattr(bf, "value"):
+            v = bf.value()
+            if v is not None:
+                h_value = str(v)
+        hidden_html += (
+            f'<input type="hidden" name="{conditional_escape(h_name)}" '
+            f'id="{conditional_escape(h_name)}" value="{conditional_escape(h_value)}">'
+        )
+
+    # Action/method attributes
+    action_attr = f' action="{e_action}"' if action else ""
+    method_attr = f' method="{e_method}"'
+
+    # Submit button
+    if e_submit_event:
+        submit_html = (
+            f'<div class="form-group dj-form__actions">'
+            f'<button class="dj-btn dj-btn--primary" type="button" '
+            f'dj-click="{e_submit_event}">{e_submit_label}</button>'
+            f'</div>'
+        )
+    else:
+        submit_html = (
+            f'<div class="form-group dj-form__actions">'
+            f'<button class="dj-btn dj-btn--primary" type="submit">'
+            f'{e_submit_label}</button>'
+            f'</div>'
+        )
+
+    return mark_safe(
+        f'<form class="{cls}"{action_attr}{method_attr}>'
+        f'{errors_html}'
+        f'{fields_html}'
+        f'{hidden_html}'
+        f'{submit_html}'
+        f'</form>'
+    )
+
+
+# --- Django ModelForm Table (#74) ---
+
+def _get_verbose_name(field):
+    """Get verbose name from a Django model field."""
+    if hasattr(field, "verbose_name"):
+        return str(field.verbose_name).title()
+    return str(field.name).replace("_", " ").title()
+
+
+def _is_sortable_field(field):
+    """Determine if a model field should be sortable."""
+    cls_name = type(field).__name__
+    # Most concrete fields are sortable; relations and file fields are not
+    non_sortable = {"ManyToManyField", "ManyToManyRel", "ManyToOneRel",
+                    "FileField", "ImageField", "JSONField"}
+    return cls_name not in non_sortable
+
+
+def _is_filterable_field(field):
+    """Determine if a model field should be filterable."""
+    cls_name = type(field).__name__
+    filterable = {"CharField", "TextField", "SlugField", "EmailField",
+                  "URLField", "BooleanField", "NullBooleanField",
+                  "IntegerField", "FloatField", "DecimalField",
+                  "ChoiceField", "ForeignKey"}
+    return cls_name in filterable
+
+
+def _get_filter_type(field):
+    """Get appropriate filter type for a model field."""
+    cls_name = type(field).__name__
+    if cls_name in ("BooleanField", "NullBooleanField"):
+        return "select"
+    if cls_name in ("IntegerField", "FloatField", "DecimalField"):
+        return "number"
+    if cls_name == "ForeignKey":
+        return "select"
+    if hasattr(field, "choices") and field.choices:
+        return "select"
+    return "text"
+
+
+def _get_filter_options(field):
+    """Get filter options for fields with choices."""
+    if hasattr(field, "choices") and field.choices:
+        return [{"value": str(v), "label": str(l)} for v, l in field.choices]
+    cls_name = type(field).__name__
+    if cls_name in ("BooleanField",):
+        return [{"value": "true", "label": "Yes"}, {"value": "false", "label": "No"}]
+    if cls_name in ("NullBooleanField",):
+        return [
+            {"value": "true", "label": "Yes"},
+            {"value": "false", "label": "No"},
+            {"value": "null", "label": "Unknown"},
+        ]
+    return []
+
+
+def _infer_columns(model_meta, exclude=None, include=None):
+    """Infer data_table columns from a Django model's _meta."""
+    exclude = set(exclude or [])
+    fields = model_meta.get_fields() if hasattr(model_meta, "get_fields") else []
+
+    columns = []
+    for field in fields:
+        # Skip reverse relations
+        if hasattr(field, "related_model") and not hasattr(field, "column"):
+            continue
+        name = field.name if hasattr(field, "name") else str(field)
+        if name in exclude:
+            continue
+        if include and name not in include:
+            continue
+
+        col = {
+            "key": name,
+            "label": _get_verbose_name(field),
+            "sortable": _is_sortable_field(field),
+        }
+        if _is_filterable_field(field):
+            col["filterable"] = True
+            col["filter_type"] = _get_filter_type(field)
+            options = _get_filter_options(field)
+            if options:
+                col["filter_options"] = options
+
+        columns.append(col)
+
+    return columns
+
+
+def _queryset_to_rows(queryset, columns, row_key="id"):
+    """Convert a Django QuerySet to a list of row dicts for data_table."""
+    rows = []
+    col_keys = [c["key"] for c in columns]
+    for obj in queryset:
+        row = {}
+        for key in col_keys:
+            val = getattr(obj, key, "")
+            # Handle ForeignKey — use str() for display
+            if hasattr(val, "pk"):
+                val = str(val)
+            elif callable(val) and not isinstance(val, str):
+                try:
+                    val = val()
+                except Exception:
+                    val = ""
+            row[key] = val if val is not None else ""
+        # Ensure row_key is present
+        if row_key not in row:
+            pk = getattr(obj, "pk", None) or getattr(obj, "id", None) or ""
+            row[row_key] = pk
+        rows.append(row)
+    return rows
+
+
+@register.simple_tag
+def model_table(queryset=None, exclude=None, include=None,
+                sort_by="", sort_desc=False, sort_event="table_sort",
+                page=1, total_pages=1, paginate=False,
+                page_event="table_page",
+                prev_event="table_prev", next_event="table_next",
+                search=False, search_query="", search_event="table_search",
+                filters=None, filter_event="table_filter",
+                selectable=False, selected_rows=None, select_event="table_select",
+                row_key="id", loading=False,
+                empty_title="No data", empty_description="",
+                striped=True, compact=False,
+                custom_class=""):
+    """Auto-generate a Data Table Pro from a Django QuerySet.
+
+    Introspects model fields to infer columns. Supports sorting, filtering,
+    pagination, search, and selection — all delegated to the existing data_table
+    component.
+
+    Args:
+        queryset: A Django QuerySet instance.
+        exclude: List of field names to exclude from the table.
+        include: List of field names to include (if set, only these are shown).
+        sort_by: Current sort column key.
+        sort_desc: Sort descending?
+        sort_event: djust event for sorting.
+        page: Current page number.
+        total_pages: Total pages.
+        paginate: Show pagination controls.
+        page_event: Pagination event name.
+        prev_event: Previous page event.
+        next_event: Next page event.
+        search: Show global search box.
+        search_query: Current search value.
+        search_event: Search event name.
+        filters: Per-column filter values dict.
+        filter_event: Filter event name.
+        selectable: Enable row selection.
+        selected_rows: List of selected row IDs.
+        select_event: Selection event name.
+        row_key: Key field for row identity.
+        loading: Show loading state.
+        empty_title: Empty state title.
+        empty_description: Empty state description.
+        striped: Alternating row backgrounds (default True for model tables).
+        compact: Reduced padding.
+        custom_class: Extra CSS class for the wrapper div.
+    """
+    if queryset is None:
+        return ""
+
+    # Get model metadata
+    model = None
+    if hasattr(queryset, "model"):
+        model = queryset.model
+    elif hasattr(queryset, "_meta"):
+        model = queryset
+
+    if model is None:
+        return "<!-- model_table: queryset has no model -->"
+
+    meta = model._meta if hasattr(model, "_meta") else None
+    if meta is None:
+        return "<!-- model_table: model has no _meta -->"
+
+    # Infer columns
+    columns = _infer_columns(meta, exclude=exclude, include=include)
+    if not columns:
+        return "<!-- model_table: no columns inferred -->"
+
+    # Convert queryset to rows
+    rows = _queryset_to_rows(queryset, columns, row_key=row_key)
+
+    # Escape values in rows for safe rendering
+    safe_rows = []
+    for row in rows:
+        safe_row = {}
+        for k, v in row.items():
+            safe_row[k] = conditional_escape(str(v)) if v is not None else ""
+        safe_rows.append(safe_row)
+
+    # Build the table HTML directly (composing the data_table pattern)
+    e_class = conditional_escape(custom_class)
+    e_sort_event = conditional_escape(sort_event)
+    e_search_event = conditional_escape(search_event)
+    e_filter_event = conditional_escape(filter_event)
+    e_page_event = conditional_escape(page_event)
+    e_prev_event = conditional_escape(prev_event)
+    e_next_event = conditional_escape(next_event)
+    e_select_event = conditional_escape(select_event)
+    e_empty_title = conditional_escape(empty_title)
+    e_empty_desc = conditional_escape(empty_description)
+    e_search_query = conditional_escape(search_query)
+
+    if selected_rows is None:
+        selected_rows = []
+    if filters is None:
+        filters = {}
+
+    try:
+        page = int(page)
+    except (ValueError, TypeError):
+        page = 1
+    try:
+        total_pages = int(total_pages)
+    except (ValueError, TypeError):
+        total_pages = 1
+
+    wrapper_cls = "dj-model-table"
+    if e_class:
+        wrapper_cls += f" {e_class}"
+
+    density_cls = " data-table--compact" if compact else ""
+    striped_cls = " data-table--striped" if striped else ""
+
+    # Search bar
+    search_html = ""
+    if search:
+        search_html = (
+            f'<div class="data-table__search">'
+            f'<input type="text" class="data-table__search-input" '
+            f'placeholder="Search..." value="{e_search_query}" '
+            f'dj-input="{e_search_event}">'
+            f'</div>'
+        )
+
+    # Table header
+    header_cells = ""
+    if selectable:
+        header_cells += '<th class="data-table__th data-table__th--select"><input type="checkbox"></th>'
+    for col in columns:
+        col_key = conditional_escape(col["key"])
+        col_label = conditional_escape(col["label"])
+        sort_cls = ""
+        sort_attr = ""
+        if col.get("sortable"):
+            sort_cls = " data-table__th--sortable"
+            sort_attr = f' dj-click="{e_sort_event}" dj-value-column="{col_key}"'
+            if sort_by == col["key"]:
+                arrow = " &#9660;" if sort_desc else " &#9650;"
+                col_label += arrow
+                sort_cls += " data-table__th--sorted"
+
+        # Filter row is separate; just header for now
+        filter_attr = ""
+        header_cells += f'<th class="data-table__th{sort_cls}"{sort_attr}{filter_attr}>{col_label}</th>'
+
+    # Filter row
+    filter_row = ""
+    has_filters = any(col.get("filterable") for col in columns)
+    if has_filters:
+        filter_cells = ""
+        if selectable:
+            filter_cells += '<td class="data-table__filter-cell"></td>'
+        for col in columns:
+            if col.get("filterable"):
+                col_key = conditional_escape(col["key"])
+                fval = conditional_escape(str(filters.get(col["key"], "")))
+                ft = col.get("filter_type", "text")
+                if ft == "select" and col.get("filter_options"):
+                    opts = '<option value="">All</option>'
+                    for fo in col["filter_options"]:
+                        fov = conditional_escape(str(fo.get("value", "")))
+                        fol = conditional_escape(str(fo.get("label", "")))
+                        sel = " selected" if fov == fval else ""
+                        opts += f'<option value="{fov}"{sel}>{fol}</option>'
+                    filter_cells += (
+                        f'<td class="data-table__filter-cell">'
+                        f'<select class="data-table__filter-select" '
+                        f'dj-change="{e_filter_event}" dj-value-column="{col_key}">'
+                        f'{opts}</select></td>'
+                    )
+                else:
+                    filter_cells += (
+                        f'<td class="data-table__filter-cell">'
+                        f'<input type="{conditional_escape(ft)}" '
+                        f'class="data-table__filter-input" value="{fval}" '
+                        f'dj-input="{e_filter_event}" dj-value-column="{col_key}">'
+                        f'</td>'
+                    )
+            else:
+                filter_cells += '<td class="data-table__filter-cell"></td>'
+        filter_row = f'<tr class="data-table__filter-row">{filter_cells}</tr>'
+
+    # Table body
+    body_rows = ""
+    if loading:
+        col_count = len(columns) + (1 if selectable else 0)
+        body_rows = (
+            f'<tr class="data-table__loading-row">'
+            f'<td colspan="{col_count}" class="data-table__loading-cell">'
+            f'<div class="dj-spinner"></div></td></tr>'
+        )
+    elif not safe_rows:
+        col_count = len(columns) + (1 if selectable else 0)
+        body_rows = (
+            f'<tr class="data-table__empty-row">'
+            f'<td colspan="{col_count}" class="data-table__empty-cell">'
+            f'<div class="data-table__empty-title">{e_empty_title}</div>'
+            f'<div class="data-table__empty-desc">{e_empty_desc}</div>'
+            f'</td></tr>'
+        )
+    else:
+        for row in safe_rows:
+            row_id = row.get(row_key, "")
+            row_selected = str(row_id) in [str(s) for s in selected_rows]
+            selected_cls = " data-table__tr--selected" if row_selected else ""
+            cells = ""
+            if selectable:
+                chk = " checked" if row_selected else ""
+                cells += (
+                    f'<td class="data-table__td data-table__td--select">'
+                    f'<input type="checkbox" dj-change="{e_select_event}" '
+                    f'dj-value-row="{conditional_escape(str(row_id))}"{chk}></td>'
+                )
+            for col in columns:
+                cell_val = row.get(col["key"], "")
+                cells += f'<td class="data-table__td">{cell_val}</td>'
+            body_rows += f'<tr class="data-table__tr{selected_cls}">{cells}</tr>'
+
+    # Pagination
+    pagination_html = ""
+    if paginate:
+        prev_disabled = " disabled" if page <= 1 else ""
+        next_disabled = " disabled" if page >= total_pages else ""
+        pagination_html = (
+            f'<div class="data-table__pagination">'
+            f'<button class="data-table__page-btn" dj-click="{e_prev_event}"{prev_disabled}>'
+            f'&laquo; Prev</button>'
+            f'<span class="data-table__page-info">Page {page} of {total_pages}</span>'
+            f'<button class="data-table__page-btn" dj-click="{e_next_event}"{next_disabled}>'
+            f'Next &raquo;</button>'
+            f'</div>'
+        )
+
+    return mark_safe(
+        f'<div class="{wrapper_cls}">'
+        f'{search_html}'
+        f'<div class="data-table__wrapper">'
+        f'<table class="data-table{striped_cls}{density_cls}">'
+        f'<thead><tr class="data-table__header-row">{header_cells}</tr>'
+        f'{filter_row}</thead>'
+        f'<tbody>{body_rows}</tbody>'
+        f'</table></div>'
+        f'{pagination_html}'
+        f'</div>'
+    )
