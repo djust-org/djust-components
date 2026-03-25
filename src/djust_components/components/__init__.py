@@ -65,6 +65,10 @@ from .scroll_to_top import ScrollToTop
 from .server_event_toast import ServerEventToastMixin
 from .dependent_select import DependentSelect
 from .currency_input import CurrencyInput
+from .conversation_thread import ConversationThread
+from .thinking_indicator import ThinkingIndicator
+from .multimodal_input import MultimodalInput
+from .feedback_widget import FeedbackWidget
 from .form_validation import FormErrors, FieldError
 
 __all__ = [
@@ -102,4 +106,8 @@ __all__ = [
     "FormErrors",
     "HoverCard",
     "NotificationPopover",
+    "ConversationThread",
+    "ThinkingIndicator",
+    "MultimodalInput",
+    "FeedbackWidget",
 ]
