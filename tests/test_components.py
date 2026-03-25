@@ -351,3 +351,264 @@ class TestXSSEscaping:
             {"xss_class": self.XSS_ATTR},
         )
         self._assert_attr_escaped(html)
+
+
+# ─── Scroll Area ───
+
+class TestScrollArea:
+    def test_scroll_area_default(self):
+        html = render('{% scroll_area %}Some content{% endscroll_area %}')
+        assert "dj-scroll-area" in html
+        assert "Some content" in html
+        assert "--dj-scroll-area-max-height: 400px" in html
+
+    def test_scroll_area_custom_height(self):
+        html = render('{% scroll_area max_height="600px" %}content{% endscroll_area %}')
+        assert "--dj-scroll-area-max-height: 600px" in html
+
+    def test_scroll_area_variable_height(self):
+        html = render('{% scroll_area max_height=h %}content{% endscroll_area %}', {"h": "300px"})
+        assert "--dj-scroll-area-max-height: 300px" in html
+
+    def test_scroll_area_custom_class(self):
+        html = render('{% scroll_area custom_class="my-scroller" %}content{% endscroll_area %}')
+        assert "my-scroller" in html
+
+    def test_scroll_area_xss_max_height(self):
+        html = render(
+            '{% scroll_area max_height=xss %}content{% endscroll_area %}',
+            {"xss": '"><script>alert(1)</script>'},
+        )
+        assert "<script>" not in html
+        assert "&lt;script&gt;" in html or "&quot;" in html
+
+    def test_scroll_area_xss_custom_class(self):
+        html = render(
+            '{% scroll_area custom_class=xss %}content{% endscroll_area %}',
+            {"xss": '" onmouseover="alert(1)" x="'},
+        )
+        assert '" onmouseover="' not in html
+        assert "&quot;" in html
+
+
+# ─── Callout / Blockquote ───
+
+class TestCallout:
+    def test_callout_default(self):
+        html = render('{% callout %}Important note{% endcallout %}')
+        assert "dj-callout" in html
+        assert "Important note" in html
+        assert "dj-callout--" not in html  # no type variant for default
+
+    def test_callout_with_type(self):
+        for t in ("info", "warning", "danger", "success"):
+            html = render(f'{{% callout type="{t}" %}}msg{{% endcallout %}}')
+            assert f"dj-callout--{t}" in html
+
+    def test_callout_with_title(self):
+        html = render('{% callout title="Heads up" %}body{% endcallout %}')
+        assert "dj-callout__title" in html
+        assert "Heads up" in html
+
+    def test_callout_with_icon(self):
+        html = render('{% callout icon="!" %}body{% endcallout %}')
+        assert "dj-callout__icon" in html
+        assert "!" in html
+
+    def test_callout_default_icon_for_type(self):
+        html = render('{% callout type="info" %}body{% endcallout %}')
+        assert "dj-callout__icon" in html
+
+    def test_callout_variable_title(self):
+        html = render('{% callout title=my_title %}body{% endcallout %}', {"my_title": "Dynamic"})
+        assert "Dynamic" in html
+
+    def test_callout_custom_class(self):
+        html = render('{% callout custom_class="extra" %}body{% endcallout %}')
+        assert "extra" in html
+
+    def test_callout_xss_title(self):
+        html = render(
+            '{% callout title=xss %}body{% endcallout %}',
+            {"xss": '<script>alert(1)</script>'},
+        )
+        assert "<script>" not in html
+        assert "&lt;script&gt;" in html
+
+    def test_callout_xss_icon(self):
+        html = render(
+            '{% callout icon=xss %}body{% endcallout %}',
+            {"xss": '<script>alert(1)</script>'},
+        )
+        assert "<script>" not in html
+        assert "&lt;script&gt;" in html
+
+    def test_callout_xss_type_attr(self):
+        html = render(
+            '{% callout type=xss %}body{% endcallout %}',
+            {"xss": '" onmouseover="alert(1)" x="'},
+        )
+        assert '" onmouseover="' not in html
+        assert "&quot;" in html
+
+    def test_callout_xss_custom_class(self):
+        html = render(
+            '{% callout custom_class=xss %}body{% endcallout %}',
+            {"xss": '" onmouseover="alert(1)" x="'},
+        )
+        assert '" onmouseover="' not in html
+        assert "&quot;" in html
+
+
+# ─── Aspect Ratio ───
+
+class TestAspectRatio:
+    def test_aspect_ratio_default(self):
+        html = render('{% aspect_ratio %}child content{% endaspect_ratio %}')
+        assert "dj-aspect-ratio" in html
+        assert "child content" in html
+        assert "aspect-ratio: 16/9" in html
+
+    def test_aspect_ratio_custom(self):
+        html = render('{% aspect_ratio ratio="4/3" %}content{% endaspect_ratio %}')
+        assert "aspect-ratio: 4/3" in html
+
+    def test_aspect_ratio_1_1(self):
+        html = render('{% aspect_ratio ratio="1/1" %}content{% endaspect_ratio %}')
+        assert "aspect-ratio: 1/1" in html
+
+    def test_aspect_ratio_variable(self):
+        html = render('{% aspect_ratio ratio=r %}content{% endaspect_ratio %}', {"r": "21/9"})
+        assert "aspect-ratio: 21/9" in html
+
+    def test_aspect_ratio_custom_class(self):
+        html = render('{% aspect_ratio custom_class="video-frame" %}content{% endaspect_ratio %}')
+        assert "video-frame" in html
+
+    def test_aspect_ratio_xss_ratio(self):
+        html = render(
+            '{% aspect_ratio ratio=xss %}content{% endaspect_ratio %}',
+            {"xss": '"><script>alert(1)</script>'},
+        )
+        assert "<script>" not in html
+        assert "&lt;script&gt;" in html or "&quot;" in html
+
+    def test_aspect_ratio_xss_custom_class(self):
+        html = render(
+            '{% aspect_ratio custom_class=xss %}content{% endaspect_ratio %}',
+            {"xss": '" onmouseover="alert(1)" x="'},
+        )
+        assert '" onmouseover="' not in html
+        assert "&quot;" in html
+
+
+# ─── Description List ───
+
+class TestDescriptionList:
+    def test_dl_basic(self):
+        items = [{"term": "Name", "detail": "Alice"}, {"term": "Role", "detail": "Engineer"}]
+        html = render('{% description_list items=items %}', {"items": items})
+        assert "dj-dl" in html
+        assert "Name" in html
+        assert "Alice" in html
+        assert "Role" in html
+        assert "Engineer" in html
+
+    def test_dl_horizontal(self):
+        items = [{"term": "K", "detail": "V"}]
+        html = render('{% description_list items=items layout="horizontal" %}', {"items": items})
+        assert "dj-dl--horizontal" in html
+
+    def test_dl_vertical_default(self):
+        items = [{"term": "K", "detail": "V"}]
+        html = render('{% description_list items=items %}', {"items": items})
+        assert "dj-dl--horizontal" not in html
+
+    def test_dl_empty_items(self):
+        html = render('{% description_list items=items %}', {"items": []})
+        assert "dj-dl" in html
+        assert "<dt" not in html
+
+    def test_dl_custom_class(self):
+        items = [{"term": "A", "detail": "B"}]
+        html = render('{% description_list items=items custom_class="extra" %}', {"items": items})
+        assert "extra" in html
+
+    def test_dl_structure(self):
+        items = [{"term": "T", "detail": "D"}]
+        html = render('{% description_list items=items %}', {"items": items})
+        assert "dj-dl__pair" in html
+        assert "dj-dl__term" in html
+        assert "dj-dl__detail" in html
+
+    def test_dl_xss_term(self):
+        items = [{"term": '<script>alert(1)</script>', "detail": "safe"}]
+        html = render('{% description_list items=items %}', {"items": items})
+        assert "<script>" not in html
+        assert "&lt;script&gt;" in html
+
+    def test_dl_xss_detail(self):
+        items = [{"term": "safe", "detail": '<script>alert(1)</script>'}]
+        html = render('{% description_list items=items %}', {"items": items})
+        assert "<script>" not in html
+        assert "&lt;script&gt;" in html
+
+    def test_dl_xss_custom_class(self):
+        items = [{"term": "A", "detail": "B"}]
+        html = render(
+            '{% description_list items=items custom_class=xss %}',
+            {"items": items, "xss": '" onmouseover="alert(1)" x="'},
+        )
+        assert '" onmouseover="' not in html
+        assert "&quot;" in html
+
+
+# ─── Sticky Header ───
+
+class TestStickyHeader:
+    def test_sticky_header_default(self):
+        html = render('{% sticky_header %}Nav Bar{% endsticky_header %}')
+        assert "dj-sticky-header" in html
+        assert "Nav Bar" in html
+        assert "position: sticky" in html
+        assert "top: 0" in html
+
+    def test_sticky_header_custom_offset(self):
+        html = render('{% sticky_header offset="64px" %}content{% endsticky_header %}')
+        assert "top: 64px" in html
+
+    def test_sticky_header_custom_z_index(self):
+        html = render('{% sticky_header z_index="50" %}content{% endsticky_header %}')
+        assert "z-index: 50" in html
+
+    def test_sticky_header_variable_offset(self):
+        html = render('{% sticky_header offset=off %}content{% endsticky_header %}', {"off": "2rem"})
+        assert "top: 2rem" in html
+
+    def test_sticky_header_custom_class(self):
+        html = render('{% sticky_header custom_class="my-header" %}content{% endsticky_header %}')
+        assert "my-header" in html
+
+    def test_sticky_header_xss_offset(self):
+        html = render(
+            '{% sticky_header offset=xss %}content{% endsticky_header %}',
+            {"xss": '"><script>alert(1)</script>'},
+        )
+        assert "<script>" not in html
+        assert "&lt;script&gt;" in html or "&quot;" in html
+
+    def test_sticky_header_xss_z_index(self):
+        html = render(
+            '{% sticky_header z_index=xss %}content{% endsticky_header %}',
+            {"xss": '"><script>alert(1)</script>'},
+        )
+        assert "<script>" not in html
+        assert "&lt;script&gt;" in html or "&quot;" in html
+
+    def test_sticky_header_xss_custom_class(self):
+        html = render(
+            '{% sticky_header custom_class=xss %}content{% endsticky_header %}',
+            {"xss": '" onmouseover="alert(1)" x="'},
+        )
+        assert '" onmouseover="' not in html
+        assert "&quot;" in html
