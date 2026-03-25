@@ -13561,3 +13561,923 @@ def do_reactions(parser, token):
     bits = token.split_contents()[1:]
     kwargs = _parse_kv_args(bits, parser)
     return ReactionsNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# v2.0 Final Batch: Map Picker (#76b)
+# ---------------------------------------------------------------------------
+
+class MapPickerNode(template.Node):
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        lat = kw.get("lat", 0)
+        lng = kw.get("lng", 0)
+        pick_event = kw.get("pick_event", "set_location")
+        zoom = kw.get("zoom", 13)
+        height = kw.get("height", "400px")
+        custom_class = kw.get("class", "")
+
+        try:
+            lat = float(lat)
+        except (ValueError, TypeError):
+            lat = 0.0
+        try:
+            lng = float(lng)
+        except (ValueError, TypeError):
+            lng = 0.0
+        try:
+            zoom = int(zoom)
+        except (ValueError, TypeError):
+            zoom = 13
+
+        e_class = conditional_escape(str(custom_class))
+        e_event = conditional_escape(str(pick_event))
+        e_height = conditional_escape(str(height))
+
+        cls = "dj-map-picker"
+        if e_class:
+            cls += f" {e_class}"
+
+        return mark_safe(
+            f'<div class="{cls}" dj-hook="MapPicker" '
+            f'data-lat="{lat}" data-lng="{lng}" '
+            f'data-zoom="{zoom}" data-pick-event="{e_event}" '
+            f'style="height:{e_height}" '
+            f'role="application" aria-label="Map picker">'
+            f'<div class="dj-map-picker__map"></div>'
+            f'</div>'
+        )
+
+
+@register.tag("map_picker")
+def do_map_picker(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return MapPickerNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# v2.0 Final Batch: Prompt Template Editor (#158)
+# ---------------------------------------------------------------------------
+
+class PromptEditorNode(template.Node):
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def render(self, context):
+        import re as _re
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        tmpl = kw.get("template", "")
+        variables = kw.get("variables", {})
+        event = kw.get("event", "save_prompt")
+        placeholder = kw.get("placeholder", "Enter your prompt template...")
+        rows = kw.get("rows", 6)
+        custom_class = kw.get("class", "")
+
+        if not isinstance(variables, dict):
+            variables = {}
+
+        try:
+            rows = int(rows)
+        except (ValueError, TypeError):
+            rows = 6
+
+        e_class = conditional_escape(str(custom_class))
+        e_event = conditional_escape(str(event))
+        e_placeholder = conditional_escape(str(placeholder))
+        e_template = conditional_escape(str(tmpl))
+
+        cls = "dj-prompt-editor"
+        if e_class:
+            cls += f" {e_class}"
+
+        var_names = _re.findall(r'\{\{(\w+)\}\}', str(tmpl))
+        unique_vars = list(dict.fromkeys(var_names))
+
+        var_chips = []
+        for v in unique_vars:
+            e_v = conditional_escape(v)
+            val = variables.get(v, "")
+            e_val = conditional_escape(str(val))
+            var_chips.append(
+                f'<span class="dj-prompt-editor__var" data-var="{e_v}">'
+                f'<code>{{{{{e_v}}}}}</code>'
+                f'{f" = {e_val}" if val else ""}'
+                f'</span>'
+            )
+
+        vars_html = ""
+        if var_chips:
+            vars_html = (
+                f'<div class="dj-prompt-editor__vars">'
+                f'{"".join(var_chips)}</div>'
+            )
+
+        # Escape the template text first, then substitute variables
+        preview_text = conditional_escape(str(tmpl))
+        for v in unique_vars:
+            val = variables.get(v, "{{" + v + "}}")
+            # The escaped form of {{var}} is {{var}} (no special chars)
+            preview_text = str(preview_text).replace(
+                "{{" + v + "}}",
+                f'<mark class="dj-prompt-editor__highlight">'
+                f'{conditional_escape(str(val))}</mark>'
+            )
+
+        event_attr = ""
+        if e_event:
+            event_attr = f' dj-click="{e_event}"'
+
+        return mark_safe(
+            f'<div class="{cls}">'
+            f'<textarea class="dj-prompt-editor__textarea" '
+            f'name="template" rows="{rows}" '
+            f'placeholder="{e_placeholder}">{e_template}</textarea>'
+            f'{vars_html}'
+            f'<div class="dj-prompt-editor__preview">{preview_text}</div>'
+            f'<button type="button" class="dj-prompt-editor__save"'
+            f'{event_attr}>Save</button>'
+            f'</div>'
+        )
+
+
+@register.tag("prompt_editor")
+def do_prompt_editor(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return PromptEditorNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# v2.0 Final Batch: Voice Input Button (#164)
+# ---------------------------------------------------------------------------
+
+class VoiceInputNode(template.Node):
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        event = kw.get("event", "transcribe")
+        lang = kw.get("lang", "en-US")
+        continuous = kw.get("continuous", False)
+        custom_class = kw.get("class", "")
+
+        e_class = conditional_escape(str(custom_class))
+        e_event = conditional_escape(str(event))
+        e_lang = conditional_escape(str(lang))
+
+        cls = "dj-voice-input"
+        if e_class:
+            cls += f" {e_class}"
+
+        mic_svg = (
+            '<svg class="dj-voice-input__icon" viewBox="0 0 24 24" '
+            'width="20" height="20" fill="none" stroke="currentColor" '
+            'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+            '<path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>'
+            '<path d="M19 10v2a7 7 0 0 1-14 0v-2"/>'
+            '<line x1="12" y1="19" x2="12" y2="23"/>'
+            '<line x1="8" y1="23" x2="16" y2="23"/>'
+            '</svg>'
+        )
+
+        cont = "true" if continuous else "false"
+
+        return mark_safe(
+            f'<button type="button" class="{cls}" '
+            f'dj-hook="VoiceInput" '
+            f'data-event="{e_event}" data-lang="{e_lang}" '
+            f'data-continuous="{cont}" '
+            f'aria-label="Voice input" aria-pressed="false">'
+            f'{mic_svg}'
+            f'<span class="dj-voice-input__pulse"></span>'
+            f'</button>'
+        )
+
+
+@register.tag("voice_input")
+def do_voice_input(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return VoiceInputNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# v2.0 Final Batch: Cron Expression Input (#145)
+# ---------------------------------------------------------------------------
+
+class CronInputNode(template.Node):
+    FIELD_LABELS = ["Minute", "Hour", "Day", "Month", "Weekday"]
+
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        name = kw.get("name", "cron")
+        value = kw.get("value", "* * * * *")
+        event = kw.get("event", "")
+        custom_class = kw.get("class", "")
+
+        e_class = conditional_escape(str(custom_class))
+        e_name = conditional_escape(str(name))
+        e_event = conditional_escape(str(event))
+        e_value = conditional_escape(str(value))
+
+        cls = "dj-cron-input"
+        if e_class:
+            cls += f" {e_class}"
+
+        parts = str(value).split()
+        while len(parts) < 5:
+            parts.append("*")
+        parts = parts[:5]
+
+        fields = []
+        for i, (label, val) in enumerate(zip(self.FIELD_LABELS, parts)):
+            e_label = conditional_escape(label)
+            e_val = conditional_escape(val)
+            fields.append(
+                f'<div class="dj-cron-input__field">'
+                f'<label class="dj-cron-input__label">{e_label}</label>'
+                f'<input type="text" class="dj-cron-input__input" '
+                f'name="{e_name}_{i}" value="{e_val}" '
+                f'size="6" aria-label="{e_label}">'
+                f'</div>'
+            )
+
+        event_attr = ""
+        if e_event:
+            event_attr = f' dj-change="{e_event}"'
+
+        return mark_safe(
+            f'<div class="{cls}"{event_attr}>'
+            f'<input type="hidden" name="{e_name}" value="{e_value}">'
+            f'<div class="dj-cron-input__fields">{"".join(fields)}</div>'
+            f'<div class="dj-cron-input__preview">'
+            f'<code>{e_value}</code></div>'
+            f'</div>'
+        )
+
+
+@register.tag("cron_input")
+def do_cron_input(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return CronInputNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# v2.0 Final Batch: Error Page (#136)
+# ---------------------------------------------------------------------------
+
+class ErrorPageNode(template.Node):
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        code = kw.get("code", 500)
+        title = kw.get("title", "Something went wrong")
+        message = kw.get("message", "")
+        action_url = kw.get("action_url", "/")
+        action_label = kw.get("action_label", "Go Home")
+        custom_class = kw.get("class", "")
+
+        try:
+            code = int(code)
+        except (ValueError, TypeError):
+            code = 500
+
+        e_class = conditional_escape(str(custom_class))
+        e_title = conditional_escape(str(title))
+        e_message = conditional_escape(str(message))
+        e_url = conditional_escape(str(action_url))
+        e_label = conditional_escape(str(action_label))
+
+        cls = "dj-error-page"
+        if e_class:
+            cls += f" {e_class}"
+
+        msg_html = ""
+        if e_message:
+            msg_html = f'<p class="dj-error-page__message">{e_message}</p>'
+
+        action_html = ""
+        if e_url:
+            action_html = (
+                f'<a href="{e_url}" class="dj-error-page__action">'
+                f'{e_label}</a>'
+            )
+
+        return mark_safe(
+            f'<div class="{cls}" role="alert">'
+            f'<div class="dj-error-page__code">{code}</div>'
+            f'<h1 class="dj-error-page__title">{e_title}</h1>'
+            f'{msg_html}'
+            f'{action_html}'
+            f'</div>'
+        )
+
+
+@register.tag("error_page")
+def do_error_page(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return ErrorPageNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# v2.0 Final Batch: Image Upload Preview (#137)
+# ---------------------------------------------------------------------------
+
+class ImageUploadPreviewNode(template.Node):
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        name = kw.get("name", "images")
+        max_count = kw.get("max", 5)
+        event = kw.get("event", "upload")
+        accept = kw.get("accept", "image/*")
+        previews = kw.get("previews", [])
+        custom_class = kw.get("class", "")
+
+        try:
+            max_count = int(max_count)
+        except (ValueError, TypeError):
+            max_count = 5
+
+        if not isinstance(previews, list):
+            previews = []
+
+        e_class = conditional_escape(str(custom_class))
+        e_name = conditional_escape(str(name))
+        e_event = conditional_escape(str(event))
+        e_accept = conditional_escape(str(accept))
+
+        cls = "dj-img-upload"
+        if e_class:
+            cls += f" {e_class}"
+
+        thumbs = []
+        for url in previews:
+            e_url = conditional_escape(str(url))
+            thumbs.append(
+                f'<div class="dj-img-upload__thumb">'
+                f'<img src="{e_url}" alt="Preview" '
+                f'class="dj-img-upload__thumb-img">'
+                f'</div>'
+            )
+
+        thumbs_html = ""
+        if thumbs:
+            thumbs_html = (
+                f'<div class="dj-img-upload__previews">'
+                f'{"".join(thumbs)}</div>'
+            )
+
+        upload_svg = (
+            '<svg class="dj-img-upload__icon" viewBox="0 0 24 24" width="24" '
+            'height="24" fill="none" stroke="currentColor" stroke-width="2">'
+            '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>'
+            '<polyline points="17 8 12 3 7 8"/>'
+            '<line x1="12" y1="3" x2="12" y2="15"/>'
+            '</svg>'
+        )
+
+        return mark_safe(
+            f'<div class="{cls}" dj-hook="ImageUploadPreview" '
+            f'data-event="{e_event}" data-max="{max_count}">'
+            f'<label class="dj-img-upload__dropzone">'
+            f'{upload_svg}'
+            f'<span class="dj-img-upload__text">Drop images here or click to upload</span>'
+            f'<span class="dj-img-upload__hint">Max {max_count} images</span>'
+            f'<input type="file" name="{e_name}" accept="{e_accept}" '
+            f'multiple class="dj-img-upload__input" aria-label="Upload images">'
+            f'</label>'
+            f'{thumbs_html}'
+            f'</div>'
+        )
+
+
+@register.tag("image_upload_preview")
+def do_image_upload_preview(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return ImageUploadPreviewNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# v2.0 Final Batch: Number Animation (#141)
+# ---------------------------------------------------------------------------
+
+class AnimatedNumberNode(template.Node):
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        value = kw.get("value", 0)
+        prefix = kw.get("prefix", "")
+        suffix = kw.get("suffix", "")
+        duration = kw.get("duration", 800)
+        decimals = kw.get("decimals", 0)
+        separator = kw.get("separator", ",")
+        custom_class = kw.get("class", "")
+
+        try:
+            val = float(value)
+        except (ValueError, TypeError):
+            val = 0
+        try:
+            duration = int(duration)
+        except (ValueError, TypeError):
+            duration = 800
+        try:
+            decimals = int(decimals)
+        except (ValueError, TypeError):
+            decimals = 0
+
+        e_class = conditional_escape(str(custom_class))
+        e_prefix = conditional_escape(str(prefix))
+        e_suffix = conditional_escape(str(suffix))
+        e_sep = conditional_escape(str(separator))
+
+        cls = "dj-animated-number"
+        if e_class:
+            cls += f" {e_class}"
+
+        # Format number
+        if decimals > 0:
+            formatted = f"{val:,.{decimals}f}"
+        else:
+            formatted = f"{int(val):,}"
+        if separator != ",":
+            formatted = formatted.replace(",", separator)
+        e_formatted = conditional_escape(formatted)
+
+        prefix_html = ""
+        if e_prefix:
+            prefix_html = f'<span class="dj-animated-number__prefix">{e_prefix}</span>'
+        suffix_html = ""
+        if e_suffix:
+            suffix_html = f'<span class="dj-animated-number__suffix">{e_suffix}</span>'
+
+        return mark_safe(
+            f'<span class="{cls}" dj-hook="AnimatedNumber" '
+            f'data-value="{val}" data-duration="{duration}" '
+            f'data-decimals="{decimals}" data-separator="{e_sep}">'
+            f'{prefix_html}'
+            f'<span class="dj-animated-number__value">{e_formatted}</span>'
+            f'{suffix_html}'
+            f'</span>'
+        )
+
+
+@register.tag("animated_number")
+def do_animated_number(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return AnimatedNumberNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# v2.0 Final Batch: Ribbon Badge (#151)
+# ---------------------------------------------------------------------------
+
+class RibbonNode(template.Node):
+    VARIANT_MAP = {
+        "primary": "dj-ribbon--primary",
+        "success": "dj-ribbon--success",
+        "warning": "dj-ribbon--warning",
+        "danger": "dj-ribbon--danger",
+    }
+
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        text = kw.get("text", "")
+        variant = kw.get("variant", "primary")
+        position = kw.get("position", "top-right")
+        custom_class = kw.get("class", "")
+
+        e_class = conditional_escape(str(custom_class))
+        e_text = conditional_escape(str(text))
+
+        classes = ["dj-ribbon"]
+        variant_cls = self.VARIANT_MAP.get(str(variant), "dj-ribbon--primary")
+        classes.append(variant_cls)
+
+        pos = str(position) if str(position) in (
+            "top-left", "top-right", "bottom-left", "bottom-right"
+        ) else "top-right"
+        classes.append(f"dj-ribbon--{pos}")
+
+        if e_class:
+            classes.append(e_class)
+
+        cls = " ".join(classes)
+
+        return mark_safe(
+            f'<div class="{cls}" aria-label="{e_text}">'
+            f'<span class="dj-ribbon__text">{e_text}</span>'
+            f'</div>'
+        )
+
+
+@register.tag("ribbon")
+def do_ribbon(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return RibbonNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# v2.0 Final Batch: Breadcrumb Dropdown (#115)
+# ---------------------------------------------------------------------------
+
+class BreadcrumbDropdownNode(template.Node):
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        items = kw.get("items", [])
+        max_visible = kw.get("max_visible", 4)
+        separator = kw.get("separator", "/")
+        custom_class = kw.get("class", "")
+
+        if not isinstance(items, list):
+            items = []
+
+        try:
+            max_vis = int(max_visible)
+        except (ValueError, TypeError):
+            max_vis = 4
+
+        e_class = conditional_escape(str(custom_class))
+        e_sep = conditional_escape(str(separator))
+
+        cls = "dj-breadcrumb"
+        if e_class:
+            cls += f" {e_class}"
+
+        need_collapse = len(items) > max_vis and max_vis >= 2
+
+        def render_item(item, is_last):
+            if not isinstance(item, dict):
+                return ""
+            label = conditional_escape(str(item.get("label", "")))
+            url = item.get("url", "")
+            aria = ' aria-current="page"' if is_last else ""
+            if url and not is_last:
+                e_url = conditional_escape(str(url))
+                content = f'<a href="{e_url}" class="dj-breadcrumb__link">{label}</a>'
+            else:
+                content = f'<span class="dj-breadcrumb__current">{label}</span>'
+            return f'<li class="dj-breadcrumb__item"{aria}>{content}</li>'
+
+        parts = []
+        if need_collapse:
+            visible_start = [items[0]]
+            collapsed = items[1:-(max_vis - 1)]
+            visible_end = items[-(max_vis - 1):]
+
+            parts.append(render_item(visible_start[0], False))
+
+            dropdown_items = []
+            for it in collapsed:
+                if not isinstance(it, dict):
+                    continue
+                label = conditional_escape(str(it.get("label", "")))
+                url = it.get("url", "")
+                if url:
+                    e_url = conditional_escape(str(url))
+                    dropdown_items.append(
+                        f'<li class="dj-breadcrumb__dropdown-item">'
+                        f'<a href="{e_url}">{label}</a></li>'
+                    )
+                else:
+                    dropdown_items.append(
+                        f'<li class="dj-breadcrumb__dropdown-item">'
+                        f'{label}</li>'
+                    )
+            parts.append(
+                f'<li class="dj-breadcrumb__item dj-breadcrumb__ellipsis">'
+                f'<span class="dj-breadcrumb__separator" aria-hidden="true">{e_sep}</span>'
+                f'<button type="button" class="dj-breadcrumb__toggle" '
+                f'aria-expanded="false" aria-label="Show more">&hellip;</button>'
+                f'<ul class="dj-breadcrumb__dropdown">{"".join(dropdown_items)}</ul>'
+                f'</li>'
+            )
+            for i, it in enumerate(visible_end):
+                is_last = i == len(visible_end) - 1
+                parts.append(render_item(it, is_last))
+        else:
+            for i, it in enumerate(items):
+                is_last = i == len(items) - 1
+                parts.append(render_item(it, is_last))
+
+        return mark_safe(
+            f'<nav class="{cls}" aria-label="Breadcrumb">'
+            f'<ol class="dj-breadcrumb__list">{"".join(parts)}</ol>'
+            f'</nav>'
+        )
+
+
+@register.tag("breadcrumb_dropdown")
+def do_breadcrumb_dropdown(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return BreadcrumbDropdownNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# v2.0 Final Batch: Data Card Grid (#92)
+# ---------------------------------------------------------------------------
+
+class DataCardGridNode(template.Node):
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        items = kw.get("items", [])
+        columns = kw.get("columns", 3)
+        filter_key = kw.get("filter_key", "category")
+        event = kw.get("event", "")
+        custom_class = kw.get("class", "")
+
+        if not isinstance(items, list):
+            items = []
+
+        try:
+            cols = int(columns)
+        except (ValueError, TypeError):
+            cols = 3
+
+        e_class = conditional_escape(str(custom_class))
+        e_event = conditional_escape(str(event))
+
+        cls = "dj-data-card-grid"
+        if e_class:
+            cls += f" {e_class}"
+
+        fk = str(filter_key)
+        categories = []
+        seen = set()
+        for it in items:
+            if isinstance(it, dict):
+                cat = str(it.get(fk, ""))
+                if cat and cat not in seen:
+                    categories.append(cat)
+                    seen.add(cat)
+
+        filter_html = ""
+        if categories:
+            btns = ['<button type="button" class="dj-data-card-grid__filter dj-data-card-grid__filter--active" data-filter="all">All</button>']
+            for cat in categories:
+                e_cat = conditional_escape(cat)
+                btns.append(
+                    f'<button type="button" class="dj-data-card-grid__filter" '
+                    f'data-filter="{e_cat}">{e_cat}</button>'
+                )
+            filter_html = f'<div class="dj-data-card-grid__filters">{"".join(btns)}</div>'
+
+        cards = []
+        for it in items:
+            if not isinstance(it, dict):
+                continue
+            title = conditional_escape(str(it.get("title", "")))
+            desc = conditional_escape(str(it.get("description", "")))
+            cat = conditional_escape(str(it.get(fk, "")))
+            image = it.get("image", "")
+
+            img_html = ""
+            if image:
+                e_img = conditional_escape(str(image))
+                img_html = (
+                    f'<img src="{e_img}" alt="{title}" '
+                    f'class="dj-data-card-grid__img">'
+                )
+
+            click_attr = ""
+            if e_event:
+                click_attr = f' dj-click="{e_event}" dj-value-title="{title}"'
+
+            cards.append(
+                f'<div class="dj-data-card-grid__card" data-category="{cat}" '
+                f'role="listitem"{click_attr}>'
+                f'{img_html}'
+                f'<div class="dj-data-card-grid__body">'
+                f'<h3 class="dj-data-card-grid__title">{title}</h3>'
+                f'<p class="dj-data-card-grid__desc">{desc}</p>'
+                f'</div></div>'
+            )
+
+        style = f"--dj-data-card-grid-cols:{cols}"
+
+        return mark_safe(
+            f'<div class="{cls}" style="{style}">'
+            f'{filter_html}'
+            f'<div class="dj-data-card-grid__grid" role="list">'
+            f'{"".join(cards)}</div></div>'
+        )
+
+
+@register.tag("data_card_grid")
+def do_data_card_grid(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return DataCardGridNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# v2.0 Final Batch: Agent Step Card (#154)
+# ---------------------------------------------------------------------------
+
+class AgentStepNode(template.Node):
+    STATUS_ICONS = {
+        "pending": "&#9711;",
+        "running": "&#8987;",
+        "complete": "&#10003;",
+        "error": "&#10007;",
+    }
+
+    def __init__(self, nodelist, kwargs):
+        self.nodelist = nodelist
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        tool = kw.get("tool", "")
+        status = kw.get("status", "pending")
+        duration = kw.get("duration", "")
+        custom_class = kw.get("class", "")
+
+        content = self.nodelist.render(context).strip()
+
+        status = str(status) if str(status) in self.STATUS_ICONS else "pending"
+
+        e_class = conditional_escape(str(custom_class))
+        e_tool = conditional_escape(str(tool))
+        e_duration = conditional_escape(str(duration))
+        e_content = conditional_escape(content) if content else ""
+
+        classes = ["dj-agent-step", f"dj-agent-step--{status}"]
+        if e_class:
+            classes.append(e_class)
+        cls = " ".join(classes)
+
+        icon = self.STATUS_ICONS.get(status, "&#9711;")
+
+        duration_html = ""
+        if e_duration:
+            duration_html = (
+                f'<span class="dj-agent-step__duration">{e_duration}</span>'
+            )
+
+        content_html = ""
+        if e_content:
+            content_html = (
+                f'<div class="dj-agent-step__content">{e_content}</div>'
+            )
+
+        return mark_safe(
+            f'<div class="{cls}" role="listitem">'
+            f'<div class="dj-agent-step__header">'
+            f'<span class="dj-agent-step__icon" aria-hidden="true">{icon}</span>'
+            f'<span class="dj-agent-step__tool">{e_tool}</span>'
+            f'<span class="dj-agent-step__status">{conditional_escape(status)}</span>'
+            f'{duration_html}'
+            f'</div>'
+            f'{content_html}'
+            f'</div>'
+        )
+
+
+@register.tag("agent_step")
+def do_agent_step(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    nodelist = parser.parse(("endagent_step",))
+    parser.delete_first_token()
+    return AgentStepNode(nodelist, kwargs)
+
+
+# ---------------------------------------------------------------------------
+# v2.0 Final Batch: QR Code (#157)
+# ---------------------------------------------------------------------------
+
+class QRCodeNode(template.Node):
+    SIZE_MAP = {"sm": 128, "md": 200, "lg": 300}
+
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    @staticmethod
+    def _generate_matrix(data_str):
+        size = 21
+        matrix = [[False] * size for _ in range(size)]
+
+        def add_finder(row, col):
+            for r in range(7):
+                for c in range(7):
+                    if row + r < size and col + c < size:
+                        is_border = r in (0, 6) or c in (0, 6)
+                        is_inner = 2 <= r <= 4 and 2 <= c <= 4
+                        matrix[row + r][col + c] = is_border or is_inner
+
+        add_finder(0, 0)
+        add_finder(0, size - 7)
+        add_finder(size - 7, 0)
+
+        for i in range(8, size - 8):
+            matrix[6][i] = i % 2 == 0
+            matrix[i][6] = i % 2 == 0
+
+        data_bytes = data_str.encode("utf-8") if data_str else b"\x00"
+        byte_idx = 0
+        bit_idx = 0
+        for r in range(size):
+            for c in range(size):
+                if matrix[r][c]:
+                    continue
+                if (r < 9 and c < 9) or (r < 9 and c >= size - 8) or (r >= size - 8 and c < 9):
+                    continue
+                if r == 6 or c == 6:
+                    continue
+                b = data_bytes[byte_idx % len(data_bytes)]
+                matrix[r][c] = bool((b >> (7 - bit_idx)) & 1)
+                bit_idx += 1
+                if bit_idx >= 8:
+                    bit_idx = 0
+                    byte_idx += 1
+
+        return matrix
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        data = kw.get("data", "")
+        size = kw.get("size", "md")
+        fg_color = kw.get("fg_color", "#000")
+        bg_color = kw.get("bg_color", "#fff")
+        custom_class = kw.get("class", "")
+
+        e_class = conditional_escape(str(custom_class))
+        e_data = conditional_escape(str(data))
+        e_fg = conditional_escape(str(fg_color))
+        e_bg = conditional_escape(str(bg_color))
+
+        cls = "dj-qr-code"
+        if e_class:
+            cls += f" {e_class}"
+
+        if isinstance(size, str) and size in self.SIZE_MAP:
+            px = self.SIZE_MAP[size]
+        else:
+            try:
+                px = int(size)
+            except (ValueError, TypeError):
+                px = 200
+
+        matrix = self._generate_matrix(str(data))
+        mod_count = len(matrix)
+        cell = px / mod_count
+
+        rects = []
+        for r, row in enumerate(matrix):
+            for c, val in enumerate(row):
+                if val:
+                    x = c * cell
+                    y = r * cell
+                    rects.append(
+                        f'<rect x="{x:.2f}" y="{y:.2f}" '
+                        f'width="{cell:.2f}" height="{cell:.2f}" '
+                        f'fill="{e_fg}"/>'
+                    )
+
+        return mark_safe(
+            f'<div class="{cls}">'
+            f'<svg class="dj-qr-code__svg" viewBox="0 0 {px} {px}" '
+            f'width="{px}" height="{px}" xmlns="http://www.w3.org/2000/svg" '
+            f'role="img" aria-label="QR code: {e_data}">'
+            f'<rect width="{px}" height="{px}" fill="{e_bg}"/>'
+            f'{"".join(rects)}'
+            f'</svg></div>'
+        )
+
+
+@register.tag("qr_code")
+def do_qr_code(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return QRCodeNode(kwargs)
