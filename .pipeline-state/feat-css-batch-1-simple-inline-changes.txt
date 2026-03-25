@@ -1,0 +1,5 @@
+src/djust_components/static/djust_components/components.css
+tests/test_rust_handlers.py
+CHANGELOG.md
+.pipeline-state/feat-css-batch-1-simple-inline-plan.md
+.pipeline-state/feat-css-batch-1-simple-inline-changes.txt
