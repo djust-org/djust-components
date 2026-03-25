@@ -3642,6 +3642,242 @@ INLINE_HANDLERS.extend([
     ("confirm_dialog", ConfirmDialogHandler()),
 ])
 
+
+# ===========================================================================
+# CASCADING FORM COMPONENTS
+# ===========================================================================
+
+CURRENCY_SYMBOLS = {
+    "USD": "$", "EUR": "\u20ac", "GBP": "\u00a3", "JPY": "\u00a5",
+    "CAD": "CA$", "AUD": "A$", "CHF": "CHF", "CNY": "\u00a5",
+    "INR": "\u20b9", "BRL": "R$", "KRW": "\u20a9", "MXN": "MX$",
+}
+
+
+class DependentSelectHandler:
+    """Inline handler for {% dependent_select name="city" parent="country" source_event="load_cities" %}"""
+
+    def render(self, args, context):
+        kw = _parse_args(args, context)
+        name = conditional_escape(kw.get("name", ""))
+        parent = conditional_escape(kw.get("parent", ""))
+        source_event = conditional_escape(kw.get("source_event", name))
+        label = conditional_escape(kw.get("label", ""))
+        placeholder = conditional_escape(kw.get("placeholder", "Select..."))
+        value = conditional_escape(str(kw.get("value", "")))
+        loading = kw.get("loading", False)
+        disabled = kw.get("disabled", False)
+        required = kw.get("required", False)
+        error = conditional_escape(kw.get("error", ""))
+        custom_class = conditional_escape(kw.get("custom_class", ""))
+
+        options = kw.get("options", None)
+        if options is None:
+            options = context.get("options", [])
+        if not isinstance(options, list):
+            options = []
+
+        disabled_attr = " disabled" if disabled else ""
+        required_attr = " required" if required else ""
+
+        cls = "dj-dependent-select"
+        if loading:
+            cls += " dj-dependent-select--loading"
+        if error:
+            cls += " dj-dependent-select--error"
+        if custom_class:
+            cls += f" {custom_class}"
+
+        label_html = ""
+        if label:
+            req_mark = ' <span class="form-required">*</span>' if required else ""
+            label_html = (
+                f'<label class="form-label" for="{name}">'
+                f'{label}{req_mark}</label>'
+            )
+
+        opt_parts = [f'<option value="">{placeholder}</option>']
+        for opt in options:
+            if isinstance(opt, dict):
+                ov = conditional_escape(str(opt.get("value", "")))
+                ol = conditional_escape(str(opt.get("label", ov)))
+            else:
+                ov = conditional_escape(str(opt))
+                ol = ov
+            selected = " selected" if ov == value else ""
+            opt_parts.append(f'<option value="{ov}"{selected}>{ol}</option>')
+
+        spinner_html = (
+            '<span class="dj-dependent-select__spinner" aria-hidden="true"></span>'
+            if loading else ""
+        )
+
+        error_html = (
+            f'<span class="form-error-message" role="alert">{error}</span>'
+            if error else ""
+        )
+
+        return mark_safe(
+            f'<div class="{cls}">'
+            f'{label_html}'
+            f'<div class="dj-dependent-select__control">'
+            f'<select name="{name}" id="{name}" '
+            f'data-parent="{parent}" '
+            f'data-source-event="{source_event}" '
+            f'dj-change="{source_event}"'
+            f'{disabled_attr}{required_attr}>'
+            f'{"".join(opt_parts)}'
+            f'</select>'
+            f'{spinner_html}'
+            f'</div>'
+            f'{error_html}'
+            f'</div>'
+        )
+
+
+class CurrencyInputHandler:
+    """Inline handler for {% currency_input name="price" currency="USD" min=0 %}"""
+
+    def render(self, args, context):
+        kw = _parse_args(args, context)
+        name = conditional_escape(kw.get("name", ""))
+        currency = str(kw.get("currency", "USD")).upper()
+        e_currency = conditional_escape(currency)
+        value = conditional_escape(str(kw.get("value", "")))
+        label = conditional_escape(kw.get("label", ""))
+        placeholder = conditional_escape(kw.get("placeholder", "0.00"))
+        step = conditional_escape(str(kw.get("step", "0.01")))
+        event = conditional_escape(kw.get("event", name))
+        disabled = kw.get("disabled", False)
+        required = kw.get("required", False)
+        error = conditional_escape(kw.get("error", ""))
+        custom_class = conditional_escape(kw.get("custom_class", ""))
+
+        symbol = CURRENCY_SYMBOLS.get(currency, currency)
+        e_symbol = conditional_escape(symbol)
+
+        disabled_attr = " disabled" if disabled else ""
+        required_attr = " required" if required else ""
+        min_val = kw.get("min", None)
+        max_val = kw.get("max", None)
+        min_attr = f' min="{conditional_escape(str(min_val))}"' if min_val is not None else ""
+        max_attr = f' max="{conditional_escape(str(max_val))}"' if max_val is not None else ""
+
+        cls = "dj-currency-input"
+        if error:
+            cls += " dj-currency-input--error"
+        if custom_class:
+            cls += f" {custom_class}"
+
+        label_html = ""
+        if label:
+            req_mark = ' <span class="form-required">*</span>' if required else ""
+            label_html = (
+                f'<label class="form-label" for="{name}">'
+                f'{label}{req_mark}</label>'
+            )
+
+        error_html = (
+            f'<span class="form-error-message" role="alert">{error}</span>'
+            if error else ""
+        )
+
+        return mark_safe(
+            f'<div class="{cls}">'
+            f'{label_html}'
+            f'<div class="dj-currency-input__control">'
+            f'<span class="dj-currency-input__symbol">{e_symbol}</span>'
+            f'<input type="number" name="{name}" id="{name}" '
+            f'value="{value}" placeholder="{placeholder}" '
+            f'step="{step}"{min_attr}{max_attr} '
+            f'data-currency="{e_currency}" '
+            f'dj-input="{event}" '
+            f'class="dj-currency-input__field"'
+            f'{disabled_attr}{required_attr}>'
+            f'<span class="dj-currency-input__code">{e_currency}</span>'
+            f'</div>'
+            f'{error_html}'
+            f'</div>'
+        )
+
+
+class FormErrorsHandler:
+    """Inline handler for {% form_errors form=form %}"""
+
+    def render(self, args, context):
+        kw = _parse_args(args, context)
+        form = kw.get("form", None)
+        if form is None:
+            form = context.get("form", None)
+        custom_class = conditional_escape(kw.get("custom_class", ""))
+
+        if form is None or not hasattr(form, "non_field_errors"):
+            return ""
+
+        errors = form.non_field_errors()
+        if not errors:
+            return ""
+
+        cls = "dj-form-errors"
+        if custom_class:
+            cls += f" {custom_class}"
+
+        items = []
+        for err in errors:
+            items.append(
+                f'<li class="dj-form-errors__item">'
+                f'{conditional_escape(str(err))}</li>'
+            )
+
+        return mark_safe(
+            f'<div class="{cls}" role="alert">'
+            f'<ul class="dj-form-errors__list">{"".join(items)}</ul>'
+            f'</div>'
+        )
+
+
+class FieldErrorHandler:
+    """Inline handler for {% field_error field=form.email %}"""
+
+    def render(self, args, context):
+        kw = _parse_args(args, context)
+        field = kw.get("field", None)
+        custom_class = conditional_escape(kw.get("custom_class", ""))
+
+        if field is None:
+            return ""
+
+        if hasattr(field, "errors"):
+            errors = field.errors
+        else:
+            return ""
+
+        if not errors:
+            return ""
+
+        cls = "dj-field-error"
+        if custom_class:
+            cls += f" {custom_class}"
+
+        items = []
+        for err in errors:
+            items.append(
+                f'<span class="dj-field-error__message">'
+                f'{conditional_escape(str(err))}</span>'
+            )
+
+        return mark_safe(
+            f'<div class="{cls}" role="alert">{"".join(items)}</div>'
+        )
+
+
+INLINE_HANDLERS.extend([
+    ("dependent_select", DependentSelectHandler()),
+    ("currency_input", CurrencyInputHandler()),
+    ("form_errors", FormErrorsHandler()),
+    ("field_error", FieldErrorHandler()),
+])
+
 BLOCK_HANDLERS.extend([
     ("popconfirm", "endpopconfirm", PopconfirmHandler()),
 ])

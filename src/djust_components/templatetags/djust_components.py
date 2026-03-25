@@ -5564,3 +5564,271 @@ def do_popconfirm(parser, token):
     nodelist = parser.parse(("endpopconfirm",))
     parser.delete_first_token()
     return PopconfirmNode(nodelist, kwargs)
+
+
+# ---------------------------------------------------------------------------
+# CASCADING FORM COMPONENTS
+# ---------------------------------------------------------------------------
+
+# --- Dependent Select (#108) ---
+
+@register.simple_tag
+def dependent_select(name="", parent="", source_event="", label="",
+                     placeholder="Select...", value="", options=None,
+                     loading=False, disabled=False, required=False,
+                     error="", custom_class=""):
+    """Cascading dropdown that reloads options when parent field changes.
+
+    Args:
+        name: Input name attribute.
+        parent: Name of the parent field this select depends on.
+        source_event: djust event name to fire when parent changes (loads new options).
+        label: Optional label text.
+        placeholder: Placeholder text when nothing selected.
+        value: Currently selected value.
+        options: List of dicts with 'value' and 'label' keys, or list of strings.
+        loading: Show spinner while loading options.
+        disabled: Disable the select.
+        required: Mark field as required.
+        error: Error message to display.
+        custom_class: Extra CSS class.
+    """
+    if isinstance(loading, str):
+        loading = loading.lower() not in ("false", "0", "")
+    if isinstance(disabled, str):
+        disabled = disabled.lower() not in ("false", "0", "")
+    if isinstance(required, str):
+        required = required.lower() not in ("false", "0", "")
+
+    e_name = conditional_escape(name)
+    e_parent = conditional_escape(parent)
+    e_source_event = conditional_escape(source_event or name)
+    e_label = conditional_escape(label)
+    e_placeholder = conditional_escape(placeholder)
+    e_value = conditional_escape(str(value))
+    e_error = conditional_escape(error)
+    e_class = conditional_escape(custom_class)
+
+    if options is None:
+        options = []
+
+    disabled_attr = " disabled" if disabled else ""
+    required_attr = " required" if required else ""
+
+    cls = "dj-dependent-select"
+    if loading:
+        cls += " dj-dependent-select--loading"
+    if error:
+        cls += " dj-dependent-select--error"
+    if e_class:
+        cls += f" {e_class}"
+
+    label_html = ""
+    if label:
+        req_mark = ' <span class="form-required">*</span>' if required else ""
+        label_html = (
+            f'<label class="form-label" for="{e_name}">'
+            f'{e_label}{req_mark}</label>'
+        )
+
+    # Build options
+    opt_parts = [f'<option value="">{e_placeholder}</option>']
+    for opt in options:
+        if isinstance(opt, dict):
+            ov = conditional_escape(str(opt.get("value", "")))
+            ol = conditional_escape(str(opt.get("label", ov)))
+        else:
+            ov = conditional_escape(str(opt))
+            ol = ov
+        selected = " selected" if ov == e_value else ""
+        opt_parts.append(f'<option value="{ov}"{selected}>{ol}</option>')
+
+    spinner_html = (
+        '<span class="dj-dependent-select__spinner" aria-hidden="true"></span>'
+        if loading else ""
+    )
+
+    error_html = (
+        f'<span class="form-error-message" role="alert">{e_error}</span>'
+        if error else ""
+    )
+
+    return mark_safe(
+        f'<div class="{cls}">'
+        f'{label_html}'
+        f'<div class="dj-dependent-select__control">'
+        f'<select name="{e_name}" id="{e_name}" '
+        f'data-parent="{e_parent}" '
+        f'data-source-event="{e_source_event}" '
+        f'dj-change="{e_source_event}"'
+        f'{disabled_attr}{required_attr}>'
+        f'{"".join(opt_parts)}'
+        f'</select>'
+        f'{spinner_html}'
+        f'</div>'
+        f'{error_html}'
+        f'</div>'
+    )
+
+
+# --- Currency Input (#109) ---
+
+CURRENCY_SYMBOLS = {
+    "USD": "$", "EUR": "\u20ac", "GBP": "\u00a3", "JPY": "\u00a5",
+    "CAD": "CA$", "AUD": "A$", "CHF": "CHF", "CNY": "\u00a5",
+    "INR": "\u20b9", "BRL": "R$", "KRW": "\u20a9", "MXN": "MX$",
+}
+
+
+@register.simple_tag
+def currency_input(name="", currency="USD", value="", label="",
+                   min=None, max=None, step="0.01", placeholder="0.00",
+                   event="", disabled=False, required=False,
+                   error="", custom_class=""):
+    """Numeric input with currency symbol prefix and formatting hints.
+
+    Args:
+        name: Input name attribute.
+        currency: Currency code (e.g. USD, EUR, GBP). Determines prefix symbol.
+        value: Current numeric value.
+        label: Optional label text.
+        min: Minimum value.
+        max: Maximum value.
+        step: Step increment (default 0.01 for cents).
+        placeholder: Placeholder text.
+        event: dj-input event name (defaults to name).
+        disabled: Disable the input.
+        required: Mark field as required.
+        error: Error message to display.
+        custom_class: Extra CSS class.
+    """
+    if isinstance(disabled, str):
+        disabled = disabled.lower() not in ("false", "0", "")
+    if isinstance(required, str):
+        required = required.lower() not in ("false", "0", "")
+
+    e_name = conditional_escape(name)
+    e_currency = conditional_escape(str(currency).upper())
+    e_value = conditional_escape(str(value))
+    e_label = conditional_escape(label)
+    e_placeholder = conditional_escape(placeholder)
+    e_step = conditional_escape(str(step))
+    e_event = conditional_escape(event or name)
+    e_error = conditional_escape(error)
+    e_class = conditional_escape(custom_class)
+
+    symbol = CURRENCY_SYMBOLS.get(str(currency).upper(), str(currency).upper())
+    e_symbol = conditional_escape(symbol)
+
+    disabled_attr = " disabled" if disabled else ""
+    required_attr = " required" if required else ""
+    min_attr = f' min="{conditional_escape(str(min))}"' if min is not None else ""
+    max_attr = f' max="{conditional_escape(str(max))}"' if max is not None else ""
+
+    cls = "dj-currency-input"
+    if error:
+        cls += " dj-currency-input--error"
+    if e_class:
+        cls += f" {e_class}"
+
+    label_html = ""
+    if label:
+        req_mark = ' <span class="form-required">*</span>' if required else ""
+        label_html = (
+            f'<label class="form-label" for="{e_name}">'
+            f'{e_label}{req_mark}</label>'
+        )
+
+    error_html = (
+        f'<span class="form-error-message" role="alert">{e_error}</span>'
+        if error else ""
+    )
+
+    return mark_safe(
+        f'<div class="{cls}">'
+        f'{label_html}'
+        f'<div class="dj-currency-input__control">'
+        f'<span class="dj-currency-input__symbol">{e_symbol}</span>'
+        f'<input type="number" name="{e_name}" id="{e_name}" '
+        f'value="{e_value}" placeholder="{e_placeholder}" '
+        f'step="{e_step}"{min_attr}{max_attr} '
+        f'data-currency="{e_currency}" '
+        f'dj-input="{e_event}" '
+        f'class="dj-currency-input__field"'
+        f'{disabled_attr}{required_attr}>'
+        f'<span class="dj-currency-input__code">{e_currency}</span>'
+        f'</div>'
+        f'{error_html}'
+        f'</div>'
+    )
+
+
+# --- Form Validation Display (#110) ---
+
+@register.simple_tag
+def form_errors(form=None, custom_class=""):
+    """Render all form-level (non-field) validation errors.
+
+    Args:
+        form: A Django form instance.
+        custom_class: Extra CSS class.
+    """
+    if form is None or not hasattr(form, "non_field_errors"):
+        return ""
+
+    errors = form.non_field_errors()
+    if not errors:
+        return ""
+
+    e_class = conditional_escape(custom_class)
+    cls = "dj-form-errors"
+    if e_class:
+        cls += f" {e_class}"
+
+    items = []
+    for err in errors:
+        items.append(
+            f'<li class="dj-form-errors__item">{conditional_escape(str(err))}</li>'
+        )
+
+    return mark_safe(
+        f'<div class="{cls}" role="alert">'
+        f'<ul class="dj-form-errors__list">{"".join(items)}</ul>'
+        f'</div>'
+    )
+
+
+@register.simple_tag
+def field_error(field=None, custom_class=""):
+    """Render inline validation error for a single form field.
+
+    Args:
+        field: A Django BoundField instance (e.g. form.email).
+        custom_class: Extra CSS class.
+    """
+    if field is None:
+        return ""
+
+    # Support both BoundField and a raw errors list
+    if hasattr(field, "errors"):
+        errors = field.errors
+    else:
+        return ""
+
+    if not errors:
+        return ""
+
+    e_class = conditional_escape(custom_class)
+    cls = "dj-field-error"
+    if e_class:
+        cls += f" {e_class}"
+
+    items = []
+    for err in errors:
+        items.append(
+            f'<span class="dj-field-error__message">{conditional_escape(str(err))}</span>'
+        )
+
+    return mark_safe(
+        f'<div class="{cls}" role="alert">{"".join(items)}</div>'
+    )
