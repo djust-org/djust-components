@@ -2875,3 +2875,417 @@ def rich_text_editor(name="content", value="", event="update_content",
         f'</div>'
         f'</div>'
     )
+
+
+# ---------------------------------------------------------------------------
+# Multi-select (#53)
+# ---------------------------------------------------------------------------
+
+@register.simple_tag
+def multi_select(name="", label="", options=None, selected=None,
+                 event="", placeholder="Search...", disabled=False):
+    """Render a multi-select checkbox list with search filtering and tag output.
+
+    Args:
+        name: form field name
+        label: label text above the control
+        options: list of dicts {"value":..., "label":...} or list of 2-tuples
+        selected: list of currently selected values
+        event: dj-change event name
+        placeholder: search input placeholder
+        disabled: disables the control
+    """
+    if isinstance(disabled, str):
+        disabled = disabled.lower() not in ("false", "0", "")
+    if options is None:
+        options = []
+    if selected is None:
+        selected = []
+    # Normalise selected to list of strings
+    selected = [str(s) for s in selected]
+
+    e_name = conditional_escape(name)
+    e_label = conditional_escape(label)
+    e_placeholder = conditional_escape(placeholder)
+    dj_event = conditional_escape(event or name)
+    disabled_attr = " disabled" if disabled else ""
+
+    uid = f"ms-{uuid.uuid4().hex[:6]}"
+
+    def _opt_pair(opt):
+        if isinstance(opt, dict):
+            return str(opt.get("value", "")), str(opt.get("label", ""))
+        if isinstance(opt, (list, tuple)) and len(opt) >= 2:
+            return str(opt[0]), str(opt[1])
+        return str(opt), str(opt)
+
+    # Build tag chips for selected values
+    tag_parts = []
+    for opt in options:
+        ov, ol = _opt_pair(opt)
+        if ov in selected:
+            tag_parts.append(
+                f'<span class="multi-select-tag">'
+                f'{conditional_escape(ol)}'
+                f'<button type="button" class="multi-select-tag-remove" '
+                f'dj-click="{dj_event}" data-value="{conditional_escape(ov)}"'
+                f'{disabled_attr}>&times;</button>'
+                f'</span>'
+            )
+
+    tags_html = f'<div class="multi-select-tags">{"".join(tag_parts)}</div>' if tag_parts else ""
+
+    # Build checkbox list
+    cb_parts = []
+    for opt in options:
+        ov, ol = _opt_pair(opt)
+        checked_attr = " checked" if ov in selected else ""
+        cb_parts.append(
+            f'<label class="multi-select-option">'
+            f'<input type="checkbox" name="{e_name}" value="{conditional_escape(ov)}"'
+            f'{checked_attr}{disabled_attr} dj-change="{dj_event}">'
+            f' {conditional_escape(ol)}'
+            f'</label>'
+        )
+
+    label_html = (
+        f'<label class="form-label">{e_label}</label>' if label else ""
+    )
+
+    return mark_safe(
+        f'<div class="multi-select" id="{uid}">'
+        f'{label_html}'
+        f'{tags_html}'
+        f'<input type="text" class="multi-select-search" '
+        f'placeholder="{e_placeholder}"{disabled_attr} '
+        f'oninput="(function(el){{var items=el.parentElement.querySelectorAll(\'.multi-select-option\');'
+        f'var q=el.value.toLowerCase();items.forEach(function(item){{item.style.display='
+        f'item.textContent.toLowerCase().indexOf(q)>=0?\'\':\'none\';}});}})(this)">'
+        f'<div class="multi-select-options">{"".join(cb_parts)}</div>'
+        f'</div>'
+    )
+
+
+# ---------------------------------------------------------------------------
+# OTP Input (#58)
+# ---------------------------------------------------------------------------
+
+@register.simple_tag
+def otp_input(name="", digits=6, event="", label="", disabled=False):
+    """Render a one-time-code input with individual digit boxes.
+
+    Args:
+        name: form field name (hidden input holds the full code)
+        digits: number of digit boxes (4 or 6 typical)
+        event: dj-change event name
+        label: optional label above the input
+        disabled: disables all boxes
+    """
+    if isinstance(disabled, str):
+        disabled = disabled.lower() not in ("false", "0", "")
+    try:
+        digits = int(digits)
+    except (ValueError, TypeError):
+        digits = 6
+    digits = max(1, min(12, digits))
+
+    e_name = conditional_escape(name)
+    e_label = conditional_escape(label)
+    dj_event = conditional_escape(event or name)
+    disabled_attr = " disabled" if disabled else ""
+
+    uid = f"otp-{uuid.uuid4().hex[:6]}"
+
+    box_parts = []
+    for i in range(digits):
+        box_parts.append(
+            f'<input type="text" class="otp-digit" maxlength="1" inputmode="numeric" '
+            f'pattern="[0-9]" data-index="{i}" autocomplete="one-time-code"'
+            f'{disabled_attr}>'
+        )
+
+    label_html = (
+        f'<label class="form-label">{e_label}</label>' if label else ""
+    )
+
+    return mark_safe(
+        f'<div class="otp-input" id="{uid}" data-digits="{digits}">'
+        f'{label_html}'
+        f'<div class="otp-boxes">{"".join(box_parts)}</div>'
+        f'<input type="hidden" name="{e_name}" class="otp-hidden" '
+        f'dj-change="{dj_event}">'
+        f'</div>'
+    )
+
+
+# ---------------------------------------------------------------------------
+# Number Stepper (#59)
+# ---------------------------------------------------------------------------
+
+@register.simple_tag
+def number_stepper(name="", value=0, min_val=None, max_val=None, step=1,
+                   event="", label="", disabled=False):
+    """Render a +/- numeric stepper input.
+
+    Args:
+        name: form field name
+        value: current value
+        min_val: minimum allowed value (None = no minimum)
+        max_val: maximum allowed value (None = no maximum)
+        step: increment/decrement amount
+        event: dj-click event name for +/- buttons
+        label: optional label
+        disabled: disables the control
+    """
+    if isinstance(disabled, str):
+        disabled = disabled.lower() not in ("false", "0", "")
+    try:
+        value = int(value)
+    except (ValueError, TypeError):
+        value = 0
+    try:
+        step = int(step)
+    except (ValueError, TypeError):
+        step = 1
+
+    e_name = conditional_escape(name)
+    e_label = conditional_escape(label)
+    dj_event = conditional_escape(event or name)
+    disabled_attr = " disabled" if disabled else ""
+
+    min_attr = f' min="{int(min_val)}"' if min_val is not None else ""
+    max_attr = f' max="{int(max_val)}"' if max_val is not None else ""
+
+    label_html = (
+        f'<label class="form-label" for="{e_name}">{e_label}</label>' if label else ""
+    )
+
+    return mark_safe(
+        f'<div class="number-stepper">'
+        f'{label_html}'
+        f'<div class="number-stepper-controls">'
+        f'<button type="button" class="number-stepper-btn number-stepper-dec" '
+        f'dj-click="{dj_event}" data-value="dec"{disabled_attr}>&minus;</button>'
+        f'<input type="number" class="number-stepper-input" name="{e_name}" '
+        f'id="{e_name}" value="{value}" step="{step}"'
+        f'{min_attr}{max_attr}{disabled_attr} dj-change="{dj_event}">'
+        f'<button type="button" class="number-stepper-btn number-stepper-inc" '
+        f'dj-click="{dj_event}" data-value="inc"{disabled_attr}>&plus;</button>'
+        f'</div>'
+        f'</div>'
+    )
+
+
+# ---------------------------------------------------------------------------
+# Tag Input (#63)
+# ---------------------------------------------------------------------------
+
+@register.simple_tag
+def tag_input(name="", tags=None, suggestions=None, event="",
+              placeholder="Add tag...", disabled=False, label=""):
+    """Render an input that creates dismissible tags.
+
+    Args:
+        name: form field name
+        tags: list of current tag strings
+        suggestions: list of suggestion strings
+        event: dj-click event name for add/remove
+        placeholder: input placeholder text
+        disabled: disables the control
+        label: optional label
+    """
+    if isinstance(disabled, str):
+        disabled = disabled.lower() not in ("false", "0", "")
+    if tags is None:
+        tags = []
+    if suggestions is None:
+        suggestions = []
+
+    e_name = conditional_escape(name)
+    e_label = conditional_escape(label)
+    e_placeholder = conditional_escape(placeholder)
+    dj_event = conditional_escape(event or name)
+    disabled_attr = " disabled" if disabled else ""
+
+    uid = f"ti-{uuid.uuid4().hex[:6]}"
+
+    # Build existing tag chips
+    tag_parts = []
+    for tag in tags:
+        e_tag = conditional_escape(str(tag))
+        tag_parts.append(
+            f'<span class="tag-input-tag">'
+            f'{e_tag}'
+            f'<button type="button" class="tag-input-remove" '
+            f'dj-click="{dj_event}" data-value="remove:{e_tag}"'
+            f'{disabled_attr}>&times;</button>'
+            f'<input type="hidden" name="{e_name}" value="{e_tag}">'
+            f'</span>'
+        )
+
+    # Build suggestion datalist
+    suggestion_parts = []
+    for s in suggestions:
+        suggestion_parts.append(f'<option value="{conditional_escape(str(s))}">')
+
+    label_html = (
+        f'<label class="form-label">{e_label}</label>' if label else ""
+    )
+
+    return mark_safe(
+        f'<div class="tag-input" id="{uid}">'
+        f'{label_html}'
+        f'<div class="tag-input-tags">{"".join(tag_parts)}</div>'
+        f'<input type="text" class="tag-input-field" '
+        f'placeholder="{e_placeholder}" list="{uid}-suggestions"'
+        f'{disabled_attr} '
+        f'dj-keydown.enter="{dj_event}">'
+        f'<datalist id="{uid}-suggestions">{"".join(suggestion_parts)}</datalist>'
+        f'</div>'
+    )
+
+
+# ---------------------------------------------------------------------------
+# Input Group (#64)
+# ---------------------------------------------------------------------------
+
+class InputGroupNode(template.Node):
+    """Wraps child content (addons + input) in an input-group container."""
+    def __init__(self, nodelist, kwargs):
+        self.nodelist = nodelist
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        size = kw.get("size", "md")
+        error = kw.get("error", "")
+        content = self.nodelist.render(context)
+        size_cls = f" input-group-{conditional_escape(size)}" if size != "md" else ""
+        error_cls = " input-group-error" if error else ""
+        error_html = (
+            f'<span class="form-error-message">{conditional_escape(error)}</span>'
+            if error else ""
+        )
+        return mark_safe(
+            f'<div class="input-group{size_cls}{error_cls}">'
+            f'{content}'
+            f'</div>'
+            f'{error_html}'
+        )
+
+
+class InputAddonNode(template.Node):
+    """Renders a prefix/suffix addon inside an input group."""
+    def __init__(self, nodelist, kwargs):
+        self.nodelist = nodelist
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        position = kw.get("position", "prefix")
+        content = self.nodelist.render(context)
+        return mark_safe(
+            f'<span class="input-addon input-addon-{conditional_escape(position)}">'
+            f'{content}'
+            f'</span>'
+        )
+
+
+@register.tag("input_group")
+def do_input_group(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    nodelist = parser.parse(("endinput_group",))
+    parser.delete_first_token()
+    return InputGroupNode(nodelist, kwargs)
+
+
+@register.tag("input_addon")
+def do_input_addon(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    nodelist = parser.parse(("endinput_addon",))
+    parser.delete_first_token()
+    return InputAddonNode(nodelist, kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Label (#66)
+# ---------------------------------------------------------------------------
+
+class DjLabelNode(template.Node):
+    """Renders an accessible form label element."""
+    def __init__(self, nodelist, kwargs):
+        self.nodelist = nodelist
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        for_input = kw.get("for", "")
+        required = kw.get("required", False)
+        if isinstance(required, str):
+            required = required.lower() not in ("false", "0", "")
+        extra_class = kw.get("class", "")
+
+        content = self.nodelist.render(context)
+        for_attr = f' for="{conditional_escape(for_input)}"' if for_input else ""
+        required_span = ' <span class="form-required">*</span>' if required else ""
+        cls = f"form-label {conditional_escape(extra_class)}".strip()
+
+        return mark_safe(
+            f'<label class="{cls}"{for_attr}>'
+            f'{content}{required_span}'
+            f'</label>'
+        )
+
+
+@register.tag("dj_label")
+def do_dj_label(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    nodelist = parser.parse(("enddj_label",))
+    parser.delete_first_token()
+    return DjLabelNode(nodelist, kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Fieldset (#147)
+# ---------------------------------------------------------------------------
+
+class FieldsetNode(template.Node):
+    """Renders a styled fieldset with legend."""
+    def __init__(self, nodelist, kwargs):
+        self.nodelist = nodelist
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        legend = kw.get("legend", "")
+        disabled = kw.get("disabled", False)
+        if isinstance(disabled, str):
+            disabled = disabled.lower() not in ("false", "0", "")
+        extra_class = kw.get("class", "")
+
+        content = self.nodelist.render(context)
+        disabled_attr = " disabled" if disabled else ""
+        legend_html = (
+            f'<legend class="fieldset-legend">{conditional_escape(legend)}</legend>'
+            if legend else ""
+        )
+        cls = f"fieldset {conditional_escape(extra_class)}".strip()
+
+        return mark_safe(
+            f'<fieldset class="{cls}"{disabled_attr}>'
+            f'{legend_html}'
+            f'<div class="fieldset-content">{content}</div>'
+            f'</fieldset>'
+        )
+
+
+@register.tag("fieldset")
+def do_fieldset(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    nodelist = parser.parse(("endfieldset",))
+    parser.delete_first_token()
+    return FieldsetNode(nodelist, kwargs)

@@ -2094,3 +2094,158 @@ class SplitPaneHandler:
 BLOCK_HANDLERS.extend([
     ("split_pane", "endsplit_pane", SplitPaneHandler()),
 ])
+
+
+# ===========================================================================
+# FORM INPUT COMPONENTS (v0.4)
+# ===========================================================================
+
+
+class MultiSelectHandler:
+    """Inline handler for {% multi_select name="tags" options=opts %}"""
+    def render(self, args, context):
+        from djust_components.templatetags.djust_components import multi_select as _ms
+        kwargs = _parse_args(args, context)
+        return str(_ms(
+            name=kwargs.get("name", ""),
+            label=kwargs.get("label", ""),
+            options=kwargs.get("options"),
+            selected=kwargs.get("selected"),
+            event=kwargs.get("event", ""),
+            placeholder=kwargs.get("placeholder", "Search..."),
+            disabled=kwargs.get("disabled", False),
+        ))
+
+
+class OtpInputHandler:
+    """Inline handler for {% otp_input name="code" digits=6 %}"""
+    def render(self, args, context):
+        from djust_components.templatetags.djust_components import otp_input as _oi
+        kwargs = _parse_args(args, context)
+        return str(_oi(
+            name=kwargs.get("name", ""),
+            digits=kwargs.get("digits", 6),
+            event=kwargs.get("event", ""),
+            label=kwargs.get("label", ""),
+            disabled=kwargs.get("disabled", False),
+        ))
+
+
+class NumberStepperHandler:
+    """Inline handler for {% number_stepper name="qty" min=1 max=99 %}"""
+    def render(self, args, context):
+        from djust_components.templatetags.djust_components import number_stepper as _ns
+        kwargs = _parse_args(args, context)
+        return str(_ns(
+            name=kwargs.get("name", ""),
+            value=kwargs.get("value", 0),
+            min_val=kwargs.get("min_val") or kwargs.get("min"),
+            max_val=kwargs.get("max_val") or kwargs.get("max"),
+            step=kwargs.get("step", 1),
+            event=kwargs.get("event", ""),
+            label=kwargs.get("label", ""),
+            disabled=kwargs.get("disabled", False),
+        ))
+
+
+class TagInputHandler:
+    """Inline handler for {% tag_input name="tags" suggestions=tags %}"""
+    def render(self, args, context):
+        from djust_components.templatetags.djust_components import tag_input as _ti
+        kwargs = _parse_args(args, context)
+        return str(_ti(
+            name=kwargs.get("name", ""),
+            tags=kwargs.get("tags"),
+            suggestions=kwargs.get("suggestions"),
+            event=kwargs.get("event", ""),
+            placeholder=kwargs.get("placeholder", "Add tag..."),
+            disabled=kwargs.get("disabled", False),
+            label=kwargs.get("label", ""),
+        ))
+
+
+class InputGroupHandler:
+    """Block handler for {% input_group %}...{% endinput_group %}"""
+    def render(self, args, content, context):
+        kw = _parse_args(args, context)
+        size = kw.get("size", "md")
+        error = kw.get("error", "")
+        size_cls = f" input-group-{conditional_escape(size)}" if size != "md" else ""
+        error_cls = " input-group-error" if error else ""
+        error_html = (
+            f'<span class="form-error-message">{conditional_escape(error)}</span>'
+            if error else ""
+        )
+        return mark_safe(
+            f'<div class="input-group{size_cls}{error_cls}">'
+            f'{content}'
+            f'</div>'
+            f'{error_html}'
+        )
+
+
+class InputAddonHandler:
+    """Block handler for {% input_addon %}...{% endinput_addon %}"""
+    def render(self, args, content, context):
+        kw = _parse_args(args, context)
+        position = kw.get("position", "prefix")
+        return mark_safe(
+            f'<span class="input-addon input-addon-{conditional_escape(position)}">'
+            f'{content}'
+            f'</span>'
+        )
+
+
+class DjLabelHandler:
+    """Block handler for {% dj_label for="email" %}Email{% enddj_label %}"""
+    def render(self, args, content, context):
+        kw = _parse_args(args, context)
+        for_input = kw.get("for", "")
+        required = kw.get("required", False)
+        extra_class = kw.get("class", "")
+        for_attr = f' for="{conditional_escape(for_input)}"' if for_input else ""
+        required_span = ' <span class="form-required">*</span>' if required else ""
+        cls = f"form-label {conditional_escape(extra_class)}".strip()
+        return mark_safe(
+            f'<label class="{cls}"{for_attr}>'
+            f'{content}{required_span}'
+            f'</label>'
+        )
+
+
+class FieldsetHandler:
+    """Block handler for {% fieldset legend="Account" %}...{% endfieldset %}"""
+    def render(self, args, content, context):
+        kw = _parse_args(args, context)
+        legend = kw.get("legend", "")
+        disabled = kw.get("disabled", False)
+        extra_class = kw.get("class", "")
+        disabled_attr = " disabled" if disabled else ""
+        legend_html = (
+            f'<legend class="fieldset-legend">{conditional_escape(legend)}</legend>'
+            if legend else ""
+        )
+        cls = f"fieldset {conditional_escape(extra_class)}".strip()
+        return mark_safe(
+            f'<fieldset class="{cls}"{disabled_attr}>'
+            f'{legend_html}'
+            f'<div class="fieldset-content">{content}</div>'
+            f'</fieldset>'
+        )
+
+
+# Register form input inline handlers
+INLINE_HANDLERS.extend([
+    ("multi_select", MultiSelectHandler()),
+    ("otp_input", OtpInputHandler()),
+    ("number_stepper", NumberStepperHandler()),
+    ("tag_input", TagInputHandler()),
+])
+
+# Register form input block handlers
+BLOCK_HANDLERS.extend([
+    ("input_group", "endinput_group", InputGroupHandler()),
+    ("input_addon", "endinput_addon", InputAddonHandler()),
+    ("dj_label", "enddj_label", DjLabelHandler()),
+    ("fieldset", "endfieldset", FieldsetHandler()),
+])
