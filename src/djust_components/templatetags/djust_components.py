@@ -466,7 +466,17 @@ def data_table(rows, columns, sort_by="", sort_desc=False, sort_event="table_sor
                column_groups=None,
                row_drag=False, row_drag_event="table_row_drag",
                copyable=False, copy_event="table_copy",
-               copy_format="csv"):
+               copy_format="csv",
+               # Phase 5 params
+               importable=False, import_event="table_import",
+               import_formats=None, import_preview=True,
+               import_preview_data=None, import_errors=None,
+               import_pending=False,
+               computed_columns=None,
+               cell_merge_key="_merge",
+               column_expressions=None, expression_event="table_expression",
+               active_expressions=None,
+               conditional_formatting=None):
     """Render a sortable data table with search, filters, selection, pagination, and editing.
 
     Phase 1 args:
@@ -552,6 +562,21 @@ def data_table(rows, columns, sort_by="", sort_desc=False, sort_event="table_sor
         copyable: enable copy rows to clipboard
         copy_event: copy event name
         copy_format: "csv" or "tsv"
+
+    Phase 5 args:
+        importable: show import button/dropzone
+        import_event: import event name
+        import_formats: list of import formats (csv, json)
+        import_preview: preview imported data before confirming
+        import_preview_data: staged import rows for preview
+        import_errors: import validation errors
+        import_pending: whether import preview is awaiting confirmation
+        computed_columns: list of virtual computed column dicts
+        cell_merge_key: row data key holding colspan info
+        column_expressions: dict of column expression filter configs
+        expression_event: column expression filter event name
+        active_expressions: dict of active column expression filters
+        conditional_formatting: list of formatting preset dicts
     """
     return {
         "rows": rows,
@@ -633,6 +658,20 @@ def data_table(rows, columns, sort_by="", sort_desc=False, sort_event="table_sor
         "copyable": copyable,
         "copy_event": copy_event,
         "copy_format": copy_format,
+        # Phase 5
+        "importable": importable,
+        "import_event": import_event,
+        "import_formats": import_formats or ["csv", "json"],
+        "import_preview": import_preview,
+        "import_preview_data": import_preview_data or [],
+        "import_errors": import_errors or [],
+        "import_pending": import_pending,
+        "computed_columns": computed_columns or [],
+        "cell_merge_key": cell_merge_key,
+        "column_expressions": column_expressions or {},
+        "expression_event": expression_event,
+        "active_expressions": active_expressions or {},
+        "conditional_formatting": conditional_formatting or [],
     }
 
 

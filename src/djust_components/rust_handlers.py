@@ -875,6 +875,30 @@ def _format_cell(value, col):
     return str(value)
 
 
+def _interpolate_color_simple(colors, ratio):
+    """Interpolate between hex colors based on ratio (0.0-1.0)."""
+    if len(colors) < 2:
+        return colors[0] if colors else "#000000"
+    if len(colors) == 2:
+        idx = 0
+        local_ratio = ratio
+    else:
+        segments = len(colors) - 1
+        segment = min(int(ratio * segments), segments - 1)
+        idx = segment
+        local_ratio = (ratio * segments) - segment
+    c1 = colors[idx]
+    c2 = colors[idx + 1] if idx + 1 < len(colors) else colors[idx]
+    h1 = c1.lstrip("#")
+    h2 = c2.lstrip("#")
+    r1, g1, b1 = int(h1[0:2], 16), int(h1[2:4], 16), int(h1[4:6], 16)
+    r2, g2, b2 = int(h2[0:2], 16), int(h2[2:4], 16), int(h2[4:6], 16)
+    r = int(r1 + (r2 - r1) * local_ratio)
+    g = int(g1 + (g2 - g1) * local_ratio)
+    b = int(b1 + (b2 - b1) * local_ratio)
+    return f"#{r:02x}{g:02x}{b:02x}"
+
+
 class DataTableHandler:
     def render(self, args, context):
         kw = _parse_args(args, context)
@@ -979,6 +1003,21 @@ class DataTableHandler:
         copy_event = conditional_escape(kw.get("copy_event", "table_copy"))
         copy_format = conditional_escape(str(kw.get("copy_format", "csv")))
 
+        # Phase 5 parameters (all opt-in)
+        importable = kw.get("importable", False)
+        import_event = conditional_escape(kw.get("import_event", "table_import"))
+        import_formats = kw.get("import_formats") or ["csv", "json"]
+        import_preview = kw.get("import_preview", True)
+        import_preview_data = kw.get("import_preview_data") or []
+        import_errors = kw.get("import_errors") or []
+        import_pending = kw.get("import_pending", False)
+        computed_columns = kw.get("computed_columns") or []
+        cell_merge_key = str(kw.get("cell_merge_key", "_merge"))
+        column_expressions = kw.get("column_expressions") or {}
+        expression_event = conditional_escape(kw.get("expression_event", "table_expression"))
+        active_expressions = kw.get("active_expressions") or {}
+        conditional_formatting = kw.get("conditional_formatting") or []
+
         if not isinstance(rows, (list, tuple)):
             rows = []
         if not isinstance(columns, (list, tuple)):
@@ -1009,6 +1048,20 @@ class DataTableHandler:
             row_class_map = {}
         if not isinstance(column_groups, (list, tuple)):
             column_groups = []
+        if not isinstance(import_formats, (list, tuple)):
+            import_formats = ["csv", "json"]
+        if not isinstance(import_preview_data, (list, tuple)):
+            import_preview_data = []
+        if not isinstance(import_errors, (list, tuple)):
+            import_errors = []
+        if not isinstance(computed_columns, (list, tuple)):
+            computed_columns = []
+        if not isinstance(column_expressions, dict):
+            column_expressions = {}
+        if not isinstance(active_expressions, dict):
+            active_expressions = {}
+        if not isinstance(conditional_formatting, (list, tuple)):
+            conditional_formatting = []
 
         # Convert to sets for fast lookup
         selected_set = {str(v) for v in selected_rows}
@@ -1061,6 +1114,12 @@ class DataTableHandler:
             wrapper_attrs.append('data-copyable="true"')
             wrapper_attrs.append(f'data-copy-event="{copy_event}"')
             wrapper_attrs.append(f'data-copy-format="{copy_format}"')
+        if importable:
+            wrapper_attrs.append('data-importable="true"')
+            wrapper_attrs.append(f'data-import-event="{import_event}"')
+        if column_expressions:
+            wrapper_attrs.append('data-column-expressions="true"')
+            wrapper_attrs.append(f'data-expression-event="{expression_event}"')
         wrapper_attrs_str = (" " + " ".join(wrapper_attrs)) if wrapper_attrs else ""
 
         # --- Toolbar (column visibility + density toggle) ---
@@ -1124,6 +1183,24 @@ class DataTableHandler:
                 f'<button type="button" class="data-table-copy-btn"'
                 f' dj-click="{copy_event}" data-value="selected">'
                 f'Copy</button>'
+                f'</div>'
+            )
+
+        if importable:
+            import_btns = ""
+            for ifmt in import_formats:
+                ifmt_esc = conditional_escape(str(ifmt))
+                label = ifmt_esc.upper()
+                import_btns += (
+                    f'<button type="button" class="data-table-import-btn"'
+                    f' data-import-format="{ifmt_esc}">'
+                    f'Import {label}</button>'
+                )
+            toolbar_parts.append(
+                f'<div class="data-table-import">'
+                f'{import_btns}'
+                f'<input type="file" class="data-table-import-file" style="display:none"'
+                f' accept=".csv,.json">'
                 f'</div>'
             )
 
@@ -1289,11 +1366,55 @@ class DataTableHandler:
                 else:
                     filter_cells.append(f"<th{frozen_f}></th>")
 
+        # Phase 5: Append computed column headers
+        if computed_columns:
+            for cc in computed_columns:
+                if not isinstance(cc, dict):
+                    continue
+                cc_key = conditional_escape(str(cc.get("key", "")))
+                cc_label = conditional_escape(str(cc.get("label", cc_key)))
+                header_cells.append(
+                    f'<th class="data-table-computed-header" role="columnheader"'
+                    f' data-col-key="{cc_key}">{cc_label}</th>'
+                )
+                if has_filters:
+                    filter_cells.append("<th></th>")
+
+        # Phase 5: Expression filter row (separate from regular filters)
+        expression_cells = []
+        if column_expressions:
+            for col in columns:
+                if isinstance(col, dict):
+                    key = col.get("key", "")
+                else:
+                    key = str(col)
+                key_esc = conditional_escape(str(key))
+                if key in column_expressions:
+                    expr_val = conditional_escape(str(active_expressions.get(key, "")))
+                    placeholder = conditional_escape(str(column_expressions.get(key, "Expression...")))
+                    expression_cells.append(
+                        f'<th><input type="text" class="data-table-expression"'
+                        f' aria-label="Expression filter {key_esc}"'
+                        f' placeholder="{placeholder}"'
+                        f' value="{expr_val}"'
+                        f' data-column="{key_esc}"'
+                        f' dj-input="{expression_event}"'
+                        f' dj-debounce="500">'
+                        f'</th>'
+                    )
+                else:
+                    expression_cells.append("<th></th>")
+            if computed_columns:
+                for _ in computed_columns:
+                    expression_cells.append("<th></th>")
+
         # Prepend expand column
         if expandable:
             header_cells.insert(0, '<th class="data-table-expand-col" role="columnheader"></th>')
             if has_filters:
                 filter_cells.insert(0, "<th></th>")
+            if expression_cells:
+                expression_cells.insert(0, "<th></th>")
 
         # Prepend selection column
         if selectable:
@@ -1304,18 +1425,24 @@ class DataTableHandler:
             )
             if has_filters:
                 filter_cells.insert(0, "<th></th>")
+            if expression_cells:
+                expression_cells.insert(0, "<th></th>")
 
         # Prepend drag handle column
         if row_drag:
             header_cells.insert(0, '<th class="data-table-drag-col" role="columnheader"></th>')
             if has_filters:
                 filter_cells.insert(0, "<th></th>")
+            if expression_cells:
+                expression_cells.insert(0, "<th></th>")
 
         # Append actions column header for editable rows
         if editable_rows:
             header_cells.append('<th role="columnheader">Actions</th>')
             if has_filters:
                 filter_cells.append("<th></th>")
+            if expression_cells:
+                expression_cells.append("<th></th>")
 
         # --- Multi-level column group header row ---
         group_header_row = ""
@@ -1370,9 +1497,12 @@ class DataTableHandler:
         thead_rows += f"<tr>{''.join(header_cells)}</tr>"
         if has_filters:
             thead_rows += f"<tr>{''.join(filter_cells)}</tr>"
+        if expression_cells:
+            thead_rows += f"<tr class=\"data-table-expression-row\">{''.join(expression_cells)}</tr>"
 
         # --- Total columns (for colspan calculations) ---
-        total_cols = num_cols + (1 if selectable else 0) + (1 if editable_rows else 0) + (1 if expandable else 0) + (1 if row_drag else 0)
+        num_computed = len([cc for cc in computed_columns if isinstance(cc, dict)]) if computed_columns else 0
+        total_cols = num_cols + num_computed + (1 if selectable else 0) + (1 if editable_rows else 0) + (1 if expandable else 0) + (1 if row_drag else 0)
 
         # --- Helper: render a single row ---
         def _render_row(row):
@@ -1430,7 +1560,30 @@ class DataTableHandler:
                     f' data-value="{conditional_escape(row_id)}"></td>'
                 )
 
-            for col_idx, col in enumerate(columns):
+            # Phase 5: build list of all renderable columns (base + computed)
+            all_columns = list(columns)
+            if computed_columns:
+                all_columns = list(columns) + [cc for cc in computed_columns if isinstance(cc, dict)]
+
+            # Phase 5: cell merge data for this row
+            merge_data = row.get(cell_merge_key, {}) if isinstance(row, dict) else {}
+            if not isinstance(merge_data, dict):
+                merge_data = {}
+            skip_cols = set()  # column indices to skip (merged into previous cell)
+
+            # Pre-compute which columns are merged away
+            for col_idx, col in enumerate(all_columns):
+                col_k = col.get("key", col) if isinstance(col, dict) else col
+                col_k_str = str(col_k)
+                colspan = merge_data.get(col_k_str, 1)
+                if isinstance(colspan, int) and colspan > 1:
+                    for offset in range(1, colspan):
+                        if col_idx + offset < len(all_columns):
+                            skip_cols.add(col_idx + offset)
+
+            for col_idx, col in enumerate(all_columns):
+                if col_idx in skip_cols:
+                    continue  # This cell is merged into a previous colspan
                 col_k = col.get("key", col) if isinstance(col, dict) else col
                 col_k_str = str(col_k)
                 raw_val = row.get(col_k_str, "")
@@ -1446,6 +1599,9 @@ class DataTableHandler:
 
                 # Frozen / pinned class for td
                 td_classes = []
+                is_computed = col in computed_columns if computed_columns else False
+                if is_computed:
+                    td_classes.append("data-table-computed")
                 if isinstance(col, dict) and col.get("pinned") == "left":
                     td_classes.append("data-table-pinned-left")
                 elif isinstance(col, dict) and col.get("pinned") == "right":
@@ -1468,6 +1624,54 @@ class DataTableHandler:
                     elif isinstance(cell_class, str):
                         td_classes.append(conditional_escape(cell_class))
 
+                # Phase 5: conditional formatting
+                cf_html = ""
+                if conditional_formatting and raw_val is not None and raw_val != "":
+                    for cf_preset in conditional_formatting:
+                        if not isinstance(cf_preset, dict):
+                            continue
+                        if cf_preset.get("column") != col_k_str:
+                            continue
+                        try:
+                            cf_num = float(raw_val)
+                        except (ValueError, TypeError):
+                            break
+                        cf_type = cf_preset.get("type", "")
+                        cf_min = float(cf_preset.get("min", 0))
+                        cf_max = float(cf_preset.get("max", 100))
+                        cf_span = cf_max - cf_min if cf_max != cf_min else 1
+                        if cf_type == "data_bar":
+                            cf_pct = max(0, min(100, ((cf_num - cf_min) / cf_span) * 100))
+                            td_classes.append("data-table-cf-data-bar")
+                            cf_html = (
+                                f'<div class="data-table-data-bar"'
+                                f' style="width:{cf_pct:.1f}%"></div>'
+                            )
+                        elif cf_type == "color_scale":
+                            cf_ratio = max(0.0, min(1.0, (cf_num - cf_min) / cf_span))
+                            cf_colors = cf_preset.get("colors", ["#ff0000", "#00ff00"])
+                            cf_color = _interpolate_color_simple(cf_colors, cf_ratio)
+                            td_classes.append("data-table-cf-color-scale")
+                            cf_html = f' style="background-color:{conditional_escape(cf_color)}"'
+                        elif cf_type == "icon_set":
+                            cf_icons = cf_preset.get("icons", ["\u25bc", "\u25b6", "\u25b2"])
+                            cf_thresholds = cf_preset.get("thresholds", [])
+                            cf_icon = cf_icons[-1] if cf_icons else ""
+                            for ci, ct in enumerate(cf_thresholds):
+                                if cf_num < float(ct):
+                                    cf_icon = cf_icons[ci] if ci < len(cf_icons) else cf_icons[-1]
+                                    break
+                            td_classes.append("data-table-cf-icon-set")
+                            cf_html = f'<span class="data-table-cf-icon">{conditional_escape(cf_icon)}</span> '
+                        break  # only first matching preset per column
+
+                # Phase 5: cell merge colspan
+                colspan_attr = ""
+                colspan_val = merge_data.get(col_k_str, 1)
+                if isinstance(colspan_val, int) and colspan_val > 1:
+                    colspan_attr = f' colspan="{colspan_val}"'
+                    td_classes.append("data-table-merged")
+
                 td_cls_str = f' class="{" ".join(td_classes)}"' if td_classes else ""
 
                 # Responsive card data-label
@@ -1482,6 +1686,18 @@ class DataTableHandler:
                         f' data-value="{cell_val}">{cell_val}</span>'
                     )
 
+                # Apply conditional formatting to cell content
+                if cf_html and "data-table-cf-data-bar" in " ".join(td_classes):
+                    cell_val = f'{cell_val}{cf_html}'
+                elif cf_html and "data-table-cf-icon-set" in " ".join(td_classes):
+                    cell_val = f'{cf_html}{cell_val}'
+                # color_scale cf_html is a style attr, handled below
+
+                # color_scale extra style
+                extra_style = ""
+                if cf_html and "data-table-cf-color-scale" in " ".join(td_classes):
+                    extra_style = cf_html  # this is the style="..." attr
+
                 # Editable cell (inline editing)
                 is_col_editable = col_k_str in editable_col_set
 
@@ -1489,7 +1705,7 @@ class DataTableHandler:
                 if editable_rows and is_editing:
                     raw_val = conditional_escape(str(row.get(col_k_str, "")))
                     cells += (
-                        f'<td{td_cls_str}{label_attr}>'
+                        f'<td{td_cls_str}{label_attr}{colspan_attr}>'
                         f'<input type="text" value="{raw_val}"'
                         f' name="{conditional_escape(col_k_str)}"'
                         f' aria-label="Edit {conditional_escape(col_k_str)}">'
@@ -1499,11 +1715,11 @@ class DataTableHandler:
                     cells += (
                         f'<td data-editable="true"'
                         f' data-col-key="{conditional_escape(col_k_str)}"'
-                        f'{td_cls_str}{label_attr}>'
+                        f'{td_cls_str}{label_attr}{colspan_attr}>'
                         f'{cell_val}</td>'
                     )
                 else:
-                    cells += f"<td{td_cls_str}{label_attr}>{cell_val}</td>"
+                    cells += f"<td{td_cls_str}{label_attr}{colspan_attr}{extra_style}>{cell_val}</td>"
 
             # Actions column for editable rows
             if editable_rows:
@@ -1739,6 +1955,44 @@ class DataTableHandler:
                 f'<button class="data-table-copy-trigger" style="display:none"'
                 f' dj-click="{copy_event}"></button>'
             )
+        if importable:
+            triggers_html += (
+                f'<button class="data-table-import-trigger" style="display:none"'
+                f' dj-click="{import_event}"></button>'
+            )
+        if column_expressions:
+            triggers_html += (
+                f'<button class="data-table-expression-trigger" style="display:none"'
+                f' dj-click="{expression_event}"></button>'
+            )
+
+        # --- Phase 5: Import preview / errors ---
+        import_html = ""
+        if importable:
+            if import_errors:
+                err_items = "".join(
+                    f'<li>{conditional_escape(str(e))}</li>'
+                    for e in import_errors
+                )
+                import_html += (
+                    f'<div class="data-table-import-errors" role="alert">'
+                    f'<ul>{err_items}</ul>'
+                    f'</div>'
+                )
+            if import_pending and import_preview_data:
+                preview_count = len(import_preview_data)
+                import_html += (
+                    f'<div class="data-table-import-preview">'
+                    f'<span class="data-table-import-preview-count">'
+                    f'{preview_count} rows ready to import</span>'
+                    f'<button type="button" class="data-table-import-confirm"'
+                    f' dj-click="{import_event}"'
+                    f' data-value=\'{{"confirm":true}}\'>Confirm Import</button>'
+                    f'<button type="button" class="data-table-import-cancel"'
+                    f' dj-click="{import_event}"'
+                    f' data-value=\'{{"cancel":true}}\'>Cancel</button>'
+                    f'</div>'
+                )
 
         # --- Scrollable wrapper for frozen columns ---
         scroll_open = ""
@@ -1760,6 +2014,7 @@ class DataTableHandler:
             f'{toolbar_html}'
             f'{bulk_actions_html}'
             f'{search_html}'
+            f'{import_html}'
             f'{scroll_open}'
             f'<table class="{table_cls}">'
             f"<thead>{thead_rows}</thead>"

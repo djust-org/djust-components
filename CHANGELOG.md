@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Data Table Pro Phase 5 — Data Import & Computed**: 5 new opt-in features for `DataTableHandler`, `DataTableMixin`, and `{% data_table %}`:
+  - **CSV/JSON Import**: `importable=True` adds Import CSV/JSON toolbar buttons with file upload. Parsed rows are validated against table columns and staged for preview before confirming. `import_event` fires with parsed rows. Supports `import_formats`, `import_preview` (preview before confirm), and `handle_import()` override hook.
+  - **Computed Columns**: `computed_columns` list of `{key, label, expression}` dicts defines virtual columns evaluated server-side. Expressions support basic arithmetic (`revenue - cost`, `qty * price`) with column references. `evaluate_computed_columns()` injects values into rows. Computed columns render with italic styling.
+  - **Cell Merge / Colspan**: Rows with `_merge` key (configurable via `cell_merge_key`) specify horizontal cell merging. Format: `{_merge: {col_key: colspan_int}}`. Merged cells render with `colspan` attribute; absorbed cells are hidden.
+  - **Column Expressions**: `column_expressions` dict enables advanced per-column filter inputs. Supports `> N`, `>= N`, `< N`, `<= N`, `= N`, `!= N`, `contains "text"`, `startswith "text"`, `endswith "text"`, `between N and M`, `empty`, `not empty`. Expression inputs render in a separate header row with debounced events.
+  - **Conditional Formatting Presets**: `conditional_formatting` list of preset dicts. Three types: `data_bar` (percentage fill bar behind cell), `color_scale` (background color interpolated between 2-3 colors), `icon_set` (prepend icon based on threshold ranges). All types support configurable `min`/`max` range.
+
+### Added
 - **Data Table Pro Phase 4 — Data Presentation**: 6 new opt-in features for `DataTableHandler`, `DataTableMixin`, and `{% data_table %}`:
   - **Column Type Formatters**: Declare `type` on column config (`number`, `currency`, `date`, `percentage`, `boolean`) for automatic display formatting. Supports `decimals`, `currency_symbol`, `true_label`/`false_label`, `date_format`. Type-specific CSS classes (`data-table-type-number`, etc.) for alignment.
   - **Footer Aggregation Row**: Optional `footer_aggregations` dict (`{col_key: "sum"|"avg"|"count"|"min"|"max"}`) renders a `<tfoot>` row with computed values per column.
