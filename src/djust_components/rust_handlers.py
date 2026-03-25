@@ -3055,3 +3055,71 @@ INLINE_HANDLERS.extend([
 BLOCK_HANDLERS.extend([
     ("copyable_text", "endcopyable_text", CopyableTextHandler()),
 ])
+
+
+# ===========================================================================
+# ICON SYSTEM (#178) + THEME TOGGLE (#138)
+# ===========================================================================
+
+class IconHandler:
+    """Inline handler for {% icon name="check" size="md" set="heroicons" %}"""
+    def render(self, args, context):
+        from djust_components.icons import render_icon
+        kw = _parse_args(args, context)
+        name = kw.get("name", "")
+        size = kw.get("size", "md")
+        icon_set = kw.get("set", "heroicons")
+        custom_class = kw.get("custom_class", "")
+        # Pass remaining kwargs as extra attrs
+        extra = {k: v for k, v in kw.items()
+                 if k not in ("name", "size", "set", "custom_class")}
+        return str(render_icon(
+            name=name, size=size, icon_set=icon_set,
+            custom_class=custom_class, **extra,
+        ))
+
+
+class ThemeToggleHandler:
+    """Inline handler for {% theme_toggle current="system" event="set_theme" %}"""
+    def render(self, args, context):
+        import uuid
+        from djust_components.icons import render_icon
+        kw = _parse_args(args, context)
+        current = conditional_escape(kw.get("current", "system"))
+        event = kw.get("event", "")
+        custom_class = kw.get("custom_class", "")
+
+        e_event = conditional_escape(event) if event else ""
+        e_cls = conditional_escape(custom_class)
+
+        cls = "dj-theme-toggle"
+        if e_cls:
+            cls += f" {e_cls}"
+
+        click_attr = f' dj-click="{e_event}"' if e_event else ""
+        sun_svg = render_icon("sun", size="sm")
+        moon_svg = render_icon("moon", size="sm")
+        monitor_svg = render_icon("computer-desktop", size="sm")
+        toggle_id = f"dj-theme-toggle-{uuid.uuid4().hex[:8]}"
+
+        return mark_safe(
+            f'<div class="{cls}" id="{toggle_id}" '
+            f'data-current="{current}"{click_attr} '
+            f'role="radiogroup" aria-label="Color theme">'
+            f'<button type="button" class="dj-theme-toggle__btn" '
+            f'data-theme="light" aria-label="Light theme" '
+            f'title="Light">{sun_svg}</button>'
+            f'<button type="button" class="dj-theme-toggle__btn" '
+            f'data-theme="dark" aria-label="Dark theme" '
+            f'title="Dark">{moon_svg}</button>'
+            f'<button type="button" class="dj-theme-toggle__btn" '
+            f'data-theme="system" aria-label="System theme" '
+            f'title="System">{monitor_svg}</button>'
+            f'</div>'
+        )
+
+
+INLINE_HANDLERS.extend([
+    ("icon", IconHandler()),
+    ("theme_toggle", ThemeToggleHandler()),
+])
