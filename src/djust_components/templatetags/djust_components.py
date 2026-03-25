@@ -10098,3 +10098,551 @@ def do_error_boundary(parser, token):
     nodelist = parser.parse(("enderror_boundary",))
     parser.delete_first_token()
     return ErrorBoundaryNode(nodelist, kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Sortable List
+# ---------------------------------------------------------------------------
+
+class SortableListNode(template.Node):
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        items = kw.get("items", [])
+        move_event = kw.get("move_event", "reorder")
+        handle = kw.get("handle", True)
+        disabled = kw.get("disabled", False)
+        custom_class = kw.get("class", "")
+
+        e_event = conditional_escape(str(move_event))
+        e_class = conditional_escape(str(custom_class))
+
+        classes = ["dj-sortable-list"]
+        if disabled:
+            classes.append("dj-sortable-list--disabled")
+        if e_class:
+            classes.append(e_class)
+        class_str = " ".join(classes)
+
+        if not isinstance(items, list):
+            items = []
+
+        items_html = []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            item_id = conditional_escape(str(item.get("id", "")))
+            label = conditional_escape(str(item.get("label", "")))
+            handle_html = (
+                '<span class="dj-sortable-list__handle" aria-hidden="true">&#x2630;</span> '
+                if handle else ""
+            )
+            drag_attr = ' draggable="true"' if not disabled else ""
+            items_html.append(
+                f'<li class="dj-sortable-list__item" data-id="{item_id}"{drag_attr} '
+                f'role="listitem">'
+                f'{handle_html}'
+                f'<span class="dj-sortable-list__label">{label}</span></li>'
+            )
+
+        disabled_attr = ' data-disabled="true"' if disabled else ""
+
+        return mark_safe(
+            f'<ul class="{class_str}" dj-hook="SortableList" '
+            f'data-move-event="{e_event}" '
+            f'role="list"{disabled_attr}>{"".join(items_html)}</ul>'
+        )
+
+
+@register.tag("sortable_list")
+def do_sortable_list(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return SortableListNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Sortable Grid
+# ---------------------------------------------------------------------------
+
+class SortableGridNode(template.Node):
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        items = kw.get("items", [])
+        columns = kw.get("columns", 3)
+        move_event = kw.get("move_event", "reorder")
+        gap = kw.get("gap", "0.75rem")
+        disabled = kw.get("disabled", False)
+        custom_class = kw.get("class", "")
+
+        e_event = conditional_escape(str(move_event))
+        e_class = conditional_escape(str(custom_class))
+        e_gap = conditional_escape(str(gap))
+
+        classes = ["dj-sortable-grid"]
+        if disabled:
+            classes.append("dj-sortable-grid--disabled")
+        if e_class:
+            classes.append(e_class)
+        class_str = " ".join(classes)
+
+        if not isinstance(items, list):
+            items = []
+
+        try:
+            cols = int(columns)
+        except (ValueError, TypeError):
+            cols = 3
+
+        items_html = []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            item_id = conditional_escape(str(item.get("id", "")))
+            label = conditional_escape(str(item.get("label", "")))
+            thumbnail = item.get("thumbnail", "")
+            thumb_html = ""
+            if thumbnail:
+                e_thumb = conditional_escape(str(thumbnail))
+                thumb_html = (
+                    f'<img class="dj-sortable-grid__thumb" '
+                    f'src="{e_thumb}" alt="{label}" loading="lazy">'
+                )
+            drag_attr = ' draggable="true"' if not disabled else ""
+            items_html.append(
+                f'<div class="dj-sortable-grid__item" data-id="{item_id}"{drag_attr}>'
+                f'{thumb_html}'
+                f'<span class="dj-sortable-grid__label">{label}</span></div>'
+            )
+
+        disabled_attr = ' data-disabled="true"' if disabled else ""
+        style = f'style="grid-template-columns:repeat({cols},1fr);gap:{e_gap}"'
+
+        return mark_safe(
+            f'<div class="{class_str}" dj-hook="SortableGrid" '
+            f'data-move-event="{e_event}" data-columns="{cols}" '
+            f'{style} role="grid"{disabled_attr}>{"".join(items_html)}</div>'
+        )
+
+
+@register.tag("sortable_grid")
+def do_sortable_grid(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return SortableGridNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Image Cropper
+# ---------------------------------------------------------------------------
+
+class ImageCropperNode(template.Node):
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        src = kw.get("src", "")
+        crop_event = kw.get("crop_event", "save_crop")
+        aspect_ratio = kw.get("aspect_ratio", "")
+        min_width = kw.get("min_width", 50)
+        min_height = kw.get("min_height", 50)
+        disabled = kw.get("disabled", False)
+        custom_class = kw.get("class", "")
+
+        e_src = conditional_escape(str(src))
+        e_event = conditional_escape(str(crop_event))
+        e_class = conditional_escape(str(custom_class))
+
+        classes = ["dj-image-cropper"]
+        if disabled:
+            classes.append("dj-image-cropper--disabled")
+        if e_class:
+            classes.append(e_class)
+        class_str = " ".join(classes)
+
+        ratio_attr = ""
+        if aspect_ratio:
+            e_ratio = conditional_escape(str(aspect_ratio))
+            ratio_attr = f' data-aspect-ratio="{e_ratio}"'
+
+        try:
+            min_w = int(min_width)
+        except (ValueError, TypeError):
+            min_w = 50
+        try:
+            min_h = int(min_height)
+        except (ValueError, TypeError):
+            min_h = 50
+
+        return mark_safe(
+            f'<div class="{class_str}" dj-hook="ImageCropper" '
+            f'data-crop-event="{e_event}" '
+            f'data-min-width="{min_w}" '
+            f'data-min-height="{min_h}"{ratio_attr}>'
+            f'<div class="dj-image-cropper__canvas">'
+            f'<img class="dj-image-cropper__image" src="{e_src}" alt="Image to crop" draggable="false">'
+            f'<div class="dj-image-cropper__overlay"></div>'
+            f'<div class="dj-image-cropper__selection"></div>'
+            f'</div>'
+            f'<div class="dj-image-cropper__actions">'
+            f'<button class="dj-image-cropper__crop-btn" type="button">Crop</button>'
+            f'<button class="dj-image-cropper__reset-btn" type="button">Reset</button>'
+            f'</div>'
+            f'</div>'
+        )
+
+
+@register.tag("image_cropper")
+def do_image_cropper(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return ImageCropperNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Signature Pad
+# ---------------------------------------------------------------------------
+
+class SignaturePadNode(template.Node):
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        name = kw.get("name", "signature")
+        save_event = kw.get("save_event", "save_signature")
+        width = kw.get("width", 400)
+        height = kw.get("height", 200)
+        pen_color = kw.get("pen_color", "#000000")
+        pen_width = kw.get("pen_width", 2)
+        disabled = kw.get("disabled", False)
+        custom_class = kw.get("class", "")
+
+        e_name = conditional_escape(str(name))
+        e_event = conditional_escape(str(save_event))
+        e_color = conditional_escape(str(pen_color))
+        e_class = conditional_escape(str(custom_class))
+
+        classes = ["dj-signature-pad"]
+        if disabled:
+            classes.append("dj-signature-pad--disabled")
+        if e_class:
+            classes.append(e_class)
+        class_str = " ".join(classes)
+
+        try:
+            w = int(width)
+        except (ValueError, TypeError):
+            w = 400
+        try:
+            h = int(height)
+        except (ValueError, TypeError):
+            h = 200
+        try:
+            pw = int(pen_width)
+        except (ValueError, TypeError):
+            pw = 2
+
+        disabled_attr = " disabled" if disabled else ""
+
+        return mark_safe(
+            f'<div class="{class_str}" dj-hook="SignaturePad" '
+            f'data-save-event="{e_event}" '
+            f'data-pen-color="{e_color}" '
+            f'data-pen-width="{pw}">'
+            f'<canvas class="dj-signature-pad__canvas" '
+            f'width="{w}" height="{h}"'
+            f'{disabled_attr}></canvas>'
+            f'<input type="hidden" name="{e_name}" class="dj-signature-pad__value">'
+            f'<div class="dj-signature-pad__actions">'
+            f'<button class="dj-signature-pad__clear-btn" type="button">Clear</button>'
+            f'<button class="dj-signature-pad__save-btn" type="button"'
+            f'{disabled_attr}>Save</button>'
+            f'</div>'
+            f'</div>'
+        )
+
+
+@register.tag("signature_pad")
+def do_signature_pad(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return SignaturePadNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Resizable Panel
+# ---------------------------------------------------------------------------
+
+class ResizablePanelNode(template.Node):
+    def __init__(self, nodelist, kwargs):
+        self.nodelist = nodelist
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        direction = kw.get("direction", "horizontal")
+        min_size = kw.get("min_size", "100px")
+        max_size = kw.get("max_size", "none")
+        initial_size = kw.get("initial_size", "50%")
+        disabled = kw.get("disabled", False)
+        custom_class = kw.get("class", "")
+
+        e_class = conditional_escape(str(custom_class))
+
+        if direction not in ("horizontal", "vertical"):
+            direction = "horizontal"
+
+        classes = ["dj-resizable-panel", f"dj-resizable-panel--{direction}"]
+        if disabled:
+            classes.append("dj-resizable-panel--disabled")
+        if e_class:
+            classes.append(e_class)
+        class_str = " ".join(classes)
+
+        e_min = conditional_escape(str(min_size))
+        e_max = conditional_escape(str(max_size))
+        e_initial = conditional_escape(str(initial_size))
+
+        content = self.nodelist.render(context)
+
+        size_prop = "width" if direction == "horizontal" else "height"
+        style_parts = [f"{size_prop}:{e_initial}", f"min-{size_prop}:{e_min}"]
+        if max_size != "none":
+            style_parts.append(f"max-{size_prop}:{e_max}")
+        style = f'style="{";".join(style_parts)}"'
+
+        disabled_attr = ' data-disabled="true"' if disabled else ""
+
+        return mark_safe(
+            f'<div class="{class_str}" dj-hook="ResizablePanel" '
+            f'data-direction="{direction}" '
+            f'data-min-size="{e_min}" data-max-size="{e_max}" '
+            f'{style}{disabled_attr}>'
+            f'<div class="dj-resizable-panel__content">{content}</div>'
+            f'<div class="dj-resizable-panel__handle" role="separator" '
+            f'aria-orientation="{direction}" tabindex="0">'
+            f'<span class="dj-resizable-panel__handle-bar"></span>'
+            f'</div>'
+            f'</div>'
+        )
+
+
+@register.tag("resizable_panel")
+def do_resizable_panel(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    nodelist = parser.parse(("endresizable_panel",))
+    parser.delete_first_token()
+    return ResizablePanelNode(nodelist, kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Image Lightbox
+# ---------------------------------------------------------------------------
+
+class LightboxNode(template.Node):
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        images = kw.get("images", [])
+        active = kw.get("active", 0)
+        is_open = kw.get("open", False)
+        close_event = kw.get("close_event", "close_lightbox")
+        navigate_event = kw.get("navigate_event", "lightbox_navigate")
+        show_counter = kw.get("show_counter", True)
+        custom_class = kw.get("class", "")
+
+        if not is_open:
+            return ""
+
+        e_close = conditional_escape(str(close_event))
+        e_nav = conditional_escape(str(navigate_event))
+        e_class = conditional_escape(str(custom_class))
+
+        classes = ["dj-lightbox"]
+        if e_class:
+            classes.append(e_class)
+        class_str = " ".join(classes)
+
+        if not isinstance(images, list):
+            images = []
+
+        total = len(images)
+        try:
+            idx = int(active)
+        except (ValueError, TypeError):
+            idx = 0
+        idx = max(0, min(idx, total - 1)) if total else 0
+
+        # Current image
+        img_html = ""
+        caption_html = ""
+        if images and 0 <= idx < total:
+            img = images[idx]
+            if isinstance(img, dict):
+                e_src = conditional_escape(str(img.get("src", "")))
+                e_alt = conditional_escape(str(img.get("alt", "")))
+                caption = img.get("caption", "")
+                img_html = (
+                    f'<img class="dj-lightbox__image" src="{e_src}" alt="{e_alt}">'
+                )
+                if caption:
+                    caption_html = (
+                        f'<p class="dj-lightbox__caption">'
+                        f'{conditional_escape(str(caption))}</p>'
+                    )
+
+        # Navigation
+        prev_btn = (
+            f'<button class="dj-lightbox__prev" dj-click="{e_nav}" '
+            f'data-value="{idx - 1}" aria-label="Previous">'
+            f'&#8249;</button>'
+        ) if total > 1 else ""
+
+        next_btn = (
+            f'<button class="dj-lightbox__next" dj-click="{e_nav}" '
+            f'data-value="{idx + 1}" aria-label="Next">'
+            f'&#8250;</button>'
+        ) if total > 1 else ""
+
+        counter = ""
+        if show_counter and total > 1:
+            counter = (
+                f'<span class="dj-lightbox__counter">'
+                f'{idx + 1} of {total}</span>'
+            )
+
+        return mark_safe(
+            f'<div class="{class_str}" dj-hook="ImageLightbox" '
+            f'data-close-event="{e_close}" data-navigate-event="{e_nav}" '
+            f'role="dialog" aria-modal="true">'
+            f'<div class="dj-lightbox__backdrop" dj-click="{e_close}"></div>'
+            f'<button class="dj-lightbox__close" dj-click="{e_close}" '
+            f'aria-label="Close">&times;</button>'
+            f'{prev_btn}'
+            f'<div class="dj-lightbox__stage">{img_html}{caption_html}</div>'
+            f'{next_btn}'
+            f'{counter}'
+            f'</div>'
+        )
+
+
+@register.tag("lightbox")
+def do_lightbox(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return LightboxNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Dashboard Grid
+# ---------------------------------------------------------------------------
+
+class DashboardGridNode(template.Node):
+    def __init__(self, nodelist, kwargs):
+        self.nodelist = nodelist
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        panels = kw.get("panels", [])
+        columns = kw.get("columns", 4)
+        row_height = kw.get("row_height", "200px")
+        gap = kw.get("gap", "1rem")
+        move_event = kw.get("move_event", "dashboard_move")
+        resize_event = kw.get("resize_event", "dashboard_resize")
+        custom_class = kw.get("class", "")
+
+        e_move = conditional_escape(str(move_event))
+        e_resize = conditional_escape(str(resize_event))
+        e_gap = conditional_escape(str(gap))
+        e_row_height = conditional_escape(str(row_height))
+        e_class = conditional_escape(str(custom_class))
+
+        classes = ["dj-dashboard-grid"]
+        if e_class:
+            classes.append(e_class)
+        class_str = " ".join(classes)
+
+        try:
+            cols = int(columns)
+        except (ValueError, TypeError):
+            cols = 4
+
+        if not isinstance(panels, list):
+            panels = []
+
+        # Render child content (for {% dashboard_grid %}...{% enddashboard_grid %} usage)
+        child_content = self.nodelist.render(context) if self.nodelist else ""
+
+        panels_html = []
+        for panel in panels:
+            if not isinstance(panel, dict):
+                continue
+            pid = conditional_escape(str(panel.get("id", "")))
+            title = conditional_escape(str(panel.get("title", "")))
+            content = panel.get("content", "")
+            try:
+                col = int(panel.get("col", 1))
+            except (ValueError, TypeError):
+                col = 1
+            try:
+                row = int(panel.get("row", 1))
+            except (ValueError, TypeError):
+                row = 1
+            try:
+                w = int(panel.get("width", 1))
+            except (ValueError, TypeError):
+                w = 1
+            try:
+                h = int(panel.get("height", 1))
+            except (ValueError, TypeError):
+                h = 1
+
+            style = (
+                f'grid-column:{col}/span {w};'
+                f'grid-row:{row}/span {h}'
+            )
+
+            panels_html.append(
+                f'<div class="dj-dashboard-grid__panel" data-panel-id="{pid}" '
+                f'style="{style}" draggable="true">'
+                f'<div class="dj-dashboard-grid__panel-header">'
+                f'<span class="dj-dashboard-grid__panel-title">{title}</span>'
+                f'<span class="dj-dashboard-grid__panel-drag" aria-hidden="true">&#x2630;</span>'
+                f'</div>'
+                f'<div class="dj-dashboard-grid__panel-body">{content}</div>'
+                f'<div class="dj-dashboard-grid__panel-resize" role="separator"></div>'
+                f'</div>'
+            )
+
+        grid_style = (
+            f'style="display:grid;grid-template-columns:repeat({cols},1fr);'
+            f'grid-auto-rows:minmax({e_row_height},auto);gap:{e_gap}"'
+        )
+
+        inner = "".join(panels_html) + child_content
+
+        return mark_safe(
+            f'<div class="{class_str}" dj-hook="DashboardGrid" '
+            f'data-move-event="{e_move}" data-resize-event="{e_resize}" '
+            f'data-columns="{cols}" {grid_style}>{inner}</div>'
+        )
+
+
+@register.tag("dashboard_grid")
+def do_dashboard_grid(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    nodelist = parser.parse(("enddashboard_grid",))
+    parser.delete_first_token()
+    return DashboardGridNode(nodelist, kwargs)
