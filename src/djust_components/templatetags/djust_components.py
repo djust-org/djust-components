@@ -5004,3 +5004,416 @@ def do_page_header_actions(parser, token):
     nodelist = parser.parse(("endpage_header_actions",))
     parser.delete_first_token()
     return PageHeaderActionsNode(nodelist)
+
+
+# ---------------------------------------------------------------------------
+# FORM ESSENTIALS (v1.5)
+# ---------------------------------------------------------------------------
+
+# --- Slider / Range ---
+
+@register.simple_tag
+def slider(name="", label="", min=0, max=100, step=1, value=None,
+           value_end=None, event="", disabled=False, show_ticks=False,
+           show_value=True, custom_class=""):
+    """Render a horizontal slider with optional range mode.
+
+    Args:
+        name: Input name attribute.
+        label: Optional label text.
+        min/max/step: Range bounds and step increment.
+        value: Current value (or start value in range mode).
+        value_end: End value — when set, enables dual-handle range mode.
+        event: dj-input event name (defaults to name).
+        show_ticks: Show tick marks along the track.
+        show_value: Show current value output (default True).
+        disabled: Disable the input.
+        custom_class: Extra CSS class.
+    """
+    if isinstance(disabled, str):
+        disabled = disabled.lower() not in ("false", "0", "")
+    if isinstance(show_ticks, str):
+        show_ticks = show_ticks.lower() not in ("false", "0", "")
+    if isinstance(show_value, str):
+        show_value = show_value.lower() not in ("false", "0", "")
+
+    min_val = int(min)
+    max_val = int(max)
+    step_val = int(step)
+    if value is None:
+        value = min_val
+    value = int(value)
+
+    e_name = conditional_escape(name)
+    e_label = conditional_escape(label)
+    dj_event = conditional_escape(event or name)
+    e_class = conditional_escape(custom_class)
+
+    disabled_attr = " disabled" if disabled else ""
+    range_mode = value_end is not None
+    if range_mode:
+        value_end = int(value_end)
+
+    cls = "dj-slider"
+    if range_mode:
+        cls += " dj-slider--range"
+    if e_class:
+        cls += f" {e_class}"
+
+    label_html = (
+        f'<label class="dj-slider__label" for="{e_name}">{e_label}</label>'
+        if label else ""
+    )
+
+    value_display = ""
+    if show_value:
+        if range_mode:
+            value_display = (
+                f'<output class="dj-slider__value">'
+                f'{value} &ndash; {value_end}</output>'
+            )
+        else:
+            value_display = (
+                f'<output class="dj-slider__value">{value}</output>'
+            )
+
+    ticks_html = ""
+    if show_ticks:
+        tick_count = builtins_max(1, (max_val - min_val) // step_val)
+        tick_items = "".join(
+            '<span class="dj-slider__tick"></span>'
+            for _ in range(tick_count + 1)
+        )
+        ticks_html = f'<div class="dj-slider__ticks">{tick_items}</div>'
+
+    input_html = (
+        f'<input type="range" class="dj-slider__input" '
+        f'name="{e_name}" id="{e_name}" '
+        f'min="{min_val}" max="{max_val}" step="{step_val}" '
+        f'value="{value}" '
+        f'dj-input="{dj_event}"{disabled_attr}>'
+    )
+
+    if range_mode:
+        input_html += (
+            f'<input type="range" class="dj-slider__input dj-slider__input--end" '
+            f'name="{e_name}_end" id="{e_name}_end" '
+            f'min="{min_val}" max="{max_val}" step="{step_val}" '
+            f'value="{value_end}" '
+            f'dj-input="{dj_event}"{disabled_attr}>'
+        )
+
+    return mark_safe(
+        f'<div class="{cls}">'
+        f'{label_html}'
+        f'<div class="dj-slider__track">{input_html}</div>'
+        f'{ticks_html}'
+        f'{value_display}'
+        f'</div>'
+    )
+
+
+# Need a reference to the builtin max since 'max' is shadowed as a parameter
+import builtins as _builtins
+builtins_max = _builtins.max
+
+
+# --- Search Input ---
+
+@register.simple_tag
+def search_input(name="", label="", value="", placeholder="Search...",
+                 event="", debounce=300, loading=False, disabled=False,
+                 custom_class=""):
+    """Render a search input with icon, clear button, and loading spinner.
+
+    Args:
+        name: Input name attribute.
+        label: Optional label text.
+        value: Current value.
+        placeholder: Placeholder text (default "Search...").
+        event: dj-input event name (defaults to name).
+        debounce: Debounce delay in ms (default 300).
+        loading: Show loading spinner.
+        disabled: Disable the input.
+        custom_class: Extra CSS class.
+    """
+    if isinstance(loading, str):
+        loading = loading.lower() not in ("false", "0", "")
+    if isinstance(disabled, str):
+        disabled = disabled.lower() not in ("false", "0", "")
+
+    e_name = conditional_escape(name)
+    e_label = conditional_escape(label)
+    e_value = conditional_escape(value)
+    e_placeholder = conditional_escape(placeholder)
+    dj_event = conditional_escape(event or name)
+    e_class = conditional_escape(custom_class)
+    debounce_val = int(debounce)
+
+    disabled_attr = " disabled" if disabled else ""
+    cls = "dj-search-input"
+    if loading:
+        cls += " dj-search-input--loading"
+    if e_class:
+        cls += f" {e_class}"
+
+    label_html = (
+        f'<label class="dj-search-input__label" for="{e_name}">{e_label}</label>'
+        if label else ""
+    )
+
+    icon_html = (
+        '<svg class="dj-search-input__icon" viewBox="0 0 20 20" fill="currentColor" '
+        'width="16" height="16" aria-hidden="true">'
+        '<path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11z'
+        'M2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328'
+        'A7 7 0 012 9z" clip-rule="evenodd"/></svg>'
+    )
+
+    spinner_html = (
+        '<span class="dj-search-input__spinner" aria-hidden="true"></span>'
+        if loading else ""
+    )
+
+    clear_html = (
+        '<button type="button" class="dj-search-input__clear" '
+        'aria-label="Clear search" tabindex="-1">&times;</button>'
+    )
+
+    return mark_safe(
+        f'{label_html}'
+        f'<div class="{cls}">'
+        f'{icon_html}'
+        f'<input type="search" class="dj-search-input__input" '
+        f'name="{e_name}" id="{e_name}" value="{e_value}" '
+        f'placeholder="{e_placeholder}" autocomplete="off" '
+        f'dj-input="{dj_event}" data-debounce="{debounce_val}"{disabled_attr}>'
+        f'{clear_html}'
+        f'{spinner_html}'
+        f'</div>'
+    )
+
+
+# --- Password Input ---
+
+@register.simple_tag
+def password_input(name="", label="", value="", placeholder="", event="",
+                   error="", required=False, disabled=False,
+                   show_strength=False, strength=0, custom_class=""):
+    """Render a password input with show/hide toggle and optional strength meter.
+
+    Args:
+        name: Input name attribute.
+        label: Optional label text.
+        value: Current value.
+        placeholder: Placeholder text.
+        event: dj-input event name (defaults to name).
+        error: Error message text.
+        required: Mark as required.
+        disabled: Disable the input.
+        show_strength: Show strength meter bar.
+        strength: Strength value 0-4.
+        custom_class: Extra CSS class.
+    """
+    if isinstance(required, str):
+        required = required.lower() not in ("false", "0", "")
+    if isinstance(disabled, str):
+        disabled = disabled.lower() not in ("false", "0", "")
+    if isinstance(show_strength, str):
+        show_strength = show_strength.lower() not in ("false", "0", "")
+
+    e_name = conditional_escape(name)
+    e_label = conditional_escape(label)
+    e_value = conditional_escape(value)
+    e_placeholder = conditional_escape(placeholder)
+    dj_event = conditional_escape(event or name)
+    e_error = conditional_escape(error)
+    e_class = conditional_escape(custom_class)
+    strength_val = builtins_max(0, builtins_min(4, int(strength)))
+
+    required_attr = " required" if required else ""
+    disabled_attr = " disabled" if disabled else ""
+
+    cls = "dj-password-input"
+    if error:
+        cls += " dj-password-input--error"
+    if e_class:
+        cls += f" {e_class}"
+
+    label_html = ""
+    if label:
+        req_span = '<span class="form-required"> *</span>' if required else ""
+        label_html = (
+            f'<label class="form-label" for="{e_name}">{e_label}{req_span}</label>'
+        )
+
+    error_html = (
+        f'<span class="form-error-message">{e_error}</span>' if error else ""
+    )
+
+    toggle_btn = (
+        '<button type="button" class="dj-password-input__toggle" '
+        'aria-label="Toggle password visibility" tabindex="-1">'
+        '<svg class="dj-password-input__eye" viewBox="0 0 20 20" '
+        'fill="currentColor" width="16" height="16">'
+        '<path d="M10 3C5 3 1.73 7.11 1 10c.73 2.89 4 7 9 7s8.27-4.11 9-7'
+        'c-.73-2.89-4-7-9-7zm0 12a5 5 0 110-10 5 5 0 010 10zm0-8a3 3 0 '
+        '100 6 3 3 0 000-6z"/></svg>'
+        '</button>'
+    )
+
+    strength_html = ""
+    if show_strength:
+        s_cls = f"dj-password-strength--{strength_val}"
+        strength_html = (
+            f'<div class="dj-password-strength {s_cls}" '
+            f'role="meter" aria-valuenow="{strength_val}" '
+            f'aria-valuemin="0" aria-valuemax="4">'
+            f'<div class="dj-password-strength__bar"></div>'
+            f'<div class="dj-password-strength__bar"></div>'
+            f'<div class="dj-password-strength__bar"></div>'
+            f'<div class="dj-password-strength__bar"></div>'
+            f'</div>'
+        )
+
+    return mark_safe(
+        f'<div class="form-group">'
+        f'{label_html}'
+        f'<div class="{cls}">'
+        f'<input type="password" class="dj-password-input__input form-input" '
+        f'name="{e_name}" id="{e_name}" value="{e_value}" '
+        f'placeholder="{e_placeholder}" '
+        f'dj-input="{dj_event}"{required_attr}{disabled_attr}>'
+        f'{toggle_btn}'
+        f'</div>'
+        f'{strength_html}'
+        f'{error_html}'
+        f'</div>'
+    )
+
+
+builtins_min = _builtins.min
+
+
+# --- Autocomplete ---
+
+@register.simple_tag
+def autocomplete(name="", label="", value="", display_value="",
+                 placeholder="", source_event="", event="",
+                 debounce=300, min_chars=1, suggestions=None,
+                 loading=False, disabled=False, error="",
+                 required=False, custom_class=""):
+    """Render an autocomplete input with server-driven suggestions.
+
+    Args:
+        name: Input name attribute (hidden input carries the selected value).
+        label: Optional label text.
+        value: Selected value (submitted in form).
+        display_value: Display text for the input (defaults to value).
+        placeholder: Placeholder text.
+        source_event: dj-input event for fetching suggestions from the server.
+        event: dj-change event when a value is selected (defaults to name).
+        debounce: Debounce delay in ms (default 300).
+        min_chars: Minimum characters before triggering search (default 1).
+        suggestions: List of suggestion dicts/tuples for current render.
+        loading: Show loading spinner.
+        disabled: Disable the input.
+        error: Error message text.
+        required: Mark as required.
+        custom_class: Extra CSS class.
+    """
+    if isinstance(loading, str):
+        loading = loading.lower() not in ("false", "0", "")
+    if isinstance(disabled, str):
+        disabled = disabled.lower() not in ("false", "0", "")
+    if isinstance(required, str):
+        required = required.lower() not in ("false", "0", "")
+    if suggestions is None:
+        suggestions = []
+    if not isinstance(suggestions, (list, tuple)):
+        suggestions = []
+
+    e_name = conditional_escape(name)
+    e_label = conditional_escape(label)
+    e_value = conditional_escape(str(value))
+    e_display = conditional_escape(str(display_value or value))
+    e_placeholder = conditional_escape(placeholder)
+    e_source_event = conditional_escape(source_event)
+    dj_event = conditional_escape(event or name)
+    e_error = conditional_escape(error)
+    e_class = conditional_escape(custom_class)
+    debounce_val = int(debounce)
+    min_chars_val = int(min_chars)
+
+    disabled_attr = " disabled" if disabled else ""
+    required_attr = " required" if required else ""
+
+    cls = "dj-autocomplete"
+    if loading:
+        cls += " dj-autocomplete--loading"
+    if error:
+        cls += " dj-autocomplete--error"
+    if e_class:
+        cls += f" {e_class}"
+
+    label_html = ""
+    if label:
+        req_span = '<span class="form-required"> *</span>' if required else ""
+        label_html = (
+            f'<label class="form-label" for="{e_name}">{e_label}{req_span}</label>'
+        )
+
+    error_html = (
+        f'<span class="form-error-message">{e_error}</span>' if error else ""
+    )
+
+    # Build suggestion items
+    suggestion_items = []
+    for sug in suggestions:
+        if isinstance(sug, dict):
+            sv = conditional_escape(str(sug.get("value", "")))
+            sl = conditional_escape(str(sug.get("label", sv)))
+        elif isinstance(sug, (list, tuple)) and len(sug) >= 2:
+            sv = conditional_escape(str(sug[0]))
+            sl = conditional_escape(str(sug[1]))
+        else:
+            sv = sl = conditional_escape(str(sug))
+        suggestion_items.append(
+            f'<li class="dj-autocomplete__item" role="option" '
+            f'data-value="{sv}">{sl}</li>'
+        )
+
+    dropdown_cls = "dj-autocomplete__dropdown"
+    if not suggestion_items:
+        dropdown_cls += " dj-autocomplete__dropdown--hidden"
+
+    suggestions_html = (
+        f'<ul class="{dropdown_cls}" role="listbox">'
+        f'{"".join(suggestion_items)}'
+        f'</ul>'
+    )
+
+    spinner_html = (
+        '<span class="dj-autocomplete__spinner" aria-hidden="true"></span>'
+        if loading else ""
+    )
+
+    return mark_safe(
+        f'<div class="form-group">'
+        f'{label_html}'
+        f'<div class="{cls}" data-source-event="{e_source_event}" '
+        f'data-debounce="{debounce_val}" data-min-chars="{min_chars_val}">'
+        f'<input type="text" class="dj-autocomplete__input form-input" '
+        f'name="{e_name}_display" id="{e_name}" value="{e_display}" '
+        f'placeholder="{e_placeholder}" autocomplete="off" '
+        f'role="combobox" aria-autocomplete="list" '
+        f'aria-expanded="{"true" if suggestion_items else "false"}" '
+        f'dj-input="{e_source_event or dj_event}" '
+        f'data-debounce="{debounce_val}"{required_attr}{disabled_attr}>'
+        f'<input type="hidden" name="{e_name}" value="{e_value}">'
+        f'{spinner_html}'
+        f'{suggestions_html}'
+        f'</div>'
+        f'{error_html}'
+        f'</div>'
+    )

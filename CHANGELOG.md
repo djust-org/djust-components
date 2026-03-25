@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Form Essentials (v1.5)**: 4 new form input components with Django template tags, Rust engine handlers, CSS, and tests (including XSS coverage):
+  - **Slider / Range** (`{% slider name="price" min=0 max=100 value=50 %}`) — Horizontal slider with optional dual-handle range mode (`value_end`), configurable `step`, tick marks (`show_ticks`), value display output, `dj-input` event; supports `label`, `disabled`, `custom_class` (#82)
+  - **Search Input** (`{% search_input name="q" placeholder="Search..." event="search" %}`) — Input with search icon, clear button, loading spinner state (`loading`), debounced `dj-input` event (`debounce` ms); supports `label`, `value`, `disabled`, `custom_class` (#83)
+  - **Password Input** (`{% password_input name="pwd" %}`) — Input with show/hide toggle button, optional strength meter bar (`show_strength`, `strength` 0-4); supports `label`, `error`, `required`, `disabled`, `placeholder`, `custom_class` (#84)
+  - **Autocomplete** (`{% autocomplete name="city" source_event="search_cities" %}`) — Input with dropdown suggestions fetched server-side on keystroke; `source_event` for server search, debounced input, `min_chars` threshold, suggestion list (dict/tuple/string), hidden value input, ARIA combobox/listbox roles; supports `label`, `error`, `required`, `loading`, `disabled`, `custom_class` (#85)
+
 ### Changed
 - **CSS @layer adoption**: All component CSS (`components.css`, `components-classes.css`) is now wrapped in `@layer djust-components`, giving consumers explicit control over cascade precedence when overriding styles
 - **Animation consistency**: Consolidated 17 scattered `@keyframes` declarations into 9 shared keyframes (`dj-spin`, `dj-pulse`, `dj-fade`, `dj-shimmer`, `dj-slide-in-right`, `dj-slide-in-up`, `dj-slide-out-up`, `dj-flash`, `dj-counter-roll`) defined once outside the layer; all components now reference these shared animations with consistent naming
