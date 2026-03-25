@@ -1314,11 +1314,15 @@ def code_block(code="", language="", filename="", copy_event="copy_code",
     if isinstance(highlight, str):
         highlight = highlight.lower() not in ("false", "0", "")
 
+    import re as _re
     e_language = conditional_escape(language or "text")
     e_filename = conditional_escape(filename)
     e_code = conditional_escape(code)
     e_event = conditional_escape(copy_event)
-    e_theme = conditional_escape(theme)
+    # Theme is interpolated inside a <script> — HTML escaping is insufficient.
+    # Restrict to alphanumeric, hyphens, and underscores to prevent injection.
+    safe_theme = theme if _re.match(r'^[a-zA-Z0-9_-]+$', str(theme)) else "github-dark"
+    e_theme = conditional_escape(safe_theme)
 
     filename_html = (
         f'<span class="code-block-filename">{e_filename}</span>'
