@@ -888,6 +888,37 @@ class DataTableHandler:
         cancel_row_event = conditional_escape(kw.get("cancel_row_event", "table_row_cancel"))
         editing_rows = kw.get("editing_rows") or []
 
+        # Phase 3 parameters (all opt-in)
+        expandable = kw.get("expandable", False)
+        expand_event = conditional_escape(kw.get("expand_event", "table_expand"))
+        expanded_rows = kw.get("expanded_rows") or []
+        bulk_actions = kw.get("bulk_actions") or []
+        bulk_action_event = conditional_escape(kw.get("bulk_action_event", "table_bulk_action"))
+        exportable = kw.get("exportable", False)
+        export_event = conditional_escape(kw.get("export_event", "table_export"))
+        export_formats = kw.get("export_formats") or ["csv", "json"]
+        group_by = str(kw.get("group_by", ""))
+        group_event = conditional_escape(kw.get("group_event", "table_group"))
+        group_toggle_event = conditional_escape(kw.get("group_toggle_event", "table_group_toggle"))
+        collapsible_groups = kw.get("collapsible_groups", True)
+        collapsed_groups = kw.get("collapsed_groups") or []
+        keyboard_nav = kw.get("keyboard_nav", False)
+        virtual_scroll = kw.get("virtual_scroll", False)
+        try:
+            virtual_row_height = int(kw.get("virtual_row_height", 40))
+        except (ValueError, TypeError):
+            virtual_row_height = 40
+        try:
+            virtual_buffer = int(kw.get("virtual_buffer", 5))
+        except (ValueError, TypeError):
+            virtual_buffer = 5
+        server_mode = kw.get("server_mode", False)
+        facets = kw.get("facets", False)
+        facet_counts = kw.get("facet_counts") or {}
+        persist_key = conditional_escape(str(kw.get("persist_key", "")))
+        printable = kw.get("printable", False)
+        column_stats = kw.get("column_stats") or {}
+
         if not isinstance(rows, (list, tuple)):
             rows = []
         if not isinstance(columns, (list, tuple)):
@@ -900,11 +931,25 @@ class DataTableHandler:
             editable_columns = []
         if not isinstance(editing_rows, (list, tuple, set)):
             editing_rows = []
+        if not isinstance(expanded_rows, (list, tuple, set)):
+            expanded_rows = []
+        if not isinstance(bulk_actions, (list, tuple)):
+            bulk_actions = []
+        if not isinstance(export_formats, (list, tuple)):
+            export_formats = ["csv", "json"]
+        if not isinstance(collapsed_groups, (list, tuple, set)):
+            collapsed_groups = []
+        if not isinstance(facet_counts, dict):
+            facet_counts = {}
+        if not isinstance(column_stats, dict):
+            column_stats = {}
 
         # Convert to sets for fast lookup
         selected_set = {str(v) for v in selected_rows}
         editable_col_set = set(str(c) for c in editable_columns)
         editing_row_set = {str(v) for v in editing_rows}
+        expanded_set = {str(v) for v in expanded_rows}
+        collapsed_group_set = {str(v) for v in collapsed_groups}
         num_cols = len(columns)
 
         # --- Table classes ---
@@ -921,6 +966,8 @@ class DataTableHandler:
         wrapper_classes = ["data-table-wrapper", "data-table-container"]
         if responsive_cards:
             wrapper_classes.append("data-table-responsive")
+        if printable:
+            wrapper_classes.append("data-table-printable")
         wrapper_attrs = []
         if resizable:
             wrapper_attrs.append('data-resizable="true"')
@@ -931,6 +978,16 @@ class DataTableHandler:
             wrapper_attrs.append(f'data-edit-event="{edit_event}"')
         if column_visibility:
             wrapper_attrs.append(f'data-visibility-event="{visibility_event}"')
+        if keyboard_nav:
+            wrapper_attrs.append('data-keyboard-nav="true" tabindex="0"')
+        if virtual_scroll:
+            wrapper_attrs.append(f'data-virtual-scroll="true"')
+            wrapper_attrs.append(f'data-virtual-row-height="{virtual_row_height}"')
+            wrapper_attrs.append(f'data-virtual-buffer="{virtual_buffer}"')
+        if server_mode:
+            wrapper_attrs.append('data-server-mode="true"')
+        if persist_key:
+            wrapper_attrs.append(f'data-persist-key="{persist_key}"')
         wrapper_attrs_str = (" " + " ".join(wrapper_attrs)) if wrapper_attrs else ""
 
         # --- Toolbar (column visibility + density toggle) ---
@@ -971,6 +1028,43 @@ class DataTableHandler:
                 f'{_dbtn("compact", "Compact")}'
                 f'{_dbtn("comfortable", "Comfortable")}'
                 f'{_dbtn("spacious", "Spacious")}'
+                f'</div>'
+            )
+
+        if exportable:
+            export_btns = ""
+            for fmt in export_formats:
+                fmt_esc = conditional_escape(str(fmt))
+                label = fmt_esc.upper()
+                export_btns += (
+                    f'<button type="button" class="data-table-export-btn"'
+                    f' dj-click="{export_event}" data-value="{fmt_esc}">'
+                    f'Export {label}</button>'
+                )
+            toolbar_parts.append(
+                f'<div class="data-table-export">{export_btns}</div>'
+            )
+
+        # Bulk actions bar (rendered separately, shown conditionally)
+        bulk_actions_html = ""
+        if bulk_actions and selected_rows:
+            ba_btns = ""
+            for ba in bulk_actions:
+                if isinstance(ba, dict):
+                    ba_key = conditional_escape(str(ba.get("key", "")))
+                    ba_label = conditional_escape(str(ba.get("label", ba_key)))
+                else:
+                    ba_key = ba_label = conditional_escape(str(ba))
+                ba_btns += (
+                    f'<button type="button" class="data-table-bulk-btn"'
+                    f' dj-click="{bulk_action_event}" data-value="{ba_key}">'
+                    f'{ba_label}</button>'
+                )
+            count = len(selected_rows)
+            bulk_actions_html = (
+                f'<div class="data-table-bulk-bar">'
+                f'<span class="data-table-bulk-count">{count} selected</span>'
+                f'{ba_btns}'
                 f'</div>'
             )
 
@@ -1034,9 +1128,14 @@ class DataTableHandler:
                 filter_options = []
                 width = ""
 
-            # Frozen column class
+            # Frozen / pinned column class
             frozen_cls = ""
-            if frozen_left > 0 and col_idx < frozen_left:
+            pinned = col.get("pinned", "") if isinstance(col, dict) else ""
+            if pinned == "left":
+                frozen_cls = " data-table-pinned-left"
+            elif pinned == "right":
+                frozen_cls = " data-table-pinned-right"
+            elif frozen_left > 0 and col_idx < frozen_left:
                 frozen_cls = " data-table-frozen-left"
             elif frozen_right > 0 and col_idx >= (num_cols - frozen_right):
                 frozen_cls = " data-table-frozen-right"
@@ -1108,6 +1207,12 @@ class DataTableHandler:
                 else:
                     filter_cells.append(f"<th{frozen_f}></th>")
 
+        # Prepend expand column
+        if expandable:
+            header_cells.insert(0, '<th class="data-table-expand-col" role="columnheader"></th>')
+            if has_filters:
+                filter_cells.insert(0, "<th></th>")
+
         # Prepend selection column
         if selectable:
             header_cells.insert(0,
@@ -1129,109 +1234,196 @@ class DataTableHandler:
         if has_filters:
             thead_rows += f"<tr>{''.join(filter_cells)}</tr>"
 
+        # --- Total columns (for colspan calculations) ---
+        total_cols = num_cols + (1 if selectable else 0) + (1 if editable_rows else 0) + (1 if expandable else 0)
+
+        # --- Helper: render a single row ---
+        def _render_row(row):
+            if not isinstance(row, dict):
+                return ""
+            row_id = str(row.get(row_key, ""))
+            is_selected = row_id in selected_set
+            is_editing = row_id in editing_row_set
+            is_expanded = row_id in expanded_set
+            row_attrs = ""
+            row_classes = []
+
+            if is_editing:
+                row_classes.append("data-table-row-editing")
+            if is_expanded:
+                row_classes.append("data-table-row-expanded")
+            row_attrs += f' data-row-key="{conditional_escape(row_id)}"'
+
+            cells = ""
+            # Expand toggle cell
+            if expandable:
+                exp_icon = "&#9660;" if is_expanded else "&#9654;"
+                cells += (
+                    f'<td class="data-table-expand-toggle">'
+                    f'<button type="button" class="data-table-expand-btn"'
+                    f' aria-label="Expand row" aria-expanded="{"true" if is_expanded else "false"}"'
+                    f' dj-click="{expand_event}"'
+                    f' data-value="{conditional_escape(row_id)}">{exp_icon}</button>'
+                    f'</td>'
+                )
+
+            if selectable:
+                checked = " checked" if is_selected else ""
+                cells += (
+                    f'<td><input type="checkbox" class="data-table-checkbox"'
+                    f' aria-label="Select row"'
+                    f'{checked}'
+                    f' dj-click="{select_event}"'
+                    f' data-value="{conditional_escape(row_id)}"></td>'
+                )
+
+            for col_idx, col in enumerate(columns):
+                col_k = col.get("key", col) if isinstance(col, dict) else col
+                col_k_str = str(col_k)
+                cell_val = conditional_escape(str(row.get(col_k_str, "")))
+                col_label_for_card = ""
+                if responsive_cards and isinstance(col, dict):
+                    col_label_for_card = conditional_escape(str(col.get("label", col_k_str)))
+
+                # Frozen / pinned class for td
+                td_classes = []
+                if isinstance(col, dict) and col.get("pinned") == "left":
+                    td_classes.append("data-table-pinned-left")
+                elif isinstance(col, dict) and col.get("pinned") == "right":
+                    td_classes.append("data-table-pinned-right")
+                elif frozen_left > 0 and col_idx < frozen_left:
+                    td_classes.append("data-table-frozen-left")
+                elif frozen_right > 0 and col_idx >= (num_cols - frozen_right):
+                    td_classes.append("data-table-frozen-right")
+
+                td_cls_str = f' class="{" ".join(td_classes)}"' if td_classes else ""
+
+                # Responsive card data-label
+                label_attr = f' data-label="{col_label_for_card}"' if responsive_cards and col_label_for_card else ""
+
+                # Cell renderer
+                cell_template = col.get("cell_template", "") if isinstance(col, dict) else ""
+                if cell_template:
+                    cell_tpl_esc = conditional_escape(str(cell_template))
+                    cell_val = (
+                        f'<span class="cell-renderer cell-renderer-{cell_tpl_esc}"'
+                        f' data-value="{cell_val}">{cell_val}</span>'
+                    )
+
+                # Editable cell (inline editing)
+                is_col_editable = col_k_str in editable_col_set
+
+                # Editable row mode: all cells become inputs when row is editing
+                if editable_rows and is_editing:
+                    raw_val = conditional_escape(str(row.get(col_k_str, "")))
+                    cells += (
+                        f'<td{td_cls_str}{label_attr}>'
+                        f'<input type="text" value="{raw_val}"'
+                        f' name="{conditional_escape(col_k_str)}"'
+                        f' aria-label="Edit {conditional_escape(col_k_str)}">'
+                        f'</td>'
+                    )
+                elif is_col_editable:
+                    cells += (
+                        f'<td data-editable="true"'
+                        f' data-col-key="{conditional_escape(col_k_str)}"'
+                        f'{td_cls_str}{label_attr}>'
+                        f'{cell_val}</td>'
+                    )
+                else:
+                    cells += f"<td{td_cls_str}{label_attr}>{cell_val}</td>"
+
+            # Actions column for editable rows
+            if editable_rows:
+                if is_editing:
+                    cells += (
+                        f'<td class="data-table-row-actions">'
+                        f'<button class="save-btn"'
+                        f' dj-click="{save_row_event}"'
+                        f' data-value="{conditional_escape(row_id)}">Save</button>'
+                        f' <button class="cancel-btn"'
+                        f' dj-click="{cancel_row_event}"'
+                        f' data-value="{conditional_escape(row_id)}">Cancel</button>'
+                        f'</td>'
+                    )
+                else:
+                    cells += (
+                        f'<td class="data-table-row-actions">'
+                        f'<button dj-click="{edit_row_event}"'
+                        f' data-value="{conditional_escape(row_id)}">Edit</button>'
+                        f'</td>'
+                    )
+
+            # Row element
+            result = ""
+            if selectable:
+                sel_attr = "true" if is_selected else "false"
+                row_cls = f' class="{" ".join(row_classes)}"' if row_classes else ""
+                result += f'<tr aria-selected="{sel_attr}"{row_cls}{row_attrs}>{cells}</tr>'
+            else:
+                row_cls = f' class="{" ".join(row_classes)}"' if row_classes else ""
+                result += f"<tr{row_cls}{row_attrs}>{cells}</tr>"
+
+            # Expansion detail row
+            if expandable and is_expanded:
+                result += (
+                    f'<tr class="data-table-detail-row">'
+                    f'<td colspan="{total_cols}" class="data-table-detail-cell">'
+                    f'<div class="data-table-detail-content"'
+                    f' data-row-key="{conditional_escape(row_id)}"></div>'
+                    f'</td></tr>'
+                )
+
+            return result
+
         # --- Body rows ---
         body_rows = []
         if rows:
-            for row in rows:
-                if not isinstance(row, dict):
-                    continue
-                row_id = str(row.get(row_key, ""))
-                is_selected = row_id in selected_set
-                is_editing = row_id in editing_row_set
-                row_attrs = ""
-                row_classes = []
+            if group_by:
+                # Group rows by column value
+                groups = {}
+                group_order = []
+                for row in rows:
+                    if not isinstance(row, dict):
+                        continue
+                    val = str(row.get(group_by, ""))
+                    if val not in groups:
+                        groups[val] = []
+                        group_order.append(val)
+                    groups[val].append(row)
 
-                if is_editing:
-                    row_classes.append("data-table-row-editing")
-                row_attrs += f' data-row-key="{conditional_escape(row_id)}"'
-
-                cells = ""
-                if selectable:
-                    checked = " checked" if is_selected else ""
-                    cells += (
-                        f'<td><input type="checkbox" class="data-table-checkbox"'
-                        f' aria-label="Select row"'
-                        f'{checked}'
-                        f' dj-click="{select_event}"'
-                        f' data-value="{conditional_escape(row_id)}"></td>'
-                    )
-
-                for col_idx, col in enumerate(columns):
-                    col_k = col.get("key", col) if isinstance(col, dict) else col
-                    col_k_str = str(col_k)
-                    cell_val = conditional_escape(str(row.get(col_k_str, "")))
-                    col_label_for_card = ""
-                    if responsive_cards and isinstance(col, dict):
-                        col_label_for_card = conditional_escape(str(col.get("label", col_k_str)))
-
-                    # Frozen class for td
-                    td_frozen = ""
-                    if frozen_left > 0 and col_idx < frozen_left:
-                        td_frozen = ' class="data-table-frozen-left"'
-                    elif frozen_right > 0 and col_idx >= (num_cols - frozen_right):
-                        td_frozen = ' class="data-table-frozen-right"'
-
-                    # Responsive card data-label
-                    label_attr = f' data-label="{col_label_for_card}"' if responsive_cards and col_label_for_card else ""
-
-                    # Editable cell (inline editing)
-                    is_col_editable = col_k_str in editable_col_set
-
-                    # Editable row mode: all cells become inputs when row is editing
-                    if editable_rows and is_editing:
-                        raw_val = conditional_escape(str(row.get(col_k_str, "")))
-                        cells += (
-                            f'<td{td_frozen}{label_attr}>'
-                            f'<input type="text" value="{raw_val}"'
-                            f' name="{conditional_escape(col_k_str)}"'
-                            f' aria-label="Edit {conditional_escape(col_k_str)}">'
-                            f'</td>'
+                for gval in group_order:
+                    g_esc = conditional_escape(gval)
+                    is_collapsed = gval in collapsed_group_set
+                    toggle_attr = ""
+                    if collapsible_groups:
+                        toggle_attr = (
+                            f' dj-click="{group_toggle_event}"'
+                            f' data-value="{g_esc}"'
                         )
-                    elif is_col_editable:
-                        cells += (
-                            f'<td data-editable="true"'
-                            f' data-col-key="{conditional_escape(col_k_str)}"'
-                            f'{td_frozen}{label_attr}>'
-                            f'{cell_val}</td>'
-                        )
-                    else:
-                        cells += f"<td{td_frozen}{label_attr}>{cell_val}</td>"
-
-                # Actions column for editable rows
-                if editable_rows:
-                    if is_editing:
-                        cells += (
-                            f'<td class="data-table-row-actions">'
-                            f'<button class="save-btn"'
-                            f' dj-click="{save_row_event}"'
-                            f' data-value="{conditional_escape(row_id)}">Save</button>'
-                            f' <button class="cancel-btn"'
-                            f' dj-click="{cancel_row_event}"'
-                            f' data-value="{conditional_escape(row_id)}">Cancel</button>'
-                            f'</td>'
-                        )
-                    else:
-                        cells += (
-                            f'<td class="data-table-row-actions">'
-                            f'<button dj-click="{edit_row_event}"'
-                            f' data-value="{conditional_escape(row_id)}">Edit</button>'
-                            f'</td>'
-                        )
-
-                # Row element
-                if selectable:
-                    sel_attr = "true" if is_selected else "false"
-                    row_cls = f' class="{" ".join(row_classes)}"' if row_classes else ""
+                    collapse_icon = "&#9654;" if is_collapsed else "&#9660;"
+                    group_cls = "data-table-group-header"
+                    if is_collapsed:
+                        group_cls += " data-table-group-collapsed"
                     body_rows.append(
-                        f'<tr aria-selected="{sel_attr}"{row_cls}{row_attrs}>{cells}</tr>'
+                        f'<tr class="{group_cls}">'
+                        f'<td colspan="{total_cols}" class="data-table-group-cell">'
+                        f'<button type="button" class="data-table-group-toggle"'
+                        f'{toggle_attr}>{collapse_icon}</button>'
+                        f' <span class="data-table-group-label">{g_esc}</span>'
+                        f' <span class="data-table-group-count">({len(groups[gval])})</span>'
+                        f'</td></tr>'
                     )
-                else:
-                    row_cls = f' class="{" ".join(row_classes)}"' if row_classes else ""
-                    body_rows.append(f"<tr{row_cls}{row_attrs}>{cells}</tr>")
+                    if not is_collapsed:
+                        for row in groups[gval]:
+                            body_rows.append(_render_row(row))
+            else:
+                for row in rows:
+                    body_rows.append(_render_row(row))
             tbody_html = "".join(body_rows)
         else:
             # Empty state
-            col_span = len(columns) + (1 if selectable else 0) + (1 if editable_rows else 0)
+            col_span = total_cols
             icon_html = f'<div class="data-table-empty-icon">{empty_icon}</div>' if empty_icon else ""
             desc_html = f'<p class="data-table-empty-description">{empty_description}</p>' if empty_description else ""
             tbody_html = (
@@ -1243,6 +1435,38 @@ class DataTableHandler:
                 f'</div>'
                 f'</td></tr>'
             )
+
+        # --- Stats footer ---
+        tfoot_html = ""
+        has_stats = any(
+            isinstance(col, dict) and col.get("stats", False)
+            for col in columns
+        )
+        if has_stats and column_stats:
+            stat_cells = []
+            if expandable:
+                stat_cells.append("<td></td>")
+            if selectable:
+                stat_cells.append("<td></td>")
+            for col in columns:
+                if isinstance(col, dict) and col.get("stats", False):
+                    key = col.get("key", "")
+                    s = column_stats.get(key, {})
+                    if s and s.get("count", 0) > 0:
+                        stat_cells.append(
+                            f'<td class="data-table-stats-cell">'
+                            f'<span class="data-table-stat" title="Min">{s.get("min", "")}</span>'
+                            f'<span class="data-table-stat" title="Max">{s.get("max", "")}</span>'
+                            f'<span class="data-table-stat" title="Avg">{s.get("avg", "")}</span>'
+                            f'</td>'
+                        )
+                    else:
+                        stat_cells.append('<td class="data-table-stats-cell">-</td>')
+                else:
+                    stat_cells.append("<td></td>")
+            if editable_rows:
+                stat_cells.append("<td></td>")
+            tfoot_html = f'<tfoot><tr class="data-table-stats-row">{"".join(stat_cells)}</tr></tfoot>'
 
         # --- Pagination ---
         pagination_html = ""
@@ -1287,15 +1511,24 @@ class DataTableHandler:
             scroll_open = '<div class="data-table-scroll">'
             scroll_close = '</div>'
 
+        # --- Facet counts display (appended to filter cells) ---
+        # Facets are shown as counts next to filter options — handled via facet_counts data attr
+        facet_attr = ""
+        if facets and facet_counts:
+            import json as _json
+            facet_attr = f' data-facet-counts=\'{conditional_escape(_json.dumps(facet_counts))}\''
+
         return mark_safe(
             f'<div class="{" ".join(wrapper_classes)}" role="grid"'
-            f' aria-label="Data table"{wrapper_attrs_str}>'
+            f' aria-label="Data table"{wrapper_attrs_str}{facet_attr}>'
             f'{toolbar_html}'
+            f'{bulk_actions_html}'
             f'{search_html}'
             f'{scroll_open}'
             f'<table class="{table_cls}">'
             f"<thead>{thead_rows}</thead>"
             f"<tbody>{tbody_html}</tbody>"
+            f"{tfoot_html}"
             f"</table>"
             f'{scroll_close}'
             f'{pagination_html}'

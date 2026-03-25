@@ -1,0 +1,28 @@
+Data Table Pro Phase 3 — Advanced Features (13 features, all opt-in)
+
+Files changed:
+  src/djust_components/mixins/data_table.py
+  src/djust_components/rust_handlers.py
+  src/djust_components/templatetags/djust_components.py
+  src/djust_components/static/djust_components/data-table.js
+  src/djust_components/static/djust_components/components.css
+  tests/test_data_table_pro.py
+  CHANGELOG.md
+  .pipeline-state/feat-data-table-pro-phase-3-plan.md
+
+Features implemented:
+  1. Row expansion — expandable=True, expand_event, expanded_rows; detail rows with colspan
+  2. Bulk actions — bulk_actions list + bulk_action_event; toolbar with count when rows selected
+  3. Export — exportable=True, export_event, export_formats; CSV/JSON generation in mixin
+  4. Row grouping — group_by column, group_toggle_event, collapsible_groups, collapsed_groups
+  5. Custom cell renderers — cell_template column config (badge, progress, avatar)
+  6. Keyboard navigation — keyboard_nav=True; arrow keys, Enter/Escape; tabindex on cells
+  7. Virtual scrolling — virtual_scroll=True; viewport-based rendering for 50+ rows
+  8. Server-side mode — server_mode=True; skips queryset pipeline, calls refresh_table_server()
+  9. Faceted filtering — facets=True, facet_counts; get_facet_counts() helper
+  10. State persistence — persist_key; localStorage save/restore via JS MutationObserver
+  11. Column pinning — pinned="left"|"right" in column config; sticky positioning CSS
+  12. Print-friendly mode — printable=True; @media print hides interactive chrome
+  13. Column statistics — stats=True column config; tfoot with min/max/avg; get_column_stats()
+
+Tests: 241 data table tests pass (100 new Phase 3 tests), 591 total suite tests pass

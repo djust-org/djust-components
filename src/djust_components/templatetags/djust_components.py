@@ -445,7 +445,21 @@ def data_table(rows, columns, sort_by="", sort_desc=False, sort_event="table_sor
                responsive_cards=False,
                editable_rows=False, edit_row_event="table_row_edit",
                save_row_event="table_row_save", cancel_row_event="table_row_cancel",
-               editing_rows=None):
+               editing_rows=None,
+               # Phase 3 params
+               expandable=False, expand_event="table_expand", expanded_rows=None,
+               bulk_actions=None, bulk_action_event="table_bulk_action",
+               exportable=False, export_event="table_export", export_formats=None,
+               group_by="", group_event="table_group",
+               group_toggle_event="table_group_toggle",
+               collapsible_groups=True, collapsed_groups=None,
+               keyboard_nav=False,
+               virtual_scroll=False, virtual_row_height=40, virtual_buffer=5,
+               server_mode=False,
+               facets=False, facet_counts=None,
+               persist_key="",
+               printable=False,
+               column_stats=None):
     """Render a sortable data table with search, filters, selection, pagination, and editing.
 
     Phase 1 args:
@@ -496,6 +510,31 @@ def data_table(rows, columns, sort_by="", sort_desc=False, sort_event="table_sor
         save_row_event: save edited row event
         cancel_row_event: cancel row edit event
         editing_rows: list of row keys currently in edit mode
+
+    Phase 3 args:
+        expandable: enable row expansion with detail rows
+        expand_event: row expand toggle event name
+        expanded_rows: list of expanded row IDs/keys
+        bulk_actions: list of dicts with key/label for bulk action buttons
+        bulk_action_event: bulk action event name
+        exportable: show export buttons
+        export_event: export event name
+        export_formats: list of export formats (csv, json)
+        group_by: column key to group rows by
+        group_event: group change event name
+        group_toggle_event: group collapse/expand toggle event
+        collapsible_groups: allow group collapse/expand
+        collapsed_groups: list of collapsed group values
+        keyboard_nav: enable keyboard navigation
+        virtual_scroll: enable virtual scrolling for large datasets
+        virtual_row_height: row height in px for virtual scroll
+        virtual_buffer: number of buffer rows for virtual scroll
+        server_mode: explicit server-driven sort/filter/page
+        facets: show faceted filtering with counts
+        facet_counts: dict of {col_key: {value: count}}
+        persist_key: localStorage key for state persistence
+        printable: add print-friendly styles
+        column_stats: dict of {col_key: {min, max, avg, sum, count}}
     """
     return {
         "rows": rows,
@@ -544,6 +583,30 @@ def data_table(rows, columns, sort_by="", sort_desc=False, sort_event="table_sor
         "save_row_event": save_row_event,
         "cancel_row_event": cancel_row_event,
         "editing_rows": editing_rows or [],
+        # Phase 3
+        "expandable": expandable,
+        "expand_event": expand_event,
+        "expanded_rows": expanded_rows or [],
+        "bulk_actions": bulk_actions or [],
+        "bulk_action_event": bulk_action_event,
+        "exportable": exportable,
+        "export_event": export_event,
+        "export_formats": export_formats or ["csv", "json"],
+        "group_by": group_by,
+        "group_event": group_event,
+        "group_toggle_event": group_toggle_event,
+        "collapsible_groups": collapsible_groups,
+        "collapsed_groups": collapsed_groups or [],
+        "keyboard_nav": keyboard_nav,
+        "virtual_scroll": virtual_scroll,
+        "virtual_row_height": virtual_row_height,
+        "virtual_buffer": virtual_buffer,
+        "server_mode": server_mode,
+        "facets": facets,
+        "facet_counts": facet_counts or {},
+        "persist_key": persist_key,
+        "printable": printable,
+        "column_stats": column_stats or {},
     }
 
 
