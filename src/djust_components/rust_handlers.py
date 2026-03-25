@@ -8915,3 +8915,680 @@ INLINE_HANDLERS.extend([
     ("file_tree", FileTreeHandler()),
     ("tour", TourHandler()),
 ])
+
+
+# ---------------------------------------------------------------------------
+# v2.0 Batch 4 — Enterprise + Specialized Components
+# ---------------------------------------------------------------------------
+
+import calendar as _calendar_mod
+
+
+class CalendarViewHandler:
+    """Inline handler for {% calendar events=events month=month year=year %}"""
+    COLORS = ["#3b82f6", "#ef4444", "#22c55e", "#f59e0b", "#8b5cf6"]
+
+    def render(self, args, context):
+        kw = _parse_args(args, context)
+        events = kw.get("events", [])
+        month = kw.get("month", 1)
+        year = kw.get("year", 2026)
+        start_day = kw.get("start_day", 0)
+        event = kw.get("event", "")
+        custom_class = kw.get("class", "")
+
+        e_class = conditional_escape(str(custom_class))
+        classes = ["dj-calendar"]
+        if e_class:
+            classes.append(e_class)
+        class_str = " ".join(classes)
+
+        if not isinstance(events, list):
+            events = []
+        try:
+            month = int(month)
+        except (ValueError, TypeError):
+            month = 1
+        try:
+            year = int(year)
+        except (ValueError, TypeError):
+            year = 2026
+        try:
+            start_day = int(start_day) % 7
+        except (ValueError, TypeError):
+            start_day = 0
+
+        emap = {}
+        for ev in events:
+            if not isinstance(ev, dict):
+                continue
+            d = str(ev.get("date", ""))
+            if d:
+                emap.setdefault(d, []).append(ev)
+
+        day_names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+        day_names = day_names[start_day:] + day_names[:start_day]
+
+        try:
+            month_name = _calendar_mod.month_name[month]
+        except (IndexError, KeyError):
+            month_name = ""
+        e_month = conditional_escape(month_name)
+        e_year = conditional_escape(str(year))
+
+        header = (
+            f'<div class="dj-calendar__header">'
+            f'<span class="dj-calendar__title">{e_month} {e_year}</span></div>'
+        )
+        dn_cells = "".join(
+            f'<div class="dj-calendar__dayname">{conditional_escape(d)}</div>' for d in day_names
+        )
+        day_names_row = f'<div class="dj-calendar__daynames">{dn_cells}</div>'
+
+        try:
+            cal = _calendar_mod.Calendar(firstweekday=start_day)
+            weeks = cal.monthdayscalendar(year, month)
+        except (ValueError, OverflowError):
+            weeks = []
+
+        e_event = conditional_escape(str(event)) if event else ""
+
+        weeks_html = []
+        for week in weeks:
+            cells = []
+            for day in week:
+                if day == 0:
+                    cells.append('<div class="dj-calendar__day dj-calendar__day--empty"></div>')
+                    continue
+                date_str = f"{year}-{month:02d}-{day:02d}"
+                day_events = emap.get(date_str, [])
+                ev_html = ""
+                for i, ev in enumerate(day_events[:3]):
+                    title = conditional_escape(str(ev.get("title", "")))
+                    color = conditional_escape(str(ev.get("color", self.COLORS[i % len(self.COLORS)])))
+                    ev_html += (
+                        f'<div class="dj-calendar__event" '
+                        f'style="--dj-calendar-event-color: {color}">{title}</div>'
+                    )
+                if len(day_events) > 3:
+                    ev_html += f'<div class="dj-calendar__more">+{len(day_events) - 3} more</div>'
+                click_attr = ""
+                if e_event:
+                    click_attr = f' dj-click="{e_event}" data-value="{date_str}"'
+                cells.append(
+                    f'<div class="dj-calendar__day" data-date="{date_str}"{click_attr}>'
+                    f'<span class="dj-calendar__daynum">{day}</span>{ev_html}</div>'
+                )
+            weeks_html.append(f'<div class="dj-calendar__week">{"".join(cells)}</div>')
+
+        grid = f'<div class="dj-calendar__grid">{"".join(weeks_html)}</div>'
+
+        return mark_safe(
+            f'<div class="{class_str}" role="grid" '
+            f'aria-label="{e_month} {e_year}">{header}{day_names_row}{grid}</div>'
+        )
+
+
+class GanttChartHandler:
+    """Inline handler for {% gantt_chart tasks=tasks %}"""
+    COLORS = ["#3b82f6", "#ef4444", "#22c55e", "#f59e0b", "#8b5cf6",
+              "#06b6d4", "#ec4899", "#f97316"]
+
+    def render(self, args, context):
+        kw = _parse_args(args, context)
+        tasks = kw.get("tasks", [])
+        title = kw.get("title", "")
+        unit_label = kw.get("unit_label", "Day")
+        units = kw.get("units", None)
+        row_height = kw.get("row_height", 32)
+        width = kw.get("width", 600)
+        custom_class = kw.get("class", "")
+
+        e_class = conditional_escape(str(custom_class))
+        classes = ["dj-gantt"]
+        if e_class:
+            classes.append(e_class)
+        class_str = " ".join(classes)
+
+        if not isinstance(tasks, list):
+            tasks = []
+        try:
+            width = int(width)
+        except (ValueError, TypeError):
+            width = 600
+        try:
+            row_height = int(row_height)
+        except (ValueError, TypeError):
+            row_height = 32
+
+        if not tasks:
+            return mark_safe(f'<div class="{class_str}"><svg></svg></div>')
+
+        parsed = []
+        for i, t in enumerate(tasks):
+            if not isinstance(t, dict):
+                continue
+            name = str(t.get("name", f"Task {i + 1}"))
+            try:
+                start = float(t.get("start", 0))
+            except (ValueError, TypeError):
+                start = 0
+            try:
+                dur = float(t.get("duration", 1))
+            except (ValueError, TypeError):
+                dur = 1
+            color = str(t.get("color", self.COLORS[i % len(self.COLORS)]))
+            try:
+                progress = max(0, min(1, float(t.get("progress", 0))))
+            except (ValueError, TypeError):
+                progress = 0
+            parsed.append((name, start, dur, color, progress))
+
+        if not parsed:
+            return mark_safe(f'<div class="{class_str}"><svg></svg></div>')
+
+        max_end = max(s + d for _, s, d, _, _ in parsed)
+        try:
+            total_units = int(units) if units is not None else int(max_end) + 1
+        except (ValueError, TypeError):
+            total_units = int(max_end) + 1
+        if total_units <= 0:
+            total_units = 1
+
+        label_width = 120
+        title_h = 24 if title else 0
+        header_h = 24
+        rh = row_height
+        w = width
+        h = title_h + header_h + len(parsed) * rh + 4
+        chart_w = w - label_width
+        unit_w = chart_w / total_units
+
+        e_title = conditional_escape(str(title)) if title else "Gantt chart"
+        parts = [f'<svg class="dj-gantt__svg" viewBox="0 0 {w} {h}" '
+                 f'width="{w}" height="{h}" xmlns="http://www.w3.org/2000/svg" '
+                 f'role="img" aria-label="{e_title}">']
+
+        if title:
+            parts.append(
+                f'<text class="dj-gantt__title" x="{w / 2}" y="16" '
+                f'text-anchor="middle" font-size="13" font-weight="600">'
+                f'{conditional_escape(str(title))}</text>'
+            )
+
+        for u in range(total_units):
+            x = label_width + u * unit_w + unit_w / 2
+            y = title_h + 16
+            parts.append(
+                f'<text class="dj-gantt__header" x="{x:.1f}" y="{y:.1f}" '
+                f'text-anchor="middle" font-size="9" fill="#6b7280">{u + 1}</text>'
+            )
+
+        for u in range(total_units + 1):
+            x = label_width + u * unit_w
+            y1 = title_h + header_h
+            y2 = h
+            parts.append(
+                f'<line x1="{x:.1f}" y1="{y1}" x2="{x:.1f}" y2="{y2}" '
+                f'stroke="#e5e7eb" stroke-width="0.5"/>'
+            )
+
+        for idx, (name, start, dur, color, progress) in enumerate(parsed):
+            y = title_h + header_h + idx * rh
+            bar_x = label_width + start * unit_w
+            bar_w = dur * unit_w
+            bar_y = y + 6
+            bar_h = rh - 12
+
+            e_name = conditional_escape(name)
+            e_color = conditional_escape(color)
+            e_unit = conditional_escape(str(unit_label))
+
+            parts.append(
+                f'<text class="dj-gantt__label" x="{label_width - 8}" '
+                f'y="{y + rh / 2:.1f}" text-anchor="end" '
+                f'dominant-baseline="central" font-size="11">{e_name}</text>'
+            )
+            parts.append(
+                f'<rect class="dj-gantt__bar" x="{bar_x:.1f}" y="{bar_y:.1f}" '
+                f'width="{bar_w:.1f}" height="{bar_h:.1f}" rx="3" '
+                f'fill="{e_color}" opacity="0.25">'
+                f'<title>{e_name}: {e_unit} {start:.0f}-{start + dur:.0f}</title></rect>'
+            )
+            if progress > 0:
+                pw = bar_w * progress
+                parts.append(
+                    f'<rect class="dj-gantt__progress" x="{bar_x:.1f}" y="{bar_y:.1f}" '
+                    f'width="{pw:.1f}" height="{bar_h:.1f}" rx="3" '
+                    f'fill="{e_color}"/>'
+                )
+
+        parts.append("</svg>")
+        return mark_safe(f'<div class="{class_str}">{"".join(parts)}</div>')
+
+
+class DiffViewerHandler:
+    """Inline handler for {% diff_viewer old=old_text new=new_text %}"""
+
+    @staticmethod
+    def _compute_diff(old_lines, new_lines):
+        m, n = len(old_lines), len(new_lines)
+        dp = [[0] * (n + 1) for _ in range(m + 1)]
+        for i in range(1, m + 1):
+            for j in range(1, n + 1):
+                if old_lines[i - 1] == new_lines[j - 1]:
+                    dp[i][j] = dp[i - 1][j - 1] + 1
+                else:
+                    dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])
+        result = []
+        i, j = m, n
+        while i > 0 or j > 0:
+            if i > 0 and j > 0 and old_lines[i - 1] == new_lines[j - 1]:
+                result.append(("equal", old_lines[i - 1], new_lines[j - 1]))
+                i -= 1
+                j -= 1
+            elif j > 0 and (i == 0 or dp[i][j - 1] >= dp[i - 1][j]):
+                result.append(("insert", None, new_lines[j - 1]))
+                j -= 1
+            else:
+                result.append(("delete", old_lines[i - 1], None))
+                i -= 1
+        result.reverse()
+        return result
+
+    def render(self, args, context):
+        kw = _parse_args(args, context)
+        old = str(kw.get("old", ""))
+        new = str(kw.get("new", ""))
+        mode = kw.get("mode", "split")
+        title_old = kw.get("title_old", "Original")
+        title_new = kw.get("title_new", "Modified")
+        show_line_numbers = kw.get("show_line_numbers", True)
+        custom_class = kw.get("class", "")
+
+        e_class = conditional_escape(str(custom_class))
+        classes = ["dj-diff"]
+        if mode == "unified":
+            classes.append("dj-diff--unified")
+        else:
+            classes.append("dj-diff--split")
+        if e_class:
+            classes.append(e_class)
+        class_str = " ".join(classes)
+
+        old_lines = old.split("\n") if old else []
+        new_lines = new.split("\n") if new else []
+        ops = self._compute_diff(old_lines, new_lines)
+
+        if mode == "unified":
+            return mark_safe(self._render_unified(class_str, ops, show_line_numbers))
+        return mark_safe(self._render_split(class_str, ops, title_old, title_new, show_line_numbers))
+
+    def _render_split(self, class_str, ops, title_old, title_new, show_ln):
+        e_title_old = conditional_escape(str(title_old))
+        e_title_new = conditional_escape(str(title_new))
+        old_rows, new_rows = [], []
+        old_num = new_num = 0
+
+        for tag, old_line, new_line in ops:
+            if tag == "equal":
+                old_num += 1; new_num += 1
+                num_o = f'<span class="dj-diff__num">{old_num}</span>' if show_ln else ""
+                num_n = f'<span class="dj-diff__num">{new_num}</span>' if show_ln else ""
+                old_rows.append(f'<div class="dj-diff__line">{num_o}<span class="dj-diff__text">{conditional_escape(old_line)}</span></div>')
+                new_rows.append(f'<div class="dj-diff__line">{num_n}<span class="dj-diff__text">{conditional_escape(new_line)}</span></div>')
+            elif tag == "delete":
+                old_num += 1
+                num_html = f'<span class="dj-diff__num">{old_num}</span>' if show_ln else ""
+                old_rows.append(f'<div class="dj-diff__line dj-diff__line--del">{num_html}<span class="dj-diff__text">{conditional_escape(old_line)}</span></div>')
+                new_rows.append('<div class="dj-diff__line dj-diff__line--empty"></div>')
+            elif tag == "insert":
+                new_num += 1
+                num_html = f'<span class="dj-diff__num">{new_num}</span>' if show_ln else ""
+                old_rows.append('<div class="dj-diff__line dj-diff__line--empty"></div>')
+                new_rows.append(f'<div class="dj-diff__line dj-diff__line--add">{num_html}<span class="dj-diff__text">{conditional_escape(new_line)}</span></div>')
+
+        return (
+            f'<div class="{class_str}">'
+            f'<div class="dj-diff__pane dj-diff__pane--old"><div class="dj-diff__pane-header">{e_title_old}</div>{"".join(old_rows)}</div>'
+            f'<div class="dj-diff__pane dj-diff__pane--new"><div class="dj-diff__pane-header">{e_title_new}</div>{"".join(new_rows)}</div></div>'
+        )
+
+    def _render_unified(self, class_str, ops, show_ln):
+        rows = []
+        old_num = new_num = 0
+        for tag, old_line, new_line in ops:
+            if tag == "equal":
+                old_num += 1; new_num += 1
+                num_html = f'<span class="dj-diff__num">{old_num}</span><span class="dj-diff__num">{new_num}</span>' if show_ln else ""
+                rows.append(f'<div class="dj-diff__line">{num_html}<span class="dj-diff__marker"> </span><span class="dj-diff__text">{conditional_escape(old_line)}</span></div>')
+            elif tag == "delete":
+                old_num += 1
+                num_html = f'<span class="dj-diff__num">{old_num}</span><span class="dj-diff__num"></span>' if show_ln else ""
+                rows.append(f'<div class="dj-diff__line dj-diff__line--del">{num_html}<span class="dj-diff__marker">-</span><span class="dj-diff__text">{conditional_escape(old_line)}</span></div>')
+            elif tag == "insert":
+                new_num += 1
+                num_html = f'<span class="dj-diff__num"></span><span class="dj-diff__num">{new_num}</span>' if show_ln else ""
+                rows.append(f'<div class="dj-diff__line dj-diff__line--add">{num_html}<span class="dj-diff__marker">+</span><span class="dj-diff__text">{conditional_escape(new_line)}</span></div>')
+        return f'<div class="{class_str}"><div class="dj-diff__unified">{"".join(rows)}</div></div>'
+
+
+class PivotTableHandler:
+    """Inline handler for {% pivot_table data=data rows="category" cols="quarter" values="revenue" agg="sum" %}"""
+    AGG_FUNCS = {
+        "sum": lambda vals: sum(vals),
+        "avg": lambda vals: sum(vals) / len(vals) if vals else 0,
+        "count": lambda vals: len(vals),
+        "min": lambda vals: min(vals) if vals else 0,
+        "max": lambda vals: max(vals) if vals else 0,
+    }
+
+    @staticmethod
+    def _format_val(v):
+        if v == int(v):
+            return str(int(v))
+        return f"{v:.2f}"
+
+    def render(self, args, context):
+        kw = _parse_args(args, context)
+        data = kw.get("data", [])
+        rows_field = str(kw.get("rows", ""))
+        cols_field = str(kw.get("cols", ""))
+        values_field = str(kw.get("values", ""))
+        agg = kw.get("agg", "sum")
+        title = kw.get("title", "")
+        show_totals = kw.get("show_totals", True)
+        custom_class = kw.get("class", "")
+
+        e_class = conditional_escape(str(custom_class))
+        classes = ["dj-pivot"]
+        if e_class:
+            classes.append(e_class)
+        class_str = " ".join(classes)
+
+        if not isinstance(data, list):
+            data = []
+        if agg not in self.AGG_FUNCS:
+            agg = "sum"
+        agg_fn = self.AGG_FUNCS[agg]
+
+        if not data or not rows_field or not cols_field or not values_field:
+            return mark_safe(f'<div class="{class_str}"><table class="dj-pivot__table"></table></div>')
+
+        row_keys, col_keys = [], []
+        cells = {}
+        for record in data:
+            if not isinstance(record, dict):
+                continue
+            rk = str(record.get(rows_field, ""))
+            ck = str(record.get(cols_field, ""))
+            try:
+                val = float(record.get(values_field, 0))
+            except (ValueError, TypeError):
+                val = 0
+            if rk not in row_keys:
+                row_keys.append(rk)
+            if ck not in col_keys:
+                col_keys.append(ck)
+            cells.setdefault((rk, ck), []).append(val)
+
+        agg_cells = {k: agg_fn(v) for k, v in cells.items()}
+
+        parts = []
+        if title:
+            parts.append(f'<caption class="dj-pivot__title">{conditional_escape(str(title))}</caption>')
+
+        header_cells = [f'<th class="dj-pivot__corner">{conditional_escape(rows_field)}</th>']
+        for ck in col_keys:
+            header_cells.append(f'<th class="dj-pivot__colheader">{conditional_escape(ck)}</th>')
+        if show_totals:
+            header_cells.append('<th class="dj-pivot__colheader dj-pivot__total-header">Total</th>')
+        parts.append(f'<thead><tr>{"".join(header_cells)}</tr></thead>')
+
+        body_rows = []
+        col_totals = {ck: 0 for ck in col_keys}
+        grand_total = 0
+        for rk in row_keys:
+            row_cells = [f'<th class="dj-pivot__rowheader">{conditional_escape(rk)}</th>']
+            row_total = 0
+            for ck in col_keys:
+                val = agg_cells.get((rk, ck), 0)
+                row_total += val
+                col_totals[ck] += val
+                row_cells.append(f'<td class="dj-pivot__cell">{self._format_val(val)}</td>')
+            if show_totals:
+                grand_total += row_total
+                row_cells.append(f'<td class="dj-pivot__cell dj-pivot__row-total">{self._format_val(row_total)}</td>')
+            body_rows.append(f'<tr>{"".join(row_cells)}</tr>')
+        parts.append(f'<tbody>{"".join(body_rows)}</tbody>')
+
+        if show_totals:
+            foot_cells = ['<th class="dj-pivot__rowheader">Total</th>']
+            for ck in col_keys:
+                foot_cells.append(f'<td class="dj-pivot__cell dj-pivot__col-total">{self._format_val(col_totals[ck])}</td>')
+            foot_cells.append(f'<td class="dj-pivot__cell dj-pivot__grand-total">{self._format_val(grand_total)}</td>')
+            parts.append(f'<tfoot><tr>{"".join(foot_cells)}</tr></tfoot>')
+
+        return mark_safe(
+            f'<div class="{class_str}"><table class="dj-pivot__table" role="grid">{"".join(parts)}</table></div>'
+        )
+
+
+class OrgChartHandler:
+    """Inline handler for {% org_chart nodes=nodes root=ceo_id %}"""
+
+    def _render_node(self, nid, node_map, children, e_event):
+        node = node_map.get(nid)
+        if not node:
+            return ""
+        name = conditional_escape(str(node.get("name", "")))
+        title = conditional_escape(str(node.get("title", "")))
+        avatar = node.get("avatar", "")
+        click_attr = ""
+        if e_event:
+            click_attr = f' dj-click="{e_event}" data-value="{conditional_escape(nid)}"'
+        if avatar:
+            avatar_html = f'<img class="dj-org__avatar" src="{conditional_escape(str(avatar))}" alt="{name}" />'
+        else:
+            initials = "".join(w[0] for w in str(node.get("name", "")).split()[:2]).upper() or "?"
+            avatar_html = f'<span class="dj-org__initials">{conditional_escape(initials)}</span>'
+        node_html = (
+            f'<div class="dj-org__card" data-id="{conditional_escape(nid)}"{click_attr}>'
+            f'{avatar_html}<div class="dj-org__info">'
+            f'<span class="dj-org__name">{name}</span>'
+            f'<span class="dj-org__title">{title}</span></div></div>'
+        )
+        child_ids = children.get(nid, [])
+        if not child_ids:
+            return f'<li class="dj-org__node">{node_html}</li>'
+        child_items = "".join(self._render_node(cid, node_map, children, e_event) for cid in child_ids)
+        return f'<li class="dj-org__node">{node_html}<ul class="dj-org__children">{child_items}</ul></li>'
+
+    def render(self, args, context):
+        kw = _parse_args(args, context)
+        nodes = kw.get("nodes", [])
+        root = kw.get("root", "")
+        event = kw.get("event", "")
+        direction = kw.get("direction", "vertical")
+        custom_class = kw.get("class", "")
+
+        e_class = conditional_escape(str(custom_class))
+        classes = ["dj-org"]
+        if direction == "horizontal":
+            classes.append("dj-org--horizontal")
+        if e_class:
+            classes.append(e_class)
+        class_str = " ".join(classes)
+
+        if not isinstance(nodes, list):
+            nodes = []
+        node_map = {}
+        children = {}
+        child_ids_set = set()
+        for n in nodes:
+            if not isinstance(n, dict):
+                continue
+            nid = str(n.get("id", ""))
+            if not nid:
+                continue
+            node_map[nid] = n
+            parent = n.get("parent", "")
+            if parent:
+                children.setdefault(str(parent), []).append(nid)
+                child_ids_set.add(nid)
+
+        root_id = str(root) if root else ""
+        if not root_id:
+            roots = [nid for nid in node_map if nid not in child_ids_set]
+            root_id = roots[0] if roots else (list(node_map.keys())[0] if node_map else "")
+
+        if not node_map or not root_id:
+            return mark_safe(f'<div class="{class_str}" role="tree"></div>')
+
+        e_event = conditional_escape(str(event)) if event else ""
+        tree_html = self._render_node(root_id, node_map, children, e_event)
+        return mark_safe(f'<div class="{class_str}" role="tree"><ul class="dj-org__root">{tree_html}</ul></div>')
+
+
+class ComparisonTableHandler:
+    """Inline handler for {% comparison_table plans=plans features=features %}"""
+
+    @staticmethod
+    def _render_value(val):
+        if val is True:
+            return '<span class="dj-compare__check" aria-label="Yes">&#10003;</span>'
+        if val is False:
+            return '<span class="dj-compare__cross" aria-label="No">&#10007;</span>'
+        return conditional_escape(str(val))
+
+    def render(self, args, context):
+        kw = _parse_args(args, context)
+        plans = kw.get("plans", [])
+        features = kw.get("features", [])
+        event = kw.get("event", "")
+        custom_class = kw.get("class", "")
+
+        e_class = conditional_escape(str(custom_class))
+        classes = ["dj-compare"]
+        if e_class:
+            classes.append(e_class)
+        class_str = " ".join(classes)
+
+        if not isinstance(plans, list):
+            plans = []
+        if not isinstance(features, list):
+            features = []
+        if not plans:
+            return mark_safe(f'<div class="{class_str}"><table class="dj-compare__table"></table></div>')
+
+        e_event = conditional_escape(str(event)) if event else ""
+        num_plans = len(plans)
+
+        header_cells = ['<th class="dj-compare__corner"></th>']
+        for plan in plans:
+            if not isinstance(plan, dict):
+                continue
+            name = conditional_escape(str(plan.get("name", "")))
+            price = conditional_escape(str(plan.get("price", "")))
+            highlighted = plan.get("highlighted", False)
+            hl_class = " dj-compare__plan--highlighted" if highlighted else ""
+            click_attr = f' dj-click="{e_event}" data-value="{name}"' if e_event else ""
+            price_html = f'<div class="dj-compare__price">{price}</div>' if price else ""
+            header_cells.append(
+                f'<th class="dj-compare__plan{hl_class}"{click_attr}>'
+                f'<div class="dj-compare__plan-name">{name}</div>{price_html}</th>'
+            )
+        header = f'<thead><tr>{"".join(header_cells)}</tr></thead>'
+
+        body_rows = []
+        for feat in features:
+            if not isinstance(feat, dict):
+                continue
+            fname = conditional_escape(str(feat.get("name", "")))
+            values = feat.get("values", [])
+            if not isinstance(values, list):
+                values = []
+            cells = [f'<th class="dj-compare__feature">{fname}</th>']
+            for i in range(num_plans):
+                val = values[i] if i < len(values) else ""
+                highlighted = False
+                if i < len(plans) and isinstance(plans[i], dict):
+                    highlighted = plans[i].get("highlighted", False)
+                hl_class = " dj-compare__cell--highlighted" if highlighted else ""
+                cells.append(f'<td class="dj-compare__cell{hl_class}">{self._render_value(val)}</td>')
+            body_rows.append(f'<tr>{"".join(cells)}</tr>')
+        body = f'<tbody>{"".join(body_rows)}</tbody>'
+
+        return mark_safe(
+            f'<div class="{class_str}"><table class="dj-compare__table" role="grid">{header}{body}</table></div>'
+        )
+
+
+class MasonryGridHandler:
+    """Inline handler for {% masonry_grid items=items columns=3 %}"""
+
+    def render(self, args, context):
+        kw = _parse_args(args, context)
+        items = kw.get("items", [])
+        columns = kw.get("columns", 3)
+        gap = kw.get("gap", 16)
+        custom_class = kw.get("class", "")
+
+        e_class = conditional_escape(str(custom_class))
+        classes = ["dj-masonry"]
+        if e_class:
+            classes.append(e_class)
+        class_str = " ".join(classes)
+
+        if not isinstance(items, list):
+            items = []
+        try:
+            columns = max(1, int(columns))
+        except (ValueError, TypeError):
+            columns = 3
+        try:
+            gap = int(gap)
+        except (ValueError, TypeError):
+            gap = 16
+
+        if not items:
+            return mark_safe(f'<div class="{class_str}"></div>')
+
+        col_heights = [0] * columns
+        col_items = [[] for _ in range(columns)]
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            min_col = col_heights.index(min(col_heights))
+            col_items[min_col].append(item)
+            try:
+                h = int(item.get("height", 100))
+            except (ValueError, TypeError):
+                h = 100
+            col_heights[min_col] += h + gap
+
+        col_html = []
+        for items_in_col in col_items:
+            item_cards = []
+            for item in items_in_col:
+                content = str(item.get("content", ""))
+                item_class = conditional_escape(str(item.get("class", "")))
+                extra = f" {item_class}" if item_class else ""
+                item_cards.append(f'<div class="dj-masonry__item{extra}">{content}</div>')
+            col_html.append(f'<div class="dj-masonry__col">{"".join(item_cards)}</div>')
+
+        style = f'--dj-masonry-columns: {columns}; --dj-masonry-gap: {gap}px'
+        return mark_safe(
+            f'<div class="{class_str}" style="{style}" role="list">{"".join(col_html)}</div>'
+        )
+
+
+INLINE_HANDLERS.extend([
+    ("calendar", CalendarViewHandler()),
+    ("gantt_chart", GanttChartHandler()),
+    ("diff_viewer", DiffViewerHandler()),
+    ("pivot_table", PivotTableHandler()),
+    ("org_chart", OrgChartHandler()),
+    ("comparison_table", ComparisonTableHandler()),
+    ("masonry_grid", MasonryGridHandler()),
+])

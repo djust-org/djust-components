@@ -117,6 +117,13 @@ from .json_viewer import JsonViewer
 from .log_viewer import LogViewer
 from .file_tree import FileTree
 from .tour import Tour
+from .calendar_view import CalendarView
+from .gantt_chart import GanttChart
+from .diff_viewer import DiffViewer
+from .pivot_table import PivotTable
+from .org_chart import OrgChart
+from .comparison_table import ComparisonTable
+from .masonry_grid import MasonryGrid
 
 __all__ = [
     "Alert",
@@ -204,4 +211,11 @@ __all__ = [
     "LogViewer",
     "FileTree",
     "Tour",
+    "CalendarView",
+    "GanttChart",
+    "DiffViewer",
+    "PivotTable",
+    "OrgChart",
+    "ComparisonTable",
+    "MasonryGrid",
 ]
