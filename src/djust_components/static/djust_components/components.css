@@ -1954,4 +1954,59 @@ button.rating-star:hover ~ .rating-star { color: hsl(var(--muted-foreground) / 0
 .dj-dashboard-grid__panel-resize::after { content: ""; position: absolute; bottom: 2px; right: 2px; width: 8px; height: 8px; border-right: 2px solid hsl(var(--muted-foreground, 215 16% 47%) / 0.4); border-bottom: 2px solid hsl(var(--muted-foreground, 215 16% 47%) / 0.4); }
 .dj-dashboard-grid__panel.dj-dashboard-grid__panel--dragging { opacity: 0.5; box-shadow: 0 4px 16px rgba(0,0,0,0.15); }
 
+/* --- Bar Chart --- */
+.dj-bar-chart { display: inline-block; }
+.dj-bar-chart__svg { font-family: inherit; }
+.dj-bar-chart__title { fill: var(--dj-bar-chart-text, currentColor); }
+.dj-bar-chart__bar { fill: var(--dj-bar-chart-bar-fill, #3b82f6); transition: opacity 0.15s ease; }
+.dj-bar-chart__bar:hover { opacity: 0.8; }
+.dj-bar-chart__value { fill: var(--dj-bar-chart-text, currentColor); }
+.dj-bar-chart__label { fill: var(--dj-bar-chart-text, currentColor); }
+
+/* --- Line Chart --- */
+.dj-line-chart { display: inline-block; }
+.dj-line-chart__svg { font-family: inherit; }
+.dj-line-chart__title { fill: var(--dj-line-chart-text, currentColor); }
+.dj-line-chart__line { transition: opacity 0.15s ease; }
+.dj-line-chart__dot { transition: r 0.15s ease; }
+.dj-line-chart__dot:hover { r: 5; }
+.dj-line-chart__label { fill: var(--dj-line-chart-text, currentColor); }
+
+/* --- Pie / Donut Chart --- */
+.dj-pie-chart { display: inline-block; }
+.dj-pie-chart__svg { font-family: inherit; }
+.dj-pie-chart__title { fill: var(--dj-pie-chart-text, currentColor); }
+.dj-pie-chart__segment { transition: opacity 0.15s ease; }
+.dj-pie-chart__segment:hover { opacity: 0.85; }
+
+/* --- Sparkline --- */
+.dj-sparkline { display: inline-block; vertical-align: middle; line-height: 0; }
+.dj-sparkline__svg { font-family: inherit; }
+.dj-sparkline__line { stroke: var(--dj-sparkline-color, #3b82f6); }
+.dj-sparkline__area { fill: var(--dj-sparkline-color, #3b82f6); }
+.dj-sparkline__bar { fill: var(--dj-sparkline-color, #3b82f6); }
+
+/* --- Heatmap --- */
+.dj-heatmap { display: inline-block; }
+.dj-heatmap__svg { font-family: inherit; }
+.dj-heatmap__title { fill: var(--dj-heatmap-text, currentColor); }
+.dj-heatmap__cell { transition: opacity 0.15s ease; }
+.dj-heatmap__cell:hover { opacity: 0.8; stroke-width: 2; }
+.dj-heatmap__xlabel, .dj-heatmap__ylabel { fill: var(--dj-heatmap-text, currentColor); }
+
+/* --- Treemap --- */
+.dj-treemap { display: inline-block; }
+.dj-treemap__svg { font-family: inherit; }
+.dj-treemap__title { fill: var(--dj-treemap-text, currentColor); }
+.dj-treemap__cell { transition: opacity 0.15s ease; }
+.dj-treemap__cell:hover { opacity: 0.85; }
+
+/* --- Calendar Heatmap --- */
+.dj-calendar-heatmap { display: inline-block; }
+.dj-calendar-heatmap__svg { font-family: inherit; }
+.dj-calendar-heatmap__title { fill: var(--dj-calendar-heatmap-text, currentColor); }
+.dj-calendar-heatmap__cell { transition: opacity 0.15s ease; }
+.dj-calendar-heatmap__cell:hover { opacity: 0.8; stroke: #666; stroke-width: 1; }
+.dj-calendar-heatmap__day-label, .dj-calendar-heatmap__month-label { fill: var(--dj-calendar-heatmap-text, currentColor); }
+
 } /* end @layer djust-components */
