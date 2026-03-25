@@ -4842,3 +4842,187 @@ BLOCK_HANDLERS.extend([
     ("toolbar_overflow", "endtoolbar_overflow", ToolbarOverflowHandler()),
     ("filter_bar", "endfilter_bar", FilterBarHandler()),
 ])
+
+
+# ===========================================================================
+# SOCIAL / USER-FACING COMPONENTS
+# ===========================================================================
+
+
+class AvatarGroupHandler:
+    """Inline handler for {% avatar_group users=users max=5 %}"""
+
+    def render(self, args, context):
+        kw = _parse_args(args, context)
+        users = kw.get("users", [])
+        if isinstance(users, str):
+            users = []
+        max_display = int(kw.get("max", 5))
+        size = conditional_escape(str(kw.get("size", "md")))
+        custom_class = conditional_escape(str(kw.get("class", "")))
+
+        visible = users[:max_display]
+        overflow = len(users) - max_display
+
+        parts = []
+        for i, user in enumerate(visible):
+            if isinstance(user, dict):
+                name = user.get("name", "")
+                src = user.get("avatar", "") or user.get("src", "")
+            elif hasattr(user, "get_full_name"):
+                name = user.get_full_name() or str(user)
+                src = getattr(user, "avatar", "")
+                if hasattr(src, "url"):
+                    src = src.url
+            else:
+                name = str(user)
+                src = ""
+            e_name = conditional_escape(str(name))
+            e_src = conditional_escape(str(src))
+            initials = conditional_escape(
+                "".join(w[0].upper() for w in str(name).split()[:2] if w)
+            )
+            z = len(visible) - i
+            if e_src:
+                parts.append(
+                    f'<span class="dj-avatar-group__item" title="{e_name}" '
+                    f'style="z-index:{z}">'
+                    f'<img src="{e_src}" alt="{e_name}" '
+                    f'class="dj-avatar-group__img"></span>'
+                )
+            else:
+                parts.append(
+                    f'<span class="dj-avatar-group__item '
+                    f'dj-avatar-group__initials" title="{e_name}" '
+                    f'style="z-index:{z}">{initials}</span>'
+                )
+
+        overflow_html = ""
+        if overflow > 0:
+            overflow_html = (
+                f'<span class="dj-avatar-group__item '
+                f'dj-avatar-group__overflow">+{overflow}</span>'
+            )
+
+        cls = f"dj-avatar-group dj-avatar-group--{size}"
+        if custom_class:
+            cls += f" {custom_class}"
+        return mark_safe(
+            f'<div class="{cls}">{"".join(parts)}{overflow_html}</div>'
+        )
+
+
+class HoverCardHandler:
+    """Block handler for {% hover_card trigger="@user" %}...{% endhover_card %}"""
+
+    def render(self, args, content, context):
+        kw = _parse_args(args, context)
+        trigger = conditional_escape(str(kw.get("trigger", "")))
+        position = conditional_escape(str(kw.get("position", "bottom")))
+        delay_in = int(kw.get("delay_in", 200))
+        delay_out = int(kw.get("delay_out", 300))
+        custom_class = conditional_escape(str(kw.get("class", "")))
+
+        cls = f"dj-hover-card dj-hover-card--{position}"
+        if custom_class:
+            cls += f" {custom_class}"
+        return mark_safe(
+            f'<span class="{cls}" data-delay-in="{delay_in}" '
+            f'data-delay-out="{delay_out}">'
+            f'<span class="dj-hover-card__trigger">{trigger}</span>'
+            f'<div class="dj-hover-card__content">{content}</div>'
+            f'</span>'
+        )
+
+
+class NotificationPopoverHandler:
+    """Inline handler for {% notification_popover notifications=notifs %}"""
+
+    def render(self, args, context):
+        kw = _parse_args(args, context)
+        notifications = kw.get("notifications", [])
+        if isinstance(notifications, str):
+            notifications = []
+        unread_count = int(kw.get("unread_count", 0))
+        mark_read_event = conditional_escape(str(kw.get("mark_read_event", "mark_read")))
+        toggle_event = conditional_escape(str(kw.get("toggle_event", "toggle_notifications")))
+        is_open = kw.get("open", False)
+        custom_class = conditional_escape(str(kw.get("class", "")))
+        title = conditional_escape(str(kw.get("title", "Notifications")))
+
+        badge_html = ""
+        if unread_count > 0:
+            display = "99+" if unread_count > 99 else str(unread_count)
+            badge_html = f'<span class="dj-notif-popover__badge">{display}</span>'
+
+        open_cls = "dj-notif-popover--open" if is_open else ""
+        cls = f"dj-notif-popover {open_cls}"
+        if custom_class:
+            cls += f" {custom_class}"
+
+        bell_html = (
+            f'<button class="dj-notif-popover__bell" dj-click="{toggle_event}" '
+            f'aria-label="Notifications">'
+            f'<svg class="dj-notif-popover__icon" viewBox="0 0 24 24" fill="none" '
+            f'stroke="currentColor" stroke-width="2" stroke-linecap="round" '
+            f'stroke-linejoin="round" width="20" height="20">'
+            f'<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>'
+            f'<path d="M13.73 21a2 2 0 0 1-3.46 0"/>'
+            f'</svg>'
+            f'{badge_html}'
+            f'</button>'
+        )
+
+        items_html = []
+        for notif in notifications:
+            if isinstance(notif, dict):
+                n_id = notif.get("id", "")
+                n_title = notif.get("title", "")
+                n_body = notif.get("body", notif.get("message", ""))
+                n_time = notif.get("time", "")
+                n_read = notif.get("read", False)
+            else:
+                n_id = getattr(notif, "id", "")
+                n_title = getattr(notif, "title", "")
+                n_body = getattr(notif, "body", getattr(notif, "message", ""))
+                n_time = getattr(notif, "time", "")
+                n_read = getattr(notif, "read", False)
+            e_n_id = conditional_escape(str(n_id))
+            e_n_title = conditional_escape(str(n_title))
+            e_n_body = conditional_escape(str(n_body))
+            e_n_time = conditional_escape(str(n_time))
+            read_cls = "dj-notif-popover__item--read" if n_read else ""
+            mark_attr = ""
+            if not n_read:
+                mark_attr = f' dj-click="{mark_read_event}" data-id="{e_n_id}"'
+            items_html.append(
+                f'<div class="dj-notif-popover__item {read_cls}"{mark_attr}>'
+                f'<div class="dj-notif-popover__item-title">{e_n_title}</div>'
+                f'<div class="dj-notif-popover__item-body">{e_n_body}</div>'
+                f'<div class="dj-notif-popover__item-time">{e_n_time}</div>'
+                f'</div>'
+            )
+
+        panel_html = ""
+        if is_open:
+            empty = ""
+            if not notifications:
+                empty = '<div class="dj-notif-popover__empty">No notifications</div>'
+            panel_html = (
+                f'<div class="dj-notif-popover__panel">'
+                f'<div class="dj-notif-popover__header">{title}</div>'
+                f'{"".join(items_html)}{empty}'
+                f'</div>'
+            )
+
+        return mark_safe(f'<div class="{cls}">{bell_html}{panel_html}</div>')
+
+
+INLINE_HANDLERS.extend([
+    ("avatar_group", AvatarGroupHandler()),
+    ("notification_popover", NotificationPopoverHandler()),
+])
+
+BLOCK_HANDLERS.extend([
+    ("hover_card", "endhover_card", HoverCardHandler()),
+])

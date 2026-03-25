@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Social / User-Facing Components**: 3 new social components with Django template tags, Rust engine handlers, CSS, and tests (including XSS coverage):
+  - **Avatar Group** (`{% avatar_group users=users max=5 %}`) — Stacked overlapping avatar circles with "+N" overflow count. Supports dict users (name, avatar/src) or Django user objects. Renders initials fallback when no avatar URL. Configurable `max`, `size` (sm/md/lg), `class`. Z-index stacking for proper overlap. CSS custom properties for full theming. Also available as Python class `AvatarGroup(users=..., max_display=5)`. (#89)
+  - **Hover Card** (`{% hover_card trigger="@user" %}...{% endhover_card %}`) — Rich content card on hover with configurable delay-in/delay-out. GitHub-style user hovercards. Supports `trigger`, `position` (top/bottom/left/right), `delay_in` (ms), `delay_out` (ms), `class`. Pure CSS show/hide with `data-delay-*` attributes for JS enhancement. Also available as Python class `HoverCard(trigger=..., content=...)`. (#91)
+  - **Notification Popover** (`{% notification_popover notifications=notifs unread_count=count mark_read_event="mark_read" %}`) — Bell icon with unread badge count + toggleable popover notification list. Badge shows "99+" overflow. Renders notification items with title, body, time, read state. Unread items fire `mark_read_event` on click. Supports `toggle_event`, `open`, `title`, `class`. Empty state message. SVG bell icon. Also available as Python class `NotificationPopover(...)`. (#168)
+
+### Added
 - **Toolbar & Editing Components**: 3 new toolbar/editing components with Django template tags, Rust engine handlers, CSS, and tests (including XSS coverage):
   - **Toolbar** (`{% toolbar %}...{% endtoolbar %}`) — Horizontal action bar with grouped buttons, separators (`{% toolbar_separator %}`), overflow menu (`{% toolbar_overflow %}`). Supports `id`, `size` (sm/md/lg), `variant` (default/flat), `class`. Overflow menu reveals hidden actions on hover. ARIA `role="toolbar"` and `role="separator"`. Responsive wrapping on mobile. (#87)
   - **Inline Edit** (`{% inline_edit value=title event="update_title" %}`) — Click text to edit in-place. Display mode shows value with pencil icon on hover. Editing mode shows focused input with save on Enter/blur, cancel on Escape. Supports `value`, `event`, `field`, `type` (text/number/etc.), `placeholder`, `editing`, `class`. Uses `dj-keydown.enter`, `dj-blur`, `dj-keydown.escape` directives. (#88)

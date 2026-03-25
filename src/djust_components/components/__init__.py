@@ -34,6 +34,9 @@ In template::
 """
 
 from .alert import Alert
+from .avatar_group import AvatarGroup
+from .hover_card import HoverCard
+from .notification_popover import NotificationPopover
 from .badge import Badge
 from .button import Button
 from .card import Card
@@ -66,6 +69,7 @@ from .form_validation import FormErrors, FieldError
 
 __all__ = [
     "Alert",
+    "AvatarGroup",
     "Badge",
     "Button",
     "Card",
@@ -96,4 +100,6 @@ __all__ = [
     "DependentSelect",
     "FieldError",
     "FormErrors",
+    "HoverCard",
+    "NotificationPopover",
 ]
