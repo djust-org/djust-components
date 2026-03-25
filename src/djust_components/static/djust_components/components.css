@@ -2170,4 +2170,49 @@ button.rating-star:hover ~ .rating-star { color: hsl(var(--muted-foreground) / 0
 .dj-masonry__col { display: flex; flex-direction: column; gap: var(--dj-masonry-gap, 16px); }
 .dj-masonry__item { break-inside: avoid; }
 
+/* --- Cursors Overlay --- */
+.dj-cursors { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 1000; }
+.dj-cursors__cursor { position: absolute; transition: left 0.15s ease, top 0.15s ease; }
+.dj-cursors__arrow { display: block; }
+.dj-cursors__label { display: block; padding: 0.125rem 0.375rem; border-radius: var(--dj-cursors-label-radius, 0.25rem); color: #fff; font-size: var(--dj-cursors-label-font-size, 0.75rem); font-weight: 500; white-space: nowrap; margin-top: -2px; margin-left: 12px; }
+
+/* --- Live Indicator --- */
+.dj-live-indicator { display: inline-flex; align-items: center; gap: 0.375rem; font-size: 0.8125rem; color: var(--dj-live-indicator-fg, #6b7280); background: var(--dj-live-indicator-bg, transparent); padding: 0.25rem 0; }
+.dj-live-indicator--hidden { display: none; }
+.dj-live-indicator__avatar { width: 1.25rem; height: 1.25rem; border-radius: 9999px; object-fit: cover; }
+.dj-live-indicator__text { display: inline-flex; align-items: baseline; gap: 0; }
+.dj-live-indicator__dots { display: inline-flex; gap: 2px; margin-left: 2px; }
+.dj-live-indicator__dot { display: inline-block; width: 4px; height: 4px; border-radius: 9999px; background: var(--dj-live-indicator-dot-color, #3b82f6); animation: dj-live-indicator-bounce 1.4s infinite both; }
+.dj-live-indicator__dot:nth-child(2) { animation-delay: 0.2s; }
+.dj-live-indicator__dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes dj-live-indicator-bounce { 0%,80%,100% { transform: translateY(0); } 40% { transform: translateY(-4px); } }
+
+/* --- Collaborative Selection --- */
+.dj-collab-sel { position: relative; }
+.dj-collab-sel__range { position: relative; display: inline; }
+.dj-collab-sel__highlight { background: color-mix(in srgb, var(--dj-collab-sel-color, #3b82f6) var(--dj-collab-sel-opacity-pct, 25%), transparent); border-bottom: 2px solid var(--dj-collab-sel-color, #3b82f6); }
+.dj-collab-sel__label { position: absolute; top: -1.25rem; left: 0; padding: 0.0625rem 0.25rem; border-radius: 0.1875rem; color: #fff; font-size: var(--dj-collab-sel-label-size, 0.6875rem); font-weight: 500; white-space: nowrap; line-height: 1.2; }
+
+/* --- Activity Feed --- */
+.dj-activity-feed { display: flex; flex-direction: column; gap: 0; background: var(--dj-activity-bg, transparent); }
+.dj-activity-feed__item { display: flex; gap: 0.625rem; padding: 0.625rem 0; border-bottom: 1px solid var(--dj-activity-border-color, #f3f4f6); }
+.dj-activity-feed__item:last-child { border-bottom: none; }
+.dj-activity-feed__avatar { flex-shrink: 0; width: var(--dj-activity-avatar-size, 2rem); height: var(--dj-activity-avatar-size, 2rem); border-radius: 9999px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.dj-activity-feed__avatar-img { width: 100%; height: 100%; object-fit: cover; }
+.dj-activity-feed__avatar-initials { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #e5e7eb; color: #374151; font-size: 0.6875rem; font-weight: 600; border-radius: 9999px; }
+.dj-activity-feed__body { display: flex; flex-direction: column; gap: 0.125rem; min-width: 0; }
+.dj-activity-feed__text { font-size: 0.875rem; line-height: 1.4; }
+.dj-activity-feed__user { font-weight: 600; }
+.dj-activity-feed__target { font-weight: 500; }
+.dj-activity-feed__time { font-size: 0.75rem; color: var(--dj-activity-time-color, #9ca3af); }
+.dj-activity-feed__icon { margin-right: 0.25rem; }
+
+/* --- Reactions --- */
+.dj-reactions { display: flex; flex-wrap: wrap; gap: var(--dj-reactions-gap, 0.375rem); align-items: center; }
+.dj-reactions__btn { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.25rem 0.5rem; border: 1px solid transparent; border-radius: var(--dj-reactions-btn-radius, 9999px); background: var(--dj-reactions-btn-bg, #f3f4f6); cursor: pointer; font: inherit; font-size: 0.875rem; line-height: 1; transition: background 0.15s, border-color 0.15s; }
+.dj-reactions__btn:hover { background: #e5e7eb; }
+.dj-reactions__btn--active { background: var(--dj-reactions-btn-active-bg, #dbeafe); border-color: #93c5fd; }
+.dj-reactions__emoji { font-size: 1rem; line-height: 1; }
+.dj-reactions__count { font-size: 0.75rem; font-weight: 600; color: var(--dj-reactions-count-color, #6b7280); }
+
 } /* end @layer djust-components */

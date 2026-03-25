@@ -13143,3 +13143,421 @@ def do_masonry_grid(parser, token):
     bits = token.split_contents()[1:]
     kwargs = _parse_kv_args(bits, parser)
     return MasonryGridNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# v2.0 Batch 5: Collaboration Suite — Cursors Overlay (#77)
+# ---------------------------------------------------------------------------
+
+class CursorsOverlayNode(template.Node):
+    DEFAULT_COLORS = ["#3b82f6", "#ef4444", "#22c55e", "#f59e0b", "#8b5cf6",
+                      "#ec4899", "#06b6d4", "#f97316"]
+
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        users = kw.get("users", [])
+        custom_class = kw.get("class", "")
+
+        if not isinstance(users, list):
+            users = []
+
+        e_class = conditional_escape(str(custom_class))
+
+        parts = []
+        for i, user in enumerate(users):
+            if isinstance(user, dict):
+                name = user.get("name", "")
+                color = user.get("color", self.DEFAULT_COLORS[i % len(self.DEFAULT_COLORS)])
+                x = user.get("x", 0)
+                y = user.get("y", 0)
+            else:
+                name = str(user)
+                color = self.DEFAULT_COLORS[i % len(self.DEFAULT_COLORS)]
+                x = 0
+                y = 0
+
+            e_name = conditional_escape(str(name))
+            e_color = conditional_escape(str(color))
+
+            try:
+                px = int(x)
+            except (ValueError, TypeError):
+                px = 0
+            try:
+                py = int(y)
+            except (ValueError, TypeError):
+                py = 0
+
+            cursor_svg = (
+                f'<svg class="dj-cursors__arrow" width="16" height="20" viewBox="0 0 16 20" '
+                f'fill="{e_color}">'
+                f'<path d="M0 0L16 12L8 12L12 20L8 18L4 12L0 16Z"/>'
+                f'</svg>'
+            )
+
+            parts.append(
+                f'<div class="dj-cursors__cursor" '
+                f'style="left:{px}px;top:{py}px" '
+                f'data-user="{e_name}">'
+                f'{cursor_svg}'
+                f'<span class="dj-cursors__label" '
+                f'style="background:{e_color}">{e_name}</span>'
+                f'</div>'
+            )
+
+        cls = "dj-cursors"
+        if e_class:
+            cls += f" {e_class}"
+
+        total = len(users)
+        label = f'{total} cursor{"s" if total != 1 else ""}'
+
+        return mark_safe(
+            f'<div class="{cls}" role="group" aria-label="{label}" '
+            f'dj-hook="CursorsOverlay">'
+            f'{"".join(parts)}'
+            f'</div>'
+        )
+
+
+@register.tag("cursors")
+def do_cursors(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return CursorsOverlayNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# v2.0 Batch 5: Collaboration Suite — Live Indicator (#78)
+# ---------------------------------------------------------------------------
+
+class LiveIndicatorNode(template.Node):
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        user = kw.get("user", None)
+        field = kw.get("field", "")
+        action = kw.get("action", "typing")
+        active = kw.get("active", True)
+        custom_class = kw.get("class", "")
+
+        e_class = conditional_escape(str(custom_class))
+
+        if not active or not user:
+            cls = "dj-live-indicator dj-live-indicator--hidden"
+            if e_class:
+                cls += f" {e_class}"
+            return mark_safe(f'<div class="{cls}"></div>')
+
+        if isinstance(user, dict):
+            name = user.get("name", "")
+            avatar = user.get("avatar", "")
+        else:
+            name = str(user)
+            avatar = ""
+
+        e_name = conditional_escape(str(name))
+        e_avatar = conditional_escape(str(avatar))
+        e_field = conditional_escape(str(field))
+        e_action = conditional_escape(str(action))
+
+        cls = "dj-live-indicator"
+        if e_class:
+            cls += f" {e_class}"
+
+        avatar_html = ""
+        if e_avatar:
+            avatar_html = (
+                f'<img src="{e_avatar}" alt="{e_name}" '
+                f'class="dj-live-indicator__avatar">'
+            )
+
+        dots = (
+            '<span class="dj-live-indicator__dots">'
+            '<span class="dj-live-indicator__dot"></span>'
+            '<span class="dj-live-indicator__dot"></span>'
+            '<span class="dj-live-indicator__dot"></span>'
+            '</span>'
+        )
+
+        field_attr = f' data-field="{e_field}"' if e_field else ""
+
+        return mark_safe(
+            f'<div class="{cls}"{field_attr} role="status" aria-live="polite">'
+            f'{avatar_html}'
+            f'<span class="dj-live-indicator__text">'
+            f'{e_name} is {e_action}{dots}</span>'
+            f'</div>'
+        )
+
+
+@register.tag("live_indicator")
+def do_live_indicator(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return LiveIndicatorNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# v2.0 Batch 5: Collaboration Suite — Collaborative Selection (#79)
+# ---------------------------------------------------------------------------
+
+class CollabSelectionNode(template.Node):
+    DEFAULT_COLORS = ["#3b82f6", "#ef4444", "#22c55e", "#f59e0b", "#8b5cf6",
+                      "#ec4899", "#06b6d4", "#f97316"]
+
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        users = kw.get("users", [])
+        custom_class = kw.get("class", "")
+
+        if not isinstance(users, list):
+            users = []
+
+        e_class = conditional_escape(str(custom_class))
+
+        parts = []
+        for i, user in enumerate(users):
+            if isinstance(user, dict):
+                name = user.get("name", "")
+                color = user.get("color", self.DEFAULT_COLORS[i % len(self.DEFAULT_COLORS)])
+                text = user.get("text", "")
+                start = user.get("start", 0)
+                end = user.get("end", 0)
+            else:
+                name = str(user)
+                color = self.DEFAULT_COLORS[i % len(self.DEFAULT_COLORS)]
+                text = ""
+                start = 0
+                end = 0
+
+            e_name = conditional_escape(str(name))
+            e_color = conditional_escape(str(color))
+            e_text = conditional_escape(str(text))
+
+            try:
+                s = int(start)
+            except (ValueError, TypeError):
+                s = 0
+            try:
+                e = int(end)
+            except (ValueError, TypeError):
+                e = 0
+
+            parts.append(
+                f'<span class="dj-collab-sel__range" '
+                f'style="--dj-collab-sel-color:{e_color}" '
+                f'data-user="{e_name}" data-start="{s}" data-end="{e}">'
+                f'<span class="dj-collab-sel__highlight">{e_text}</span>'
+                f'<span class="dj-collab-sel__label" '
+                f'style="background:{e_color}">{e_name}</span>'
+                f'</span>'
+            )
+
+        cls = "dj-collab-sel"
+        if e_class:
+            cls += f" {e_class}"
+
+        total = len(users)
+        label = f'{total} selection{"s" if total != 1 else ""}'
+
+        return mark_safe(
+            f'<div class="{cls}" role="group" aria-label="{label}" '
+            f'dj-hook="CollabSelection">'
+            f'{"".join(parts)}'
+            f'</div>'
+        )
+
+
+@register.tag("collab_selection")
+def do_collab_selection(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return CollabSelectionNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# v2.0 Batch 5: Collaboration Suite — Activity Feed (#80)
+# ---------------------------------------------------------------------------
+
+class ActivityFeedNode(template.Node):
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        events = kw.get("events", [])
+        stream_event = kw.get("stream", "")
+        max_items = int(kw.get("max", 50))
+        custom_class = kw.get("class", "")
+
+        if not isinstance(events, list):
+            events = []
+
+        e_class = conditional_escape(str(custom_class))
+        e_stream = conditional_escape(str(stream_event))
+
+        cls = "dj-activity-feed"
+        if e_class:
+            cls += f" {e_class}"
+
+        attrs = [f'class="{cls}"', 'role="feed"', 'aria-label="Activity feed"']
+        if e_stream:
+            attrs.append(f'data-stream-event="{e_stream}"')
+            attrs.append('dj-hook="ActivityFeed"')
+
+        visible = events[:max_items]
+
+        items = []
+        for event in visible:
+            if not isinstance(event, dict):
+                continue
+
+            user = conditional_escape(str(event.get("user", "")))
+            action = conditional_escape(str(event.get("action", "")))
+            target = conditional_escape(str(event.get("target", "")))
+            time = conditional_escape(str(event.get("time", "")))
+            avatar_src = conditional_escape(str(event.get("avatar", "")))
+            icon = conditional_escape(str(event.get("icon", "")))
+
+            initials = conditional_escape(
+                "".join(w[0].upper() for w in str(event.get("user", "")).split()[:2] if w)
+            ) or "?"
+
+            if avatar_src:
+                avatar_html = (
+                    f'<img src="{avatar_src}" alt="{user}" '
+                    f'class="dj-activity-feed__avatar-img">'
+                )
+            else:
+                avatar_html = (
+                    f'<span class="dj-activity-feed__avatar-initials">'
+                    f'{initials}</span>'
+                )
+
+            icon_html = ""
+            if icon:
+                icon_html = f'<span class="dj-activity-feed__icon">{icon}</span>'
+
+            time_html = ""
+            if time:
+                time_html = (
+                    f'<span class="dj-activity-feed__time">{time}</span>'
+                )
+
+            target_html = ""
+            if target:
+                target_html = (
+                    f' <span class="dj-activity-feed__target">{target}</span>'
+                )
+
+            items.append(
+                f'<div class="dj-activity-feed__item" role="article">'
+                f'<span class="dj-activity-feed__avatar">{avatar_html}</span>'
+                f'<div class="dj-activity-feed__body">'
+                f'{icon_html}'
+                f'<span class="dj-activity-feed__text">'
+                f'<strong class="dj-activity-feed__user">{user}</strong> '
+                f'{action}{target_html}</span>'
+                f'{time_html}'
+                f'</div></div>'
+            )
+
+        attrs_str = " ".join(attrs)
+        return mark_safe(
+            f'<div {attrs_str}>'
+            f'{"".join(items)}'
+            f'</div>'
+        )
+
+
+@register.tag("activity_feed")
+def do_activity_feed(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return ActivityFeedNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# v2.0 Batch 5: Collaboration Suite — Reactions (#81)
+# ---------------------------------------------------------------------------
+
+class ReactionsNode(template.Node):
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        options = kw.get("options", [])
+        counts = kw.get("counts", {})
+        event = kw.get("event", "react")
+        active = kw.get("active", [])
+        custom_class = kw.get("class", "")
+
+        if not isinstance(options, list):
+            options = []
+        if not isinstance(counts, dict):
+            counts = {}
+        if not isinstance(active, list):
+            active = []
+
+        e_class = conditional_escape(str(custom_class))
+        e_event = conditional_escape(str(event))
+
+        cls = "dj-reactions"
+        if e_class:
+            cls += f" {e_class}"
+
+        buttons = []
+        for emoji in options:
+            e_emoji = conditional_escape(str(emoji))
+
+            count = 0
+            try:
+                count = int(counts.get(str(emoji), 0))
+            except (ValueError, TypeError):
+                count = 0
+
+            is_active = str(emoji) in active
+            btn_cls = "dj-reactions__btn"
+            if is_active:
+                btn_cls += " dj-reactions__btn--active"
+
+            aria_pressed = "true" if is_active else "false"
+
+            count_html = ""
+            if count > 0:
+                count_html = (
+                    f'<span class="dj-reactions__count">{count}</span>'
+                )
+
+            buttons.append(
+                f'<button type="button" class="{btn_cls}" '
+                f'dj-click="{e_event}" dj-value-emoji="{e_emoji}" '
+                f'aria-pressed="{aria_pressed}" '
+                f'aria-label="{e_emoji} {count}">'
+                f'<span class="dj-reactions__emoji">{e_emoji}</span>'
+                f'{count_html}'
+                f'</button>'
+            )
+
+        return mark_safe(
+            f'<div class="{cls}" role="group" aria-label="Reactions">'
+            f'{"".join(buttons)}'
+            f'</div>'
+        )
+
+
+@register.tag("reactions")
+def do_reactions(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return ReactionsNode(kwargs)
