@@ -1,0 +1,5 @@
+Files changed:
+- src/djust_components/static/djust_components/components.css — Added ~60 lines of CSS for 4 form control components: Combobox (dropdown, option, selected states), Color Picker (preview, swatches grid, active ring, hex input), Date Picker (calendar card, header nav, 7-col grid, day states: empty/today/selected, selected-value display), File Dropzone (dashed border zone, drag-over/has-file states, hidden input overlay, icon/text/hint/count)
+- tests/test_css_batch3_form_controls.py — 44 new tests verifying CSS classes appear in rendered HTML for all 4 components including state classes and attribute rendering
+- CHANGELOG.md — Added Batch 3 CSS entry under [Unreleased]
+- .pipeline-state/feat-css-batch-3-form-controls-plan.md — Plan document
