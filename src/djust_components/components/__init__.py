@@ -51,23 +51,31 @@ from .status_indicator import StatusIndicator
 from .switch import Switch
 from .tag import Tag
 from .toast import Toast
+from .streaming_text import StreamingText
+from .connection_status import ConnectionStatus
+from .live_counter import LiveCounter
+from .server_event_toast import ServerEventToastMixin
 
 __all__ = [
     "Alert",
     "Badge",
     "Button",
     "Card",
+    "ConnectionStatus",
     "DataGrid",
+    "LiveCounter",
     "Markdown",
     "NotificationBadge",
     "Progress",
     "ProgressCircle",
     "RichSelect",
     "SegmentedProgress",
+    "ServerEventToastMixin",
     "Spinner",
     "StatCard",
     "StatusDot",
     "StatusIndicator",
+    "StreamingText",
     "Switch",
     "Tag",
     "Toast",

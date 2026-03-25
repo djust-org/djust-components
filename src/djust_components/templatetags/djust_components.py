@@ -4394,3 +4394,181 @@ def data_grid(columns=None, rows=None, row_key="id", edit_event="grid_cell_edit"
         f'{add_row_html}'
         f'</div>'
     )
+
+
+# ---------------------------------------------------------------------------
+# Streaming Text
+# ---------------------------------------------------------------------------
+
+class StreamingTextNode(template.Node):
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        stream_event = kw.get("stream_event", "stream_chunk")
+        text = kw.get("text", "")
+        markdown = kw.get("markdown", False)
+        auto_scroll = kw.get("auto_scroll", True)
+        cursor = kw.get("cursor", True)
+        custom_class = kw.get("custom_class", "")
+
+        e_stream_event = conditional_escape(str(stream_event))
+        e_custom_class = conditional_escape(str(custom_class))
+
+        cls = "dj-streaming-text"
+        if cursor:
+            cls += " dj-streaming-text--cursor"
+        if e_custom_class:
+            cls += f" {e_custom_class}"
+
+        attrs = [
+            f'class="{cls}"',
+            f'data-stream-event="{e_stream_event}"',
+        ]
+        if auto_scroll:
+            attrs.append('data-auto-scroll="true"')
+        if markdown:
+            attrs.append('data-markdown="true"')
+
+        attrs_str = " ".join(attrs)
+        e_text = conditional_escape(str(text))
+        return mark_safe(
+            f'<div {attrs_str}>'
+            f'<div class="dj-streaming-text__content">{e_text}</div>'
+            f'</div>'
+        )
+
+
+@register.tag("streaming_text")
+def do_streaming_text(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return StreamingTextNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Connection Status Bar
+# ---------------------------------------------------------------------------
+
+class ConnectionStatusNode(template.Node):
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        custom_class = kw.get("custom_class", "")
+        reconnecting_text = kw.get("reconnecting_text", "Reconnecting...")
+        connected_text = kw.get("connected_text", "Reconnected")
+
+        e_custom_class = conditional_escape(str(custom_class))
+        e_reconnecting_text = conditional_escape(str(reconnecting_text))
+        e_connected_text = conditional_escape(str(connected_text))
+
+        cls = "dj-connection-status"
+        if e_custom_class:
+            cls += f" {e_custom_class}"
+
+        return mark_safe(
+            f'<div class="{cls}" '
+            f'data-reconnecting-text="{e_reconnecting_text}" '
+            f'data-connected-text="{e_connected_text}" '
+            f'role="status" aria-live="polite" style="display:none">'
+            f'<span class="dj-connection-status__text">{e_reconnecting_text}</span>'
+            f'</div>'
+        )
+
+
+@register.tag("connection_status")
+def do_connection_status(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return ConnectionStatusNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Live Counter
+# ---------------------------------------------------------------------------
+
+class LiveCounterNode(template.Node):
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        try:
+            value = int(kw.get("value", 0))
+        except (ValueError, TypeError):
+            value = 0
+        label = kw.get("label", "")
+        stream_event = kw.get("stream_event", "counter_update")
+        custom_class = kw.get("custom_class", "")
+        size = kw.get("size", "md")
+
+        e_stream_event = conditional_escape(str(stream_event))
+        e_label = conditional_escape(str(label))
+        e_custom_class = conditional_escape(str(custom_class))
+        e_size = conditional_escape(str(size))
+
+        cls = f"dj-live-counter dj-live-counter--{e_size}"
+        if e_custom_class:
+            cls += f" {e_custom_class}"
+
+        label_html = ""
+        if e_label:
+            label_html = f'<span class="dj-live-counter__label">{e_label}</span>'
+
+        return mark_safe(
+            f'<div class="{cls}" data-stream-event="{e_stream_event}">'
+            f'<span class="dj-live-counter__value" data-value="{value}">{value}</span>'
+            f'{label_html}'
+            f'</div>'
+        )
+
+
+@register.tag("live_counter")
+def do_live_counter(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return LiveCounterNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Toast Container (Server Event Toast)
+# ---------------------------------------------------------------------------
+
+class ToastContainerNode(template.Node):
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        position = kw.get("position", "top-right")
+        custom_class = kw.get("custom_class", "")
+        max_toasts = kw.get("max_toasts", 5)
+
+        e_position = conditional_escape(str(position))
+        e_custom_class = conditional_escape(str(custom_class))
+
+        try:
+            max_toasts = int(max_toasts)
+        except (ValueError, TypeError):
+            max_toasts = 5
+
+        cls = f"dj-toast-container dj-toast-container--{e_position}"
+        if e_custom_class:
+            cls += f" {e_custom_class}"
+
+        return mark_safe(
+            f'<div class="{cls}" '
+            f'data-max-toasts="{max_toasts}" '
+            f'role="region" aria-live="polite" aria-label="Notifications">'
+            f'</div>'
+        )
+
+
+@register.tag("server_toast_container")
+def do_server_toast_container(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return ToastContainerNode(kwargs)
