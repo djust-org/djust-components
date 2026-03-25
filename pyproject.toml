@@ -36,5 +36,9 @@ Homepage = "https://djust.org"
 Repository = "https://github.com/djust-org/djust-components"
 Documentation = "https://djust.org/components"
 
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/djust_components"]
