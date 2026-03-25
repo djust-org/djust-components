@@ -459,7 +459,14 @@ def data_table(rows, columns, sort_by="", sort_desc=False, sort_event="table_sor
                facets=False, facet_counts=None,
                persist_key="",
                printable=False,
-               column_stats=None):
+               column_stats=None,
+               # Phase 4 params
+               footer_aggregations=None,
+               row_class_map=None,
+               column_groups=None,
+               row_drag=False, row_drag_event="table_row_drag",
+               copyable=False, copy_event="table_copy",
+               copy_format="csv"):
     """Render a sortable data table with search, filters, selection, pagination, and editing.
 
     Phase 1 args:
@@ -535,6 +542,16 @@ def data_table(rows, columns, sort_by="", sort_desc=False, sort_event="table_sor
         persist_key: localStorage key for state persistence
         printable: add print-friendly styles
         column_stats: dict of {col_key: {min, max, avg, sum, count}}
+
+    Phase 4 args:
+        footer_aggregations: dict of {col_key: "sum"|"avg"|"count"|"min"|"max"}
+        row_class_map: dict of {col_key: {value: css_class}} for conditional row styling
+        column_groups: list of dicts {label, columns} for multi-level headers
+        row_drag: enable row drag-and-drop reorder
+        row_drag_event: row reorder event name
+        copyable: enable copy rows to clipboard
+        copy_event: copy event name
+        copy_format: "csv" or "tsv"
     """
     return {
         "rows": rows,
@@ -607,6 +624,15 @@ def data_table(rows, columns, sort_by="", sort_desc=False, sort_event="table_sor
         "persist_key": persist_key,
         "printable": printable,
         "column_stats": column_stats or {},
+        # Phase 4
+        "footer_aggregations": footer_aggregations or {},
+        "row_class_map": row_class_map or {},
+        "column_groups": column_groups or [],
+        "row_drag": row_drag,
+        "row_drag_event": row_drag_event,
+        "copyable": copyable,
+        "copy_event": copy_event,
+        "copy_format": copy_format,
     }
 
 

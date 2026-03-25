@@ -318,6 +318,26 @@
   .data-table-printable .data-table td { border: 1px solid #ccc; padding: 4px 8px; }
 }
 
+/* Data Table Phase 4 — Data Presentation */
+.data-table-footer-row { background: hsl(var(--muted) / 0.3); border-top: 2px solid hsl(var(--border)); font-weight: var(--font-semibold); }
+.data-table-footer-agg { padding: var(--space-2) var(--space-4); font-size: var(--text-sm); }
+.data-table-agg-label { color: hsl(var(--muted-foreground)); font-size: var(--text-xs); text-transform: uppercase; }
+.data-table-agg-value { font-variant-numeric: tabular-nums; }
+.data-table-type-number,
+.data-table-type-currency,
+.data-table-type-percentage { text-align: end; font-variant-numeric: tabular-nums; }
+.data-table-type-boolean { text-align: center; }
+.data-table-column-group { text-align: center; background: hsl(var(--muted) / 0.3); border-bottom: 2px solid hsl(var(--border)); font-weight: var(--font-semibold); }
+.data-table-group-header-row th { border-bottom: 1px solid hsl(var(--border)); }
+.data-table-drag-col { width: 2rem; }
+.data-table-drag-handle { width: 2rem; text-align: center; cursor: grab; }
+.data-table-drag-handle:active { cursor: grabbing; }
+.data-table-grip { display: inline-block; color: hsl(var(--muted-foreground)); font-size: var(--text-sm); user-select: none; }
+.data-table-grip:hover { color: hsl(var(--foreground)); }
+.data-table-copy { display: inline-flex; }
+.data-table-copy-btn { display: inline-flex; align-items: center; gap: var(--space-1); padding: var(--space-1) var(--space-3); background: hsl(var(--muted)); border: 1px solid hsl(var(--border)); border-radius: var(--radius-md); font-size: var(--text-xs); cursor: pointer; transition: background var(--duration-fast) ease; }
+.data-table-copy-btn:hover { background: hsl(var(--accent)); }
+
 /* Pagination */
 .pagination { display: flex; align-items: center; justify-content: center; gap: var(--space-1); }
 .pagination-btn { display: inline-flex; align-items: center; justify-content: center; min-width: 2.25rem; height: 2.25rem; padding: 0 var(--space-2); background: hsl(var(--muted)); border: 1px solid hsl(var(--border)); border-radius: var(--radius-md); color: hsl(var(--muted-foreground)); font-size: var(--text-xs); font-weight: var(--font-medium); cursor: pointer; transition: all var(--duration-fast) ease; }

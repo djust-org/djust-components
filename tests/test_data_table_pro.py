@@ -17,7 +17,12 @@ class _LV:
     pass
 
 
+class _Comp:
+    pass
+
+
 _stub.LiveView = _LV
+_stub.Component = _Comp
 
 # Stub djust.decorators with event_handler
 _dec_stub = types.ModuleType("djust.decorators")
@@ -2275,3 +2280,752 @@ class TestPhase2XSS:
         html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS,
                        density='"><script>xss</script>')
         assert "<script>xss</script>" not in html
+
+
+# ===========================================================================
+# Phase 4 — Column Type Formatters
+# ===========================================================================
+
+
+NUMERIC_COLUMNS = [
+    {"key": "name", "label": "Name"},
+    {"key": "amount", "label": "Amount", "type": "number"},
+]
+
+NUMERIC_ROWS = [
+    {"id": 1, "name": "Alice", "amount": 1234567},
+    {"id": 2, "name": "Bob", "amount": 89.5},
+]
+
+
+class TestColumnTypeFormatters:
+    """Column type auto-formatting."""
+
+    def test_number_formatting(self):
+        cols = [{"key": "val", "label": "Value", "type": "number"}]
+        rows = [{"id": 1, "val": 1234567}]
+        html = _render(rows=rows, columns=cols)
+        assert "1,234,567" in html
+
+    def test_number_with_decimals(self):
+        cols = [{"key": "val", "label": "Value", "type": "number", "decimals": 2}]
+        rows = [{"id": 1, "val": 1234.5}]
+        html = _render(rows=rows, columns=cols)
+        assert "1,234.50" in html
+
+    def test_currency_formatting(self):
+        cols = [{"key": "price", "label": "Price", "type": "currency"}]
+        rows = [{"id": 1, "price": 42.5}]
+        html = _render(rows=rows, columns=cols)
+        assert "$42.50" in html
+
+    def test_currency_custom_symbol(self):
+        cols = [{"key": "price", "label": "Price", "type": "currency", "currency_symbol": "EUR "}]
+        rows = [{"id": 1, "price": 100}]
+        html = _render(rows=rows, columns=cols)
+        assert "EUR 100.00" in html
+
+    def test_percentage_formatting(self):
+        cols = [{"key": "pct", "label": "%", "type": "percentage"}]
+        rows = [{"id": 1, "pct": 85.123}]
+        html = _render(rows=rows, columns=cols)
+        assert "85.1%" in html
+
+    def test_boolean_formatting_true(self):
+        cols = [{"key": "active", "label": "Active", "type": "boolean"}]
+        rows = [{"id": 1, "active": True}]
+        html = _render(rows=rows, columns=cols)
+        assert "Yes" in html
+
+    def test_boolean_formatting_false(self):
+        cols = [{"key": "active", "label": "Active", "type": "boolean"}]
+        rows = [{"id": 1, "active": False}]
+        html = _render(rows=rows, columns=cols)
+        assert "No" in html
+
+    def test_boolean_custom_labels(self):
+        cols = [{"key": "active", "label": "Active", "type": "boolean",
+                 "true_label": "On", "false_label": "Off"}]
+        rows = [{"id": 1, "active": "1"}]
+        html = _render(rows=rows, columns=cols)
+        assert "On" in html
+
+    def test_date_passthrough(self):
+        """Date type with string value passes through as-is."""
+        cols = [{"key": "dt", "label": "Date", "type": "date"}]
+        rows = [{"id": 1, "dt": "2024-01-15"}]
+        html = _render(rows=rows, columns=cols)
+        assert "2024-01-15" in html
+
+    def test_type_class_on_td(self):
+        cols = [{"key": "val", "label": "Value", "type": "number"}]
+        rows = [{"id": 1, "val": 42}]
+        html = _render(rows=rows, columns=cols)
+        assert "data-table-type-number" in html
+
+    def test_currency_type_class(self):
+        cols = [{"key": "val", "label": "Value", "type": "currency"}]
+        rows = [{"id": 1, "val": 42}]
+        html = _render(rows=rows, columns=cols)
+        assert "data-table-type-currency" in html
+
+    def test_boolean_type_class(self):
+        cols = [{"key": "val", "label": "Value", "type": "boolean"}]
+        rows = [{"id": 1, "val": True}]
+        html = _render(rows=rows, columns=cols)
+        assert "data-table-type-boolean" in html
+
+    def test_no_type_no_class(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS)
+        assert "data-table-type-" not in html
+
+    def test_invalid_number_passthrough(self):
+        cols = [{"key": "val", "label": "Value", "type": "number"}]
+        rows = [{"id": 1, "val": "not_a_number"}]
+        html = _render(rows=rows, columns=cols)
+        assert "not_a_number" in html
+
+
+# ===========================================================================
+# Phase 4 — Footer Aggregation Row
+# ===========================================================================
+
+
+class TestFooterAggregation:
+    """Footer aggregation row."""
+
+    def test_sum_aggregation(self):
+        cols = [{"key": "name", "label": "Name"}, {"key": "score", "label": "Score"}]
+        rows = [
+            {"id": 1, "name": "Alice", "score": 90},
+            {"id": 2, "name": "Bob", "score": 80},
+        ]
+        html = _render(rows=rows, columns=cols, footer_aggregations={"score": "sum"})
+        assert "data-table-footer-row" in html
+        assert "170" in html
+
+    def test_avg_aggregation(self):
+        cols = [{"key": "score", "label": "Score"}]
+        rows = [{"id": 1, "score": 90}, {"id": 2, "score": 80}]
+        html = _render(rows=rows, columns=cols, footer_aggregations={"score": "avg"})
+        assert "85" in html
+
+    def test_count_aggregation(self):
+        cols = [{"key": "score", "label": "Score"}]
+        rows = [{"id": 1, "score": 90}, {"id": 2, "score": 80}, {"id": 3, "score": 70}]
+        html = _render(rows=rows, columns=cols, footer_aggregations={"score": "count"})
+        assert "3" in html
+
+    def test_min_aggregation(self):
+        cols = [{"key": "score", "label": "Score"}]
+        rows = [{"id": 1, "score": 90}, {"id": 2, "score": 80}]
+        html = _render(rows=rows, columns=cols, footer_aggregations={"score": "min"})
+        assert "data-table-footer-agg" in html
+
+    def test_max_aggregation(self):
+        cols = [{"key": "score", "label": "Score"}]
+        rows = [{"id": 1, "score": 90}, {"id": 2, "score": 80}]
+        html = _render(rows=rows, columns=cols, footer_aggregations={"score": "max"})
+        assert "data-table-footer-agg" in html
+
+    def test_agg_label_shown(self):
+        cols = [{"key": "score", "label": "Score"}]
+        rows = [{"id": 1, "score": 90}]
+        html = _render(rows=rows, columns=cols, footer_aggregations={"score": "sum"})
+        assert "data-table-agg-label" in html
+        assert "Sum:" in html
+
+    def test_no_footer_by_default(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS)
+        assert "data-table-footer-row" not in html
+
+    def test_no_footer_when_empty_rows(self):
+        cols = [{"key": "score", "label": "Score"}]
+        html = _render(rows=[], columns=cols, footer_aggregations={"score": "sum"})
+        assert "data-table-footer-row" not in html
+
+    def test_agg_type_attr(self):
+        cols = [{"key": "score", "label": "Score"}]
+        rows = [{"id": 1, "score": 90}]
+        html = _render(rows=rows, columns=cols, footer_aggregations={"score": "avg"})
+        assert 'data-agg-type="avg"' in html
+
+    def test_non_aggregated_columns_empty(self):
+        cols = [{"key": "name", "label": "Name"}, {"key": "score", "label": "Score"}]
+        rows = [{"id": 1, "name": "Alice", "score": 90}]
+        html = _render(rows=rows, columns=cols, footer_aggregations={"score": "sum"})
+        # The name column should have an empty td
+        parts = html.split("data-table-footer-row")
+        assert len(parts) >= 2
+
+
+# ===========================================================================
+# Phase 4 — Conditional Row/Cell Styling
+# ===========================================================================
+
+
+class TestConditionalStyling:
+    """Conditional row and cell styling."""
+
+    def test_row_class_map_applies(self):
+        cols = [{"key": "name", "label": "Name"}, {"key": "status", "label": "Status"}]
+        rows = [
+            {"id": 1, "name": "Alice", "status": "active"},
+            {"id": 2, "name": "Bob", "status": "inactive"},
+        ]
+        rcm = {"status": {"active": "row-success", "inactive": "row-danger"}}
+        html = _render(rows=rows, columns=cols, row_class_map=rcm)
+        assert "row-success" in html
+        assert "row-danger" in html
+
+    def test_row_class_map_no_match(self):
+        cols = [{"key": "name", "label": "Name"}, {"key": "status", "label": "Status"}]
+        rows = [{"id": 1, "name": "Alice", "status": "unknown"}]
+        rcm = {"status": {"active": "row-success"}}
+        html = _render(rows=rows, columns=cols, row_class_map=rcm)
+        assert "row-success" not in html
+
+    def test_cell_class_string(self):
+        cols = [{"key": "name", "label": "Name", "cell_class": "highlight"}]
+        rows = [{"id": 1, "name": "Alice"}]
+        html = _render(rows=rows, columns=cols)
+        assert "highlight" in html
+
+    def test_cell_class_dict(self):
+        cols = [{"key": "status", "label": "Status",
+                 "cell_class": {"active": "cell-green", "inactive": "cell-red"}}]
+        rows = [
+            {"id": 1, "status": "active"},
+            {"id": 2, "status": "inactive"},
+        ]
+        html = _render(rows=rows, columns=cols)
+        assert "cell-green" in html
+        assert "cell-red" in html
+
+    def test_cell_class_dict_no_match(self):
+        cols = [{"key": "status", "label": "Status",
+                 "cell_class": {"active": "cell-green"}}]
+        rows = [{"id": 1, "status": "unknown"}]
+        html = _render(rows=rows, columns=cols)
+        assert "cell-green" not in html
+
+    def test_no_row_class_by_default(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS)
+        assert "row-success" not in html
+        assert "row-danger" not in html
+
+    def test_row_class_map_xss(self):
+        cols = [{"key": "status", "label": "Status"}]
+        rows = [{"id": 1, "status": "bad"}]
+        rcm = {"status": {"bad": '"><script>xss</script>'}}
+        html = _render(rows=rows, columns=cols, row_class_map=rcm)
+        assert "<script>xss</script>" not in html
+
+    def test_cell_class_xss(self):
+        cols = [{"key": "name", "label": "Name",
+                 "cell_class": '"><script>xss</script>'}]
+        rows = [{"id": 1, "name": "Alice"}]
+        html = _render(rows=rows, columns=cols)
+        assert "<script>xss</script>" not in html
+
+
+# ===========================================================================
+# Phase 4 — Multi-Level Column Headers
+# ===========================================================================
+
+
+class TestMultiLevelHeaders:
+    """Multi-level grouped column headers."""
+
+    def test_column_group_row_rendered(self):
+        cols = [
+            {"key": "jan", "label": "Jan"},
+            {"key": "feb", "label": "Feb"},
+            {"key": "mar", "label": "Mar"},
+        ]
+        groups = [{"label": "Q1", "columns": ["jan", "feb", "mar"]}]
+        rows = [{"id": 1, "jan": 10, "feb": 20, "mar": 30}]
+        html = _render(rows=rows, columns=cols, column_groups=groups)
+        assert "data-table-column-group" in html
+        assert "Q1" in html
+
+    def test_colspan_matches_group_size(self):
+        cols = [
+            {"key": "jan", "label": "Jan"},
+            {"key": "feb", "label": "Feb"},
+            {"key": "mar", "label": "Mar"},
+        ]
+        groups = [{"label": "Q1", "columns": ["jan", "feb", "mar"]}]
+        rows = [{"id": 1, "jan": 10, "feb": 20, "mar": 30}]
+        html = _render(rows=rows, columns=cols, column_groups=groups)
+        assert 'colspan="3"' in html
+
+    def test_ungrouped_columns_have_rowspan(self):
+        cols = [
+            {"key": "name", "label": "Name"},
+            {"key": "jan", "label": "Jan"},
+            {"key": "feb", "label": "Feb"},
+        ]
+        groups = [{"label": "Q1", "columns": ["jan", "feb"]}]
+        rows = [{"id": 1, "name": "Alice", "jan": 10, "feb": 20}]
+        html = _render(rows=rows, columns=cols, column_groups=groups)
+        assert 'rowspan="2"' in html
+
+    def test_group_header_row_class(self):
+        cols = [{"key": "jan", "label": "Jan"}, {"key": "feb", "label": "Feb"}]
+        groups = [{"label": "Q1", "columns": ["jan", "feb"]}]
+        rows = [{"id": 1, "jan": 10, "feb": 20}]
+        html = _render(rows=rows, columns=cols, column_groups=groups)
+        assert "data-table-group-header-row" in html
+
+    def test_no_group_header_by_default(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS)
+        assert "data-table-column-group" not in html
+        assert "data-table-group-header-row" not in html
+
+    def test_multiple_groups(self):
+        cols = [
+            {"key": "jan", "label": "Jan"},
+            {"key": "feb", "label": "Feb"},
+            {"key": "jul", "label": "Jul"},
+            {"key": "aug", "label": "Aug"},
+        ]
+        groups = [
+            {"label": "H1", "columns": ["jan", "feb"]},
+            {"label": "H2", "columns": ["jul", "aug"]},
+        ]
+        rows = [{"id": 1, "jan": 10, "feb": 20, "jul": 30, "aug": 40}]
+        html = _render(rows=rows, columns=cols, column_groups=groups)
+        assert "H1" in html
+        assert "H2" in html
+        assert html.count('colspan="2"') == 2
+
+    def test_column_group_xss(self):
+        cols = [{"key": "jan", "label": "Jan"}]
+        groups = [{"label": '<script>xss</script>', "columns": ["jan"]}]
+        rows = [{"id": 1, "jan": 10}]
+        html = _render(rows=rows, columns=cols, column_groups=groups)
+        assert "<script>xss</script>" not in html
+
+
+# ===========================================================================
+# Phase 4 — Row Drag-and-Drop Reorder
+# ===========================================================================
+
+
+class TestRowDragReorder:
+    """Row drag-and-drop reorder."""
+
+    def test_drag_handle_rendered(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS, row_drag=True)
+        assert "data-table-drag-handle" in html
+        assert "data-table-grip" in html
+
+    def test_drag_handle_per_row(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS, row_drag=True)
+        assert html.count("data-table-grip") == 3
+
+    def test_drag_col_header(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS, row_drag=True)
+        assert "data-table-drag-col" in html
+
+    def test_wrapper_has_drag_attr(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS, row_drag=True)
+        assert 'data-row-drag="true"' in html
+
+    def test_drag_event_attr(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS,
+                       row_drag=True, row_drag_event="my_drag")
+        assert 'data-row-drag-event="my_drag"' in html
+
+    def test_drag_trigger_present(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS, row_drag=True)
+        assert "data-table-drag-trigger" in html
+
+    def test_grip_is_draggable(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS, row_drag=True)
+        assert 'draggable="true"' in html
+
+    def test_no_drag_by_default(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS)
+        assert "data-table-drag-handle" not in html
+        assert "data-table-grip" not in html
+        assert 'data-row-drag' not in html
+
+    def test_drag_colspan_in_empty_state(self):
+        html = _render(rows=[], columns=SAMPLE_COLUMNS, row_drag=True)
+        # colspan should include drag column: 2 cols + 1 drag = 3
+        assert 'colspan="3"' in html
+
+
+# ===========================================================================
+# Phase 4 — Copy Row/Selection
+# ===========================================================================
+
+
+class TestCopyRows:
+    """Copy selected rows to clipboard."""
+
+    def test_copy_button_rendered(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS, copyable=True)
+        assert "data-table-copy-btn" in html
+        assert "Copy</button>" in html
+
+    def test_copy_attr_on_wrapper(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS, copyable=True)
+        assert 'data-copyable="true"' in html
+
+    def test_copy_event_attr(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS,
+                       copyable=True, copy_event="my_copy")
+        assert 'data-copy-event="my_copy"' in html
+
+    def test_copy_format_attr(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS,
+                       copyable=True, copy_format="tsv")
+        assert 'data-copy-format="tsv"' in html
+
+    def test_copy_trigger_present(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS, copyable=True)
+        assert "data-table-copy-trigger" in html
+
+    def test_no_copy_by_default(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS)
+        assert "data-table-copy-btn" not in html
+        assert 'data-copyable' not in html
+
+    def test_copy_event_xss(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS,
+                       copyable=True, copy_event='"><script>xss</script>')
+        assert "<script>xss</script>" not in html
+
+
+# ===========================================================================
+# Phase 4 — Mixin Event Handlers
+# ===========================================================================
+
+
+class TestMixinRowDrag:
+    """Row drag mixin handler."""
+
+    def test_drag_reorders_rows(self):
+        import json
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.init_table_state()
+        m.table_rows = [{"id": 1, "name": "A"}, {"id": 2, "name": "B"}, {"id": 3, "name": "C"}]
+        m.on_table_row_drag(json.dumps({"old_index": 0, "new_index": 2}))
+        assert m.table_rows[0]["name"] == "B"
+        assert m.table_rows[2]["name"] == "A"
+
+    def test_drag_calls_handler(self):
+        import json
+        from djust_components.mixins.data_table import DataTableMixin
+
+        class MyMixin(DataTableMixin):
+            def __init__(self):
+                self.drags = []
+            def handle_row_drag(self, old_index, new_index):
+                self.drags.append((old_index, new_index))
+
+        m = MyMixin()
+        m.init_table_state()
+        m.table_rows = [{"id": 1}, {"id": 2}, {"id": 3}]
+        m.on_table_row_drag(json.dumps({"old_index": 0, "new_index": 1}))
+        assert m.drags == [(0, 1)]
+
+    def test_drag_ignores_bad_json(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.init_table_state()
+        m.table_rows = [{"id": 1}]
+        m.on_table_row_drag("not json")  # Should not raise
+
+    def test_drag_ignores_out_of_bounds(self):
+        import json
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.init_table_state()
+        m.table_rows = [{"id": 1}, {"id": 2}]
+        m.on_table_row_drag(json.dumps({"old_index": 5, "new_index": 0}))
+        assert m.table_rows == [{"id": 1}, {"id": 2}]
+
+
+class TestMixinCopy:
+    """Copy mixin handler."""
+
+    def test_copy_generates_csv(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_columns = SAMPLE_COLUMNS
+        m.table_copy_format = "csv"
+        m.init_table_state()
+        m.table_rows = SAMPLE_ROWS
+        m.table_selected_rows = ["1", "2"]
+        m.on_table_copy("[]")
+        # Empty list => copies selected rows
+        m.handle_copy(["1", "2"])
+        assert hasattr(m, "table_copy_data")
+        assert "Alice" in m.table_copy_data
+        assert "Bob" in m.table_copy_data
+
+    def test_copy_tsv(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_columns = SAMPLE_COLUMNS
+        m.table_copy_format = "tsv"
+        m.init_table_state()
+        m.table_rows = SAMPLE_ROWS
+        m.handle_copy(["1"])
+        assert "\t" in m.table_copy_data
+
+    def test_copy_all_when_empty_keys(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_columns = SAMPLE_COLUMNS
+        m.table_copy_format = "csv"
+        m.init_table_state()
+        m.table_rows = SAMPLE_ROWS
+        m.handle_copy([])
+        assert "Alice" in m.table_copy_data
+        assert "Charlie" in m.table_copy_data
+
+
+class TestMixinFormatCell:
+    """Cell value formatting helper."""
+
+    def test_format_number(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        col = {"key": "val", "type": "number"}
+        assert m._format_cell_value(1234567, col) == "1,234,567"
+
+    def test_format_currency(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        col = {"key": "val", "type": "currency", "currency_symbol": "$"}
+        assert m._format_cell_value(42.5, col) == "$42.50"
+
+    def test_format_percentage(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        col = {"key": "val", "type": "percentage"}
+        assert m._format_cell_value(85.5, col) == "85.5%"
+
+    def test_format_boolean_true(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        col = {"key": "val", "type": "boolean"}
+        assert m._format_cell_value(True, col) == "Yes"
+
+    def test_format_boolean_false(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        col = {"key": "val", "type": "boolean"}
+        assert m._format_cell_value(False, col) == "No"
+
+    def test_format_no_type(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        col = {"key": "val"}
+        assert m._format_cell_value("hello", col) == "hello"
+
+
+class TestMixinFooterAggregations:
+    """Footer aggregation helper."""
+
+    def test_sum_aggregation(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_footer_aggregations = {"score": "sum"}
+        m.init_table_state()
+        m.table_rows = [{"score": 90}, {"score": 80}]
+        result = m.get_footer_aggregations()
+        assert result["score"] == 170
+
+    def test_avg_aggregation(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_footer_aggregations = {"score": "avg"}
+        m.init_table_state()
+        m.table_rows = [{"score": 90}, {"score": 80}]
+        result = m.get_footer_aggregations()
+        assert result["score"] == 85.0
+
+    def test_count_aggregation(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_footer_aggregations = {"score": "count"}
+        m.init_table_state()
+        m.table_rows = [{"score": 90}, {"score": 80}, {"score": 70}]
+        result = m.get_footer_aggregations()
+        assert result["score"] == 3
+
+    def test_min_aggregation(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_footer_aggregations = {"score": "min"}
+        m.init_table_state()
+        m.table_rows = [{"score": 90}, {"score": 80}]
+        result = m.get_footer_aggregations()
+        assert result["score"] == 80
+
+    def test_max_aggregation(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_footer_aggregations = {"score": "max"}
+        m.init_table_state()
+        m.table_rows = [{"score": 90}, {"score": 80}]
+        result = m.get_footer_aggregations()
+        assert result["score"] == 90
+
+    def test_empty_values(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_footer_aggregations = {"score": "sum"}
+        m.init_table_state()
+        m.table_rows = [{"score": "not_a_number"}]
+        result = m.get_footer_aggregations()
+        assert result["score"] == ""
+
+
+class TestMixinRowClass:
+    """Row class helper."""
+
+    def test_dict_row_class_map(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_row_class_map = {"status": {"active": "row-green", "inactive": "row-red"}}
+        assert m.get_row_class({"status": "active"}) == "row-green"
+        assert m.get_row_class({"status": "inactive"}) == "row-red"
+        assert m.get_row_class({"status": "unknown"}) == ""
+
+    def test_callable_row_class_map(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_row_class_map = lambda row: "highlight" if row.get("score", 0) > 50 else ""
+        assert m.get_row_class({"score": 90}) == "highlight"
+        assert m.get_row_class({"score": 20}) == ""
+
+
+# ===========================================================================
+# Phase 4 — Mixin Context
+# ===========================================================================
+
+
+class TestMixinPhase4Context:
+    """get_table_context includes Phase 4 fields."""
+
+    def test_context_has_phase4_keys(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_columns = SAMPLE_COLUMNS
+        m.init_table_state()
+        ctx = m.get_table_context()
+        assert "footer_aggregations" in ctx
+        assert "row_class_map" in ctx
+        assert "column_groups" in ctx
+        assert "row_drag" in ctx
+        assert "row_drag_event" in ctx
+        assert "copyable" in ctx
+        assert "copy_event" in ctx
+        assert "copy_format" in ctx
+
+    def test_context_defaults(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_columns = SAMPLE_COLUMNS
+        m.init_table_state()
+        ctx = m.get_table_context()
+        assert ctx["footer_aggregations"] == {}
+        assert ctx["row_class_map"] == {}
+        assert ctx["column_groups"] == []
+        assert ctx["row_drag"] is False
+        assert ctx["copyable"] is False
+        assert ctx["copy_format"] == "csv"
+
+
+# ===========================================================================
+# Phase 4 — Template Tag
+# ===========================================================================
+
+
+class TestTemplateTagPhase4:
+    """Template tag includes Phase 4 params."""
+
+    def test_phase4_params_in_context(self):
+        from djust_components.templatetags.djust_components import data_table
+        ctx = data_table(
+            rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS,
+            footer_aggregations={"score": "sum"},
+            row_class_map={"status": {"active": "green"}},
+            column_groups=[{"label": "Q1", "columns": ["jan"]}],
+            row_drag=True, row_drag_event="my_drag",
+            copyable=True, copy_event="my_copy",
+            copy_format="tsv",
+        )
+        assert ctx["footer_aggregations"] == {"score": "sum"}
+        assert ctx["row_class_map"] == {"status": {"active": "green"}}
+        assert ctx["column_groups"] == [{"label": "Q1", "columns": ["jan"]}]
+        assert ctx["row_drag"] is True
+        assert ctx["row_drag_event"] == "my_drag"
+        assert ctx["copyable"] is True
+        assert ctx["copy_event"] == "my_copy"
+        assert ctx["copy_format"] == "tsv"
+
+    def test_phase4_defaults(self):
+        from djust_components.templatetags.djust_components import data_table
+        ctx = data_table(rows=[], columns=[])
+        assert ctx["footer_aggregations"] == {}
+        assert ctx["row_class_map"] == {}
+        assert ctx["column_groups"] == []
+        assert ctx["row_drag"] is False
+        assert ctx["row_drag_event"] == "table_row_drag"
+        assert ctx["copyable"] is False
+        assert ctx["copy_event"] == "table_copy"
+        assert ctx["copy_format"] == "csv"
+
+
+# ===========================================================================
+# Phase 4 — CSS Tests
+# ===========================================================================
+
+
+class TestPhase4CSS:
+    """Phase 4 CSS class definitions exist."""
+
+    @pytest.fixture(autouse=True)
+    def load_css(self):
+        import pathlib
+        css_path = pathlib.Path(__file__).parent.parent / "src" / "djust_components" / "static" / "djust_components" / "components.css"
+        self.css = css_path.read_text()
+
+    def test_footer_row_class(self):
+        assert ".data-table-footer-row" in self.css
+
+    def test_footer_agg_class(self):
+        assert ".data-table-footer-agg" in self.css
+
+    def test_agg_label_class(self):
+        assert ".data-table-agg-label" in self.css
+
+    def test_type_number_class(self):
+        assert ".data-table-type-number" in self.css
+
+    def test_type_currency_class(self):
+        assert ".data-table-type-currency" in self.css
+
+    def test_type_boolean_class(self):
+        assert ".data-table-type-boolean" in self.css
+
+    def test_column_group_class(self):
+        assert ".data-table-column-group" in self.css
+
+    def test_drag_handle_class(self):
+        assert ".data-table-drag-handle" in self.css
+
+    def test_grip_class(self):
+        assert ".data-table-grip" in self.css
+
+    def test_copy_btn_class(self):
+        assert ".data-table-copy-btn" in self.css

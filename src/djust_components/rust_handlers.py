@@ -825,6 +825,56 @@ class DjRadioHandler:
         )
 
 
+def _format_cell(value, col):
+    """Format a cell value based on column type declaration.
+
+    Supported types: number, currency, date, percentage, boolean.
+    """
+    col_type = col.get("type", "") if isinstance(col, dict) else ""
+    if not col_type or value is None or value == "":
+        return str(value) if value is not None else ""
+    if col_type == "number":
+        try:
+            num = float(value)
+            decimals = col.get("decimals", 0)
+            if decimals > 0:
+                return f"{num:,.{decimals}f}"
+            if num == int(num):
+                return f"{int(num):,}"
+            return f"{num:,.2f}"
+        except (ValueError, TypeError):
+            return str(value)
+    elif col_type == "currency":
+        try:
+            num = float(value)
+            symbol = col.get("currency_symbol", "$")
+            decimals = col.get("decimals", 2)
+            return f"{symbol}{num:,.{decimals}f}"
+        except (ValueError, TypeError):
+            return str(value)
+    elif col_type == "percentage":
+        try:
+            num = float(value)
+            decimals = col.get("decimals", 1)
+            return f"{num:.{decimals}f}%"
+        except (ValueError, TypeError):
+            return str(value)
+    elif col_type == "boolean":
+        truthy = str(value).lower() in ("true", "1", "yes")
+        true_label = col.get("true_label", "Yes")
+        false_label = col.get("false_label", "No")
+        return true_label if truthy else false_label
+    elif col_type == "date":
+        fmt = col.get("date_format", "")
+        if fmt and hasattr(value, "strftime"):
+            try:
+                return value.strftime(fmt)
+            except (ValueError, AttributeError):
+                return str(value)
+        return str(value)
+    return str(value)
+
+
 class DataTableHandler:
     def render(self, args, context):
         kw = _parse_args(args, context)
@@ -919,6 +969,16 @@ class DataTableHandler:
         printable = kw.get("printable", False)
         column_stats = kw.get("column_stats") or {}
 
+        # Phase 4 parameters (all opt-in)
+        footer_aggregations = kw.get("footer_aggregations") or {}
+        row_class_map = kw.get("row_class_map") or {}
+        column_groups = kw.get("column_groups") or []
+        row_drag = kw.get("row_drag", False)
+        row_drag_event = conditional_escape(kw.get("row_drag_event", "table_row_drag"))
+        copyable = kw.get("copyable", False)
+        copy_event = conditional_escape(kw.get("copy_event", "table_copy"))
+        copy_format = conditional_escape(str(kw.get("copy_format", "csv")))
+
         if not isinstance(rows, (list, tuple)):
             rows = []
         if not isinstance(columns, (list, tuple)):
@@ -943,6 +1003,12 @@ class DataTableHandler:
             facet_counts = {}
         if not isinstance(column_stats, dict):
             column_stats = {}
+        if not isinstance(footer_aggregations, dict):
+            footer_aggregations = {}
+        if not isinstance(row_class_map, dict):
+            row_class_map = {}
+        if not isinstance(column_groups, (list, tuple)):
+            column_groups = []
 
         # Convert to sets for fast lookup
         selected_set = {str(v) for v in selected_rows}
@@ -988,6 +1054,13 @@ class DataTableHandler:
             wrapper_attrs.append('data-server-mode="true"')
         if persist_key:
             wrapper_attrs.append(f'data-persist-key="{persist_key}"')
+        if row_drag:
+            wrapper_attrs.append('data-row-drag="true"')
+            wrapper_attrs.append(f'data-row-drag-event="{row_drag_event}"')
+        if copyable:
+            wrapper_attrs.append('data-copyable="true"')
+            wrapper_attrs.append(f'data-copy-event="{copy_event}"')
+            wrapper_attrs.append(f'data-copy-format="{copy_format}"')
         wrapper_attrs_str = (" " + " ".join(wrapper_attrs)) if wrapper_attrs else ""
 
         # --- Toolbar (column visibility + density toggle) ---
@@ -1043,6 +1116,15 @@ class DataTableHandler:
                 )
             toolbar_parts.append(
                 f'<div class="data-table-export">{export_btns}</div>'
+            )
+
+        if copyable:
+            toolbar_parts.append(
+                f'<div class="data-table-copy">'
+                f'<button type="button" class="data-table-copy-btn"'
+                f' dj-click="{copy_event}" data-value="selected">'
+                f'Copy</button>'
+                f'</div>'
             )
 
         # Bulk actions bar (rendered separately, shown conditionally)
@@ -1223,19 +1305,74 @@ class DataTableHandler:
             if has_filters:
                 filter_cells.insert(0, "<th></th>")
 
+        # Prepend drag handle column
+        if row_drag:
+            header_cells.insert(0, '<th class="data-table-drag-col" role="columnheader"></th>')
+            if has_filters:
+                filter_cells.insert(0, "<th></th>")
+
         # Append actions column header for editable rows
         if editable_rows:
             header_cells.append('<th role="columnheader">Actions</th>')
             if has_filters:
                 filter_cells.append("<th></th>")
 
+        # --- Multi-level column group header row ---
+        group_header_row = ""
+        if column_groups:
+            group_cells = []
+            if expandable:
+                group_cells.append('<th rowspan="2"></th>')
+            if selectable:
+                group_cells.append('<th rowspan="2"></th>')
+            # Build a mapping of col_key -> group info
+            grouped_keys = set()
+            for grp in column_groups:
+                if isinstance(grp, dict):
+                    grp_cols = grp.get("columns", [])
+                    grouped_keys.update(grp_cols)
+
+            col_idx = 0
+            while col_idx < len(columns):
+                col = columns[col_idx]
+                col_key = col.get("key", col) if isinstance(col, dict) else str(col)
+                # Check if this col starts a group
+                found_group = None
+                for grp in column_groups:
+                    if isinstance(grp, dict):
+                        grp_cols = grp.get("columns", [])
+                        if grp_cols and grp_cols[0] == col_key:
+                            found_group = grp
+                            break
+                if found_group:
+                    grp_label = conditional_escape(str(found_group.get("label", "")))
+                    span = len(found_group.get("columns", []))
+                    group_cells.append(
+                        f'<th class="data-table-column-group" colspan="{span}">'
+                        f'{grp_label}</th>'
+                    )
+                    col_idx += span
+                elif col_key not in grouped_keys:
+                    group_cells.append('<th rowspan="2"></th>')
+                    col_idx += 1
+                else:
+                    col_idx += 1
+            if editable_rows:
+                group_cells.append('<th rowspan="2"></th>')
+            if row_drag:
+                group_cells.append('<th rowspan="2"></th>')
+            group_header_row = f"<tr class=\"data-table-group-header-row\">{''.join(group_cells)}</tr>"
+
         # --- Header rows ---
-        thead_rows = f"<tr>{''.join(header_cells)}</tr>"
+        thead_rows = ""
+        if group_header_row:
+            thead_rows += group_header_row
+        thead_rows += f"<tr>{''.join(header_cells)}</tr>"
         if has_filters:
             thead_rows += f"<tr>{''.join(filter_cells)}</tr>"
 
         # --- Total columns (for colspan calculations) ---
-        total_cols = num_cols + (1 if selectable else 0) + (1 if editable_rows else 0) + (1 if expandable else 0)
+        total_cols = num_cols + (1 if selectable else 0) + (1 if editable_rows else 0) + (1 if expandable else 0) + (1 if row_drag else 0)
 
         # --- Helper: render a single row ---
         def _render_row(row):
@@ -1252,9 +1389,25 @@ class DataTableHandler:
                 row_classes.append("data-table-row-editing")
             if is_expanded:
                 row_classes.append("data-table-row-expanded")
+            # Phase 4: conditional row styling via row_class_map
+            if row_class_map:
+                for rcm_col, rcm_map in row_class_map.items():
+                    if isinstance(rcm_map, dict):
+                        rcm_val = str(row.get(rcm_col, ""))
+                        if rcm_val in rcm_map:
+                            row_classes.append(conditional_escape(str(rcm_map[rcm_val])))
             row_attrs += f' data-row-key="{conditional_escape(row_id)}"'
 
             cells = ""
+            # Drag handle cell
+            if row_drag:
+                cells += (
+                    f'<td class="data-table-drag-handle">'
+                    f'<span class="data-table-grip" aria-label="Drag to reorder"'
+                    f' draggable="true">&#9776;</span>'
+                    f'</td>'
+                )
+
             # Expand toggle cell
             if expandable:
                 exp_icon = "&#9660;" if is_expanded else "&#9654;"
@@ -1280,7 +1433,13 @@ class DataTableHandler:
             for col_idx, col in enumerate(columns):
                 col_k = col.get("key", col) if isinstance(col, dict) else col
                 col_k_str = str(col_k)
-                cell_val = conditional_escape(str(row.get(col_k_str, "")))
+                raw_val = row.get(col_k_str, "")
+                # Phase 4: column type formatting
+                col_type = col.get("type", "") if isinstance(col, dict) else ""
+                if col_type and raw_val is not None and raw_val != "":
+                    cell_val = conditional_escape(_format_cell(raw_val, col))
+                else:
+                    cell_val = conditional_escape(str(raw_val))
                 col_label_for_card = ""
                 if responsive_cards and isinstance(col, dict):
                     col_label_for_card = conditional_escape(str(col.get("label", col_k_str)))
@@ -1295,6 +1454,19 @@ class DataTableHandler:
                     td_classes.append("data-table-frozen-left")
                 elif frozen_right > 0 and col_idx >= (num_cols - frozen_right):
                     td_classes.append("data-table-frozen-right")
+                # Phase 4: column type class
+                if col_type:
+                    td_classes.append(f"data-table-type-{conditional_escape(col_type)}")
+                # Phase 4: cell_class from column config
+                cell_class = col.get("cell_class", "") if isinstance(col, dict) else ""
+                if cell_class:
+                    # cell_class can be a string or a dict {value: class}
+                    if isinstance(cell_class, dict):
+                        cc_val = str(raw_val)
+                        if cc_val in cell_class:
+                            td_classes.append(conditional_escape(str(cell_class[cc_val])))
+                    elif isinstance(cell_class, str):
+                        td_classes.append(conditional_escape(cell_class))
 
                 td_cls_str = f' class="{" ".join(td_classes)}"' if td_classes else ""
 
@@ -1468,6 +1640,60 @@ class DataTableHandler:
                 stat_cells.append("<td></td>")
             tfoot_html = f'<tfoot><tr class="data-table-stats-row">{"".join(stat_cells)}</tr></tfoot>'
 
+        # --- Phase 4: Footer aggregation row ---
+        if footer_aggregations and rows:
+            agg_cells = []
+            if row_drag:
+                agg_cells.append("<td></td>")
+            if expandable:
+                agg_cells.append("<td></td>")
+            if selectable:
+                agg_cells.append("<td></td>")
+            for col in columns:
+                col_k = col.get("key", col) if isinstance(col, dict) else str(col)
+                col_k_str = str(col_k)
+                agg_type = footer_aggregations.get(col_k_str, "")
+                if agg_type:
+                    # Compute aggregation
+                    vals = []
+                    for r in rows:
+                        if isinstance(r, dict):
+                            v = r.get(col_k_str)
+                            if v is not None:
+                                try:
+                                    vals.append(float(v))
+                                except (ValueError, TypeError):
+                                    pass
+                    agg_val = ""
+                    if vals:
+                        if agg_type == "sum":
+                            agg_val = sum(vals)
+                        elif agg_type == "avg":
+                            agg_val = round(sum(vals) / len(vals), 2)
+                        elif agg_type == "count":
+                            agg_val = len(vals)
+                        elif agg_type == "min":
+                            agg_val = min(vals)
+                        elif agg_type == "max":
+                            agg_val = max(vals)
+                    agg_label = conditional_escape(str(agg_type).capitalize())
+                    agg_cells.append(
+                        f'<td class="data-table-footer-agg" data-agg-type="{conditional_escape(str(agg_type))}">'
+                        f'<span class="data-table-agg-label">{agg_label}:</span> '
+                        f'<span class="data-table-agg-value">{agg_val}</span>'
+                        f'</td>'
+                    )
+                else:
+                    agg_cells.append("<td></td>")
+            if editable_rows:
+                agg_cells.append("<td></td>")
+            agg_row = f'<tr class="data-table-footer-row">{"".join(agg_cells)}</tr>'
+            if tfoot_html:
+                # Append inside existing tfoot
+                tfoot_html = tfoot_html.replace("</tfoot>", f"{agg_row}</tfoot>")
+            else:
+                tfoot_html = f"<tfoot>{agg_row}</tfoot>"
+
         # --- Pagination ---
         pagination_html = ""
         if paginate and total_pages > 1:
@@ -1502,6 +1728,16 @@ class DataTableHandler:
             triggers_html += (
                 f'<button class="data-table-visibility-trigger" style="display:none"'
                 f' dj-click="{visibility_event}"></button>'
+            )
+        if row_drag:
+            triggers_html += (
+                f'<button class="data-table-drag-trigger" style="display:none"'
+                f' dj-click="{row_drag_event}"></button>'
+            )
+        if copyable:
+            triggers_html += (
+                f'<button class="data-table-copy-trigger" style="display:none"'
+                f' dj-click="{copy_event}"></button>'
             )
 
         # --- Scrollable wrapper for frozen columns ---
