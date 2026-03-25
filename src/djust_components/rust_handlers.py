@@ -951,7 +951,10 @@ class CodeBlockHandler:
         code = kwargs.get("code", "")
         language = kwargs.get("language", "")
         filename = kwargs.get("filename", "")
-        return str(_cb(code=code, language=language, filename=filename))
+        highlight = kwargs.get("highlight", True)
+        theme = kwargs.get("theme", "github-dark")
+        return str(_cb(code=code, language=language, filename=filename,
+                       highlight=highlight, theme=theme))
 
 
 class ComboboxHandler:
@@ -963,6 +966,9 @@ class ComboboxHandler:
             options = options_val
         else:
             options = context.get(options_val, [])
+        selected_val = kwargs.get("selected", None)
+        if isinstance(selected_val, str) and selected_val:
+            selected_val = context.get(selected_val, [])
         return str(_cb(
             name=kwargs.get("name", ""),
             label=kwargs.get("label", ""),
@@ -971,6 +977,8 @@ class ComboboxHandler:
             options=options,
             event=kwargs.get("event", ""),
             search_event=kwargs.get("search_event", ""),
+            multiple=kwargs.get("multiple", False),
+            selected=selected_val,
         ))
 
 
@@ -1282,6 +1290,9 @@ class DatePickerHandler:
             select_event=kwargs.get("select_event", "date_select"),
             name=kwargs.get("name", "date"),
             label=kwargs.get("label", ""),
+            range=kwargs.get("range", False),
+            range_start=kwargs.get("range_start", ""),
+            range_end=kwargs.get("range_end", ""),
         ))
 
 
@@ -1301,10 +1312,26 @@ class FileDropzoneHandler:
 
 class VirtualListHandler:
     def render(self, args, context):
+        import json as _json
         from djust_components.templatetags.djust_components import virtual_list as _vl
         kwargs = _parse_args(args, context)
-        items_key = kwargs.get("items", "vl_items")
-        items = context.get(items_key, []) if isinstance(items_key, str) else items_key
+        items_val = kwargs.get("items", "vl_items")
+        if isinstance(items_val, list):
+            items = items_val
+        elif isinstance(items_val, str):
+            # Could be a context variable name or an already-resolved JSON string
+            if items_val in context:
+                items = context[items_val]
+            else:
+                items = items_val
+            # If still a string, try JSON deserialization
+            if isinstance(items, str):
+                try:
+                    items = _json.loads(items)
+                except (ValueError, TypeError):
+                    items = []
+        else:
+            items = []
         return str(_vl(
             items=items,
             total=kwargs.get("total", len(items) if items else 0),
@@ -1316,10 +1343,24 @@ class VirtualListHandler:
 
 class KanbanBoardHandler:
     def render(self, args, context):
+        import json as _json
         from djust_components.templatetags.djust_components import kanban_board as _kb
         kwargs = _parse_args(args, context)
-        cols_key = kwargs.get("columns", "kanban_columns")
-        columns = context.get(cols_key, []) if isinstance(cols_key, str) else cols_key
+        cols_val = kwargs.get("columns", "kanban_columns")
+        if isinstance(cols_val, list):
+            columns = cols_val
+        elif isinstance(cols_val, str):
+            if cols_val in context:
+                columns = context[cols_val]
+            else:
+                columns = cols_val
+            if isinstance(columns, str):
+                try:
+                    columns = _json.loads(columns)
+                except (ValueError, TypeError):
+                    columns = []
+        else:
+            columns = []
         return str(_kb(
             columns=columns,
             move_event=kwargs.get("move_event", "kanban_move"),

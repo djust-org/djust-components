@@ -1303,12 +1303,26 @@ def stepper(steps=None, active=0, event="set_step"):
 # ---------------------------------------------------------------------------
 
 @register.simple_tag
-def code_block(code="", language="", filename="", copy_event="copy_code"):
-    """Render a syntax-highlighted code block with optional copy button."""
+def code_block(code="", language="", filename="", copy_event="copy_code",
+               highlight=True, theme="github-dark"):
+    """Render a syntax-highlighted code block with optional copy button.
+
+    Args:
+        highlight: When True (default), lazy-loads highlight.js from CDN.
+        theme: highlight.js theme name (default "github-dark").
+    """
+    if isinstance(highlight, str):
+        highlight = highlight.lower() not in ("false", "0", "")
+
+    import re as _re
     e_language = conditional_escape(language or "text")
     e_filename = conditional_escape(filename)
     e_code = conditional_escape(code)
     e_event = conditional_escape(copy_event)
+    # Theme is interpolated inside a <script> — HTML escaping is insufficient.
+    # Restrict to alphanumeric, hyphens, and underscores to prevent injection.
+    safe_theme = theme if _re.match(r'^[a-zA-Z0-9_-]+$', str(theme)) else "github-dark"
+    e_theme = conditional_escape(safe_theme)
 
     filename_html = (
         f'<span class="code-block-filename">{e_filename}</span>'
@@ -1323,12 +1337,37 @@ def code_block(code="", language="", filename="", copy_event="copy_code"):
         f'Copy</button>'
     )
 
+    highlight_html = ""
+    if highlight:
+        highlight_html = (
+            f'<script>'
+            f'(function(){{'
+            f'var el=document.currentScript.previousElementSibling.querySelector("code");'
+            f'if(el.dataset.highlighted)return;'
+            f'function doHL(){{if(window.hljs){{hljs.highlightElement(el);el.dataset.highlighted="true";}}}}'
+            f'if(window.hljs){{doHL();return;}}'
+            f'if(!window.__djcHljsLoading){{'
+            f'window.__djcHljsLoading=true;'
+            f'var lnk=document.createElement("link");lnk.rel="stylesheet";'
+            f'lnk.href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/{e_theme}.min.css";'
+            f'document.head.appendChild(lnk);'
+            f'var s=document.createElement("script");'
+            f's.src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js";'
+            f's.onload=function(){{document.querySelectorAll("pre code[class^=language-]").forEach(function(b)'
+            f'{{if(!b.dataset.highlighted){{hljs.highlightElement(b);b.dataset.highlighted="true";}}}});}};'
+            f'document.head.appendChild(s);'
+            f'}}else{{var iv=setInterval(function(){{if(window.hljs){{clearInterval(iv);doHL();}}}},50);}}'
+            f'}})();'
+            f'</script>'
+        )
+
     return mark_safe(
-        f'<div class="code-block">'
+        f'<div class="code-block" data-highlight="{e_theme if highlight else ""}">'
         f'<div class="code-block-header">'
         f'{filename_html}{lang_html}{copy_html}'
         f'</div>'
         f'<pre class="code-block-pre"><code class="language-{e_language}">{e_code}</code></pre>'
+        f'{highlight_html}'
         f'</div>'
     )
 
@@ -1340,18 +1379,24 @@ def code_block(code="", language="", filename="", copy_event="copy_code"):
 @register.simple_tag
 def combobox(name="", label="", value="", placeholder="Search…",
              options=None, event="", search_event="", required=False,
-             error="", helper=""):
+             error="", helper="", multiple=False, selected=None):
     """Render a combobox (searchable select).
 
     Args:
         options: list of dicts {"value":..., "label":...}
         event: dj-change event when option selected
         search_event: dj-input event for search input (server filters options)
+        multiple: when True, enables multi-select with tags
+        selected: list of selected values for multi-select mode
     """
     if options is None:
         options = []
+    if selected is None:
+        selected = []
     if isinstance(required, str):
         required = required.lower() not in ("false", "0", "")
+    if isinstance(multiple, str):
+        multiple = multiple.lower() not in ("false", "0", "")
 
     e_name = conditional_escape(name)
     e_label = conditional_escape(label)
@@ -1362,25 +1407,78 @@ def combobox(name="", label="", value="", placeholder="Search…",
     e_error = conditional_escape(error)
     e_helper = conditional_escape(helper)
 
-    # Find current label
-    current_label = e_value
-    for opt in options:
-        if isinstance(opt, dict) and str(opt.get("value", "")) == str(value):
-            current_label = conditional_escape(str(opt.get("label", value)))
-            break
-
-    options_html = ""
+    # Build a lookup for option labels
+    opt_label_map = {}
     for opt in options:
         if isinstance(opt, dict):
-            ov = conditional_escape(str(opt.get("value", "")))
-            ol = conditional_escape(str(opt.get("label", "")))
+            opt_label_map[str(opt.get("value", ""))] = str(opt.get("label", ""))
         else:
-            ov = ol = conditional_escape(str(opt))
-        sel = ' class="combobox-option-selected"' if str(ov) == str(value) else ""
-        options_html += (
-            f'<div class="combobox-option"{sel} '
-            f'dj-click="{e_event}" data-value="{ov}">{ol}</div>'
+            opt_label_map[str(opt)] = str(opt)
+
+    selected_set = set(str(s) for s in selected) if multiple else set()
+
+    if multiple:
+        # Multi-select mode
+        # Tags for selected values
+        tags_html = ""
+        hidden_inputs_html = ""
+        for sv in selected:
+            e_sv = conditional_escape(str(sv))
+            sl = opt_label_map.get(str(sv), str(sv))
+            e_sl = conditional_escape(sl)
+            tags_html += (
+                f'<span class="combobox-tag">'
+                f'<span class="combobox-tag-label">{e_sl}</span>'
+                f'<button class="combobox-tag-remove" dj-click="{e_event}" '
+                f'data-value="{e_sv}" type="button">&times;</button>'
+                f'</span>'
+            )
+            hidden_inputs_html += (
+                f'<input type="hidden" name="{e_name}[]" value="{e_sv}">'
+            )
+
+        tags_container = (
+            f'<div class="combobox-tags">{tags_html}</div>'
+            if selected else ""
         )
+
+        # Options with selected state
+        options_html = ""
+        for opt in options:
+            if isinstance(opt, dict):
+                ov = conditional_escape(str(opt.get("value", "")))
+                ol = conditional_escape(str(opt.get("label", "")))
+            else:
+                ov = ol = conditional_escape(str(opt))
+            sel_cls = " combobox-option-selected" if str(ov) in selected_set else ""
+            options_html += (
+                f'<div class="combobox-option{sel_cls}" '
+                f'dj-click="{e_event}" data-value="{ov}">{ol}</div>'
+            )
+    else:
+        # Single-select mode (existing behavior)
+        tags_container = ""
+        hidden_inputs_html = ""
+
+        # Find current label
+        current_label = e_value
+        for opt in options:
+            if isinstance(opt, dict) and str(opt.get("value", "")) == str(value):
+                current_label = conditional_escape(str(opt.get("label", value)))
+                break
+
+        options_html = ""
+        for opt in options:
+            if isinstance(opt, dict):
+                ov = conditional_escape(str(opt.get("value", "")))
+                ol = conditional_escape(str(opt.get("label", "")))
+            else:
+                ov = ol = conditional_escape(str(opt))
+            sel = ' class="combobox-option-selected"' if str(ov) == str(value) else ""
+            options_html += (
+                f'<div class="combobox-option"{sel} '
+                f'dj-click="{e_event}" data-value="{ov}">{ol}</div>'
+            )
 
     label_html = (
         f'<label class="form-label" for="{e_name}-input">{e_label}</label>'
@@ -1390,12 +1488,24 @@ def combobox(name="", label="", value="", placeholder="Search…",
     helper_html = f'<span class="form-helper">{e_helper}</span>' if helper else ""
     req = " required" if required else ""
 
+    if not multiple:
+        current_label = e_value
+        for opt in options:
+            if isinstance(opt, dict) and str(opt.get("value", "")) == str(value):
+                current_label = conditional_escape(str(opt.get("label", value)))
+                break
+        input_value = current_label
+    else:
+        input_value = e_value
+
     return mark_safe(
         f'<div class="form-group">'
         f'{label_html}'
         f'<div class="combobox" id="{e_name}-combobox">'
+        f'{tags_container}'
+        f'{hidden_inputs_html}'
         f'<input class="combobox-input form-input" type="text" id="{e_name}-input" '
-        f'name="{e_name}" placeholder="{e_placeholder}" value="{current_label}" '
+        f'name="{e_name}" placeholder="{e_placeholder}" value="{input_value}" '
         f'dj-input="{e_search}" autocomplete="off"{req}>'
         f'<div class="combobox-dropdown" onmousedown="event.preventDefault()" onclick="this.previousElementSibling.blur()">{options_html}</div>'
         f'</div>'
@@ -2088,13 +2198,22 @@ import calendar as _calendar
 @register.simple_tag
 def date_picker(year=None, month=None, selected="", prev_event="date_prev_month",
                 next_event="date_next_month", select_event="date_select",
-                name="date", label="", required=False, error="", helper=""):
+                name="date", label="", required=False, error="", helper="",
+                range=False, range_start="", range_end=""):
     """Render a server-driven calendar date picker.
 
     The server owns year/month navigation state. On each prev/next click,
     the view re-renders the calendar for the new month.
+
+    Args:
+        range: when True, enables date range selection mode.
+        range_start: start date of the range (YYYY-MM-DD).
+        range_end: end date of the range (YYYY-MM-DD).
     """
     import datetime
+    if isinstance(range, str):
+        range = range.lower() not in ("false", "0", "")
+
     try:
         today = datetime.date.today()
         year = int(year) if year else today.year
@@ -2114,6 +2233,8 @@ def date_picker(year=None, month=None, selected="", prev_event="date_prev_month"
     e_selected = conditional_escape(selected)
     e_error = conditional_escape(error)
     e_helper = conditional_escape(helper)
+    e_range_start = conditional_escape(range_start)
+    e_range_end = conditional_escape(range_end)
 
     if isinstance(required, str):
         required = required.lower() not in ("false", "0", "")
@@ -2135,8 +2256,16 @@ def date_picker(year=None, month=None, selected="", prev_event="date_prev_month"
                 cls = "dp-day"
                 if date_str == today_str:
                     cls += " dp-day-today"
-                if date_str == selected:
-                    cls += " dp-day-selected"
+                if range:
+                    if range_start and date_str == range_start:
+                        cls += " dp-day-range-start"
+                    if range_end and date_str == range_end:
+                        cls += " dp-day-range-end"
+                    if range_start and range_end and range_start < date_str < range_end:
+                        cls += " dp-day-in-range"
+                else:
+                    if date_str == selected:
+                        cls += " dp-day-selected"
                 day_cells += (
                     f'<button class="{cls}" dj-click="{e_select}" '
                     f'data-value="{date_str}">{day}</button>'
@@ -2144,12 +2273,31 @@ def date_picker(year=None, month=None, selected="", prev_event="date_prev_month"
 
     label_html = f'<label class="form-label">{e_label}</label>' if label else ""
     required_html = ' <span class="form-required">*</span>' if required else ""
-    selected_html = (
-        f'<div class="dp-selected-value">{e_selected}</div>'
-        if selected else ""
-    )
     error_html = f'<span class="form-error-message">{e_error}</span>' if error else ""
     helper_html = f'<span class="form-helper">{e_helper}</span>' if helper else ""
+
+    if range:
+        if range_start and range_end:
+            selected_html = (
+                f'<div class="dp-selected-value">'
+                f'{e_range_start} &ndash; {e_range_end}</div>'
+            )
+        elif range_start:
+            selected_html = (
+                f'<div class="dp-selected-value">{e_range_start} &ndash; ...</div>'
+            )
+        else:
+            selected_html = ""
+        hidden_html = (
+            f'<input type="hidden" name="{e_name}_start" value="{e_range_start}">'
+            f'<input type="hidden" name="{e_name}_end" value="{e_range_end}">'
+        )
+    else:
+        selected_html = (
+            f'<div class="dp-selected-value">{e_selected}</div>'
+            if selected else ""
+        )
+        hidden_html = f'<input type="hidden" name="{e_name}" value="{e_selected}">'
 
     return mark_safe(
         f'<div class="form-group">'
@@ -2164,7 +2312,7 @@ def date_picker(year=None, month=None, selected="", prev_event="date_prev_month"
         f'{header_cells}'
         f'{day_cells}'
         f'</div>'
-        f'<input type="hidden" name="{e_name}" value="{e_selected}">'
+        f'{hidden_html}'
         f'{selected_html}'
         f'</div>'
         f'{error_html}{helper_html}'

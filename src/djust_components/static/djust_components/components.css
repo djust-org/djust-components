@@ -361,3 +361,20 @@
 .stepper-step-complete .stepper-step-label { color: hsl(var(--muted-foreground)); }
 .stepper-connector { flex: 1; height: 2px; background: hsl(var(--border)); align-self: center; }
 .stepper-step-complete + .stepper-connector { background: hsl(var(--success)); }
+
+/* Combobox Multi-select Tags */
+.combobox-tags { display: flex; flex-wrap: wrap; gap: var(--space-1); padding: var(--space-1) var(--space-2); }
+.combobox-tag { display: inline-flex; align-items: center; gap: var(--space-1); padding: var(--space-1) var(--space-2); background: hsl(var(--primary) / 0.1); border: 1px solid hsl(var(--primary) / 0.2); border-radius: var(--radius-full); font-size: var(--text-xs); color: hsl(var(--primary)); }
+.combobox-tag-label { max-width: 10rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.combobox-tag-remove { display: inline-flex; align-items: center; justify-content: center; width: 1rem; height: 1rem; padding: 0; background: transparent; border: none; border-radius: var(--radius-full); color: hsl(var(--primary) / 0.6); cursor: pointer; font-size: var(--text-sm); line-height: 1; }
+.combobox-tag-remove:hover { color: hsl(var(--destructive)); background: hsl(var(--destructive) / 0.1); }
+
+/* Date Picker Range */
+.dp-day-range-start { background: hsl(var(--primary)); color: hsl(var(--primary-foreground, 0 0% 100%)); border-radius: var(--radius-md) 0 0 var(--radius-md); }
+.dp-day-range-end { background: hsl(var(--primary)); color: hsl(var(--primary-foreground, 0 0% 100%)); border-radius: 0 var(--radius-md) var(--radius-md) 0; }
+.dp-day-in-range { background: hsl(var(--primary) / 0.15); color: hsl(var(--foreground)); border-radius: 0; }
+.dp-day-range-start.dp-day-range-end { border-radius: var(--radius-md); }
+
+/* Code Block Highlight */
+.code-block[data-highlight] pre { min-height: 2rem; }
+.code-block[data-highlight] code.hljs { background: transparent; padding: 0; }

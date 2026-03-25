@@ -7,7 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Virtual List**: Rust handler now deserializes JSON strings for `items` when the Rust engine passes list-of-dicts as serialized JSON
+- **Kanban Board**: Rust handler now deserializes JSON strings for `columns` (same fix as Virtual List)
+
 ### Added
+- **Combobox**: Multi-select mode with `multiple=True` and `selected` list — renders removable tag chips, hidden inputs for form submission, and per-option selected state
+- **Date Picker**: Date range selection with `range=True`, `range_start`, and `range_end` — adds range highlighting CSS classes and dual hidden inputs for form submission
+- **Code Block**: Syntax highlighting via highlight.js CDN lazy-loading with `highlight=True` (default) and configurable `theme` parameter
 - **Component Gallery**: `python manage.py component_gallery` management command renders every component for visual QA — auto-discovers all template tags and component classes, groups by category, supports light/dark mode toggle and responsive preview (mobile/tablet/desktop), includes `--dry-run` to list components without starting the server
 - **Rust engine handlers**: 40+ component tag handlers for the Rust template engine — components now work without `{% load djust_components %}` when using Rust-rendered templates
 - **Tier 1 handlers**: Modal, Tabs, Accordion, Dropdown, Toast, Tooltip, Progress, Badge, Card, DataTable, Pagination, Avatar, Alert, Switch, Divider, Breadcrumb, Skeleton, StatusDot, Button, Stepper, Timeline
