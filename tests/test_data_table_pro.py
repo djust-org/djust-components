@@ -3029,3 +3029,922 @@ class TestPhase4CSS:
 
     def test_copy_btn_class(self):
         assert ".data-table-copy-btn" in self.css
+
+
+# ===========================================================================
+# Phase 5 — Data Import & Computed
+# ===========================================================================
+
+
+# ── 5A. CSV/JSON Import ──
+
+
+NUMERIC_COLUMNS = [
+    {"key": "name", "label": "Name"},
+    {"key": "score", "label": "Score"},
+]
+
+NUMERIC_ROWS = [
+    {"id": 1, "name": "Alice", "score": 90},
+    {"id": 2, "name": "Bob", "score": 60},
+    {"id": 3, "name": "Charlie", "score": 30},
+]
+
+
+class TestMixinImportCSV:
+    """CSV import via mixin."""
+
+    def test_import_csv_preview(self):
+        import json
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_columns = SAMPLE_COLUMNS
+        m.table_import_preview = True
+        m.init_table_state()
+        csv_data = "name,email\nDave,dave@example.com\nEve,eve@example.com"
+        m.on_table_import(json.dumps({"format": "csv", "data": csv_data}))
+        assert m.table_import_pending is True
+        assert len(m.table_import_preview_data) == 2
+        assert m.table_import_preview_data[0]["name"] == "Dave"
+
+    def test_import_csv_confirm(self):
+        import json
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_columns = SAMPLE_COLUMNS
+        m.table_import_preview = True
+        m.init_table_state()
+        m.table_rows = list(SAMPLE_ROWS)
+        csv_data = "name,email\nDave,dave@example.com"
+        m.on_table_import(json.dumps({"format": "csv", "data": csv_data}))
+        assert m.table_import_pending is True
+        m.on_table_import(json.dumps({"confirm": True}))
+        assert m.table_import_pending is False
+        assert len(m.table_rows) == 4  # 3 original + 1 imported
+        assert m.table_rows[-1]["name"] == "Dave"
+
+    def test_import_csv_no_preview(self):
+        import json
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_columns = SAMPLE_COLUMNS
+        m.table_import_preview = False
+        m.init_table_state()
+        m.table_rows = []
+        csv_data = "name,email\nDave,dave@example.com"
+        m.on_table_import(json.dumps({"format": "csv", "data": csv_data}))
+        assert m.table_import_pending is False
+        assert len(m.table_rows) == 1
+
+    def test_import_csv_bad_data(self):
+        import json
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_columns = SAMPLE_COLUMNS
+        m.init_table_state()
+        m.on_table_import(json.dumps({"format": "csv", "data": ""}))
+        assert m.table_import_pending is False
+        assert len(m.table_import_preview_data) == 0
+
+    def test_import_bad_json_string(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_columns = SAMPLE_COLUMNS
+        m.init_table_state()
+        m.on_table_import("not json")  # Should not raise
+
+
+class TestMixinImportJSON:
+    """JSON import via mixin."""
+
+    def test_import_json_array(self):
+        import json
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_columns = SAMPLE_COLUMNS
+        m.table_import_preview = True
+        m.init_table_state()
+        json_data = json.dumps([
+            {"name": "Dave", "email": "dave@example.com"},
+            {"name": "Eve", "email": "eve@example.com"},
+        ])
+        m.on_table_import(json.dumps({"format": "json", "data": json_data}))
+        assert m.table_import_pending is True
+        assert len(m.table_import_preview_data) == 2
+
+    def test_import_json_not_array(self):
+        import json
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_columns = SAMPLE_COLUMNS
+        m.init_table_state()
+        m.on_table_import(json.dumps({"format": "json", "data": '{"not": "array"}'}))
+        assert len(m.table_import_errors) == 1
+        assert "array" in m.table_import_errors[0].lower()
+
+    def test_import_unsupported_format(self):
+        import json
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_columns = SAMPLE_COLUMNS
+        m.init_table_state()
+        m.on_table_import(json.dumps({"format": "xml", "data": "<x/>"}))
+        assert len(m.table_import_errors) == 1
+        assert "unsupported" in m.table_import_errors[0].lower()
+
+    def test_import_filters_unknown_columns(self):
+        import json
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_columns = SAMPLE_COLUMNS
+        m.table_import_preview = True
+        m.init_table_state()
+        json_data = json.dumps([{"name": "Dave", "unknown_col": "val"}])
+        m.on_table_import(json.dumps({"format": "json", "data": json_data}))
+        assert len(m.table_import_preview_data) == 1
+        assert "unknown_col" not in m.table_import_preview_data[0]
+
+    def test_import_custom_handler(self):
+        import json
+        from djust_components.mixins.data_table import DataTableMixin
+
+        class MyMixin(DataTableMixin):
+            def __init__(self):
+                self.imported = []
+            def handle_import(self, rows):
+                self.imported = rows
+
+        m = MyMixin()
+        m.table_columns = SAMPLE_COLUMNS
+        m.table_import_preview = False
+        m.init_table_state()
+        csv_data = "name,email\nDave,dave@example.com"
+        m.on_table_import(json.dumps({"format": "csv", "data": csv_data}))
+        assert len(m.imported) == 1
+        assert m.imported[0]["name"] == "Dave"
+
+
+# ── 5B. Computed Columns ──
+
+
+class TestMixinComputedColumns:
+    """Computed column evaluation."""
+
+    def test_basic_arithmetic(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_computed_columns = [
+            {"key": "margin", "label": "Margin", "expression": "revenue - cost"},
+        ]
+        rows = [{"revenue": 100, "cost": 40}, {"revenue": 200, "cost": 80}]
+        result = m.evaluate_computed_columns(rows)
+        assert result[0]["margin"] == 60
+        assert result[1]["margin"] == 120
+
+    def test_multiplication(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_computed_columns = [
+            {"key": "total", "label": "Total", "expression": "qty * price"},
+        ]
+        rows = [{"qty": 5, "price": 10}]
+        result = m.evaluate_computed_columns(rows)
+        assert result[0]["total"] == 50
+
+    def test_division(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_computed_columns = [
+            {"key": "rate", "label": "Rate", "expression": "hits / attempts"},
+        ]
+        rows = [{"hits": 75, "attempts": 100}]
+        result = m.evaluate_computed_columns(rows)
+        assert result[0]["rate"] == 0.75
+
+    def test_no_computed_columns(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_computed_columns = []
+        rows = [{"a": 1}]
+        result = m.evaluate_computed_columns(rows)
+        assert result == rows
+
+    def test_bad_expression(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_computed_columns = [
+            {"key": "bad", "label": "Bad", "expression": "1 / 0"},
+        ]
+        rows = [{"a": 1}]
+        result = m.evaluate_computed_columns(rows)
+        assert result[0]["bad"] == ""
+
+    def test_unsafe_expression_rejected(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_computed_columns = [
+            {"key": "evil", "label": "Evil", "expression": "__import__('os')"},
+        ]
+        rows = [{"a": 1}]
+        result = m.evaluate_computed_columns(rows)
+        assert result[0]["evil"] == ""
+
+    def test_preserves_original_data(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_computed_columns = [
+            {"key": "double", "label": "Double", "expression": "x * 2"},
+        ]
+        rows = [{"x": 5}]
+        result = m.evaluate_computed_columns(rows)
+        assert result[0]["x"] == 5
+        assert result[0]["double"] == 10
+
+
+class TestHandlerComputedColumns:
+    """Handler renders computed column headers and cells."""
+
+    def test_computed_column_header_rendered(self):
+        html = _render(
+            rows=[{"id": 1, "revenue": 100, "cost": 40, "margin": 60}],
+            columns=[
+                {"key": "revenue", "label": "Revenue"},
+                {"key": "cost", "label": "Cost"},
+            ],
+            computed_columns=[
+                {"key": "margin", "label": "Margin", "expression": "revenue - cost"},
+            ],
+        )
+        assert "data-table-computed-header" in html
+        assert "Margin" in html
+
+    def test_computed_column_cell_rendered(self):
+        html = _render(
+            rows=[{"id": 1, "revenue": 100, "cost": 40, "margin": 60}],
+            columns=[
+                {"key": "revenue", "label": "Revenue"},
+                {"key": "cost", "label": "Cost"},
+            ],
+            computed_columns=[
+                {"key": "margin", "label": "Margin"},
+            ],
+        )
+        assert "data-table-computed" in html
+        assert ">60<" in html
+
+
+# ── 5C. Cell Merge / Colspan ──
+
+
+class TestMixinCellMerge:
+    """Cell merge helper in mixin."""
+
+    def test_get_cell_merge_default(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        row = {"name": "Alice"}
+        assert m.get_cell_merge(row, "name") == 1
+
+    def test_get_cell_merge_with_data(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        row = {"name": "Alice", "_merge": {"name": 2}}
+        assert m.get_cell_merge(row, "name") == 2
+        assert m.get_cell_merge(row, "email") == 1
+
+    def test_get_cell_merge_custom_key(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_cell_merge_key = "_span"
+        row = {"name": "Alice", "_span": {"name": 3}}
+        assert m.get_cell_merge(row, "name") == 3
+
+    def test_get_cell_merge_no_dict(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        row = {"name": "Alice", "_merge": "not a dict"}
+        assert m.get_cell_merge(row, "name") == 1
+
+
+class TestHandlerCellMerge:
+    """Handler renders colspan for merged cells."""
+
+    def test_colspan_rendered(self):
+        html = _render(
+            rows=[{"id": 1, "a": "merged", "b": "val", "_merge": {"a": 2}}],
+            columns=[
+                {"key": "a", "label": "A"},
+                {"key": "b", "label": "B"},
+            ],
+        )
+        assert 'colspan="2"' in html
+        assert "data-table-merged" in html
+
+    def test_merged_cell_skipped(self):
+        html = _render(
+            rows=[{"id": 1, "a": "merged", "b": "hidden", "_merge": {"a": 2}}],
+            columns=[
+                {"key": "a", "label": "A"},
+                {"key": "b", "label": "B"},
+            ],
+        )
+        # b cell value should not appear since it's merged
+        assert ">hidden<" not in html
+
+    def test_no_merge_key(self):
+        html = _render(
+            rows=[{"id": 1, "a": "val1", "b": "val2"}],
+            columns=[
+                {"key": "a", "label": "A"},
+                {"key": "b", "label": "B"},
+            ],
+        )
+        assert "colspan" not in html
+
+
+# ── 5D. Column Expressions ──
+
+
+class TestMixinExpressionFilter:
+    """Expression filter evaluation."""
+
+    def test_greater_than(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        assert m.evaluate_expression_filter(100, "> 50") is True
+        assert m.evaluate_expression_filter(30, "> 50") is False
+
+    def test_greater_equal(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        assert m.evaluate_expression_filter(50, ">= 50") is True
+        assert m.evaluate_expression_filter(49, ">= 50") is False
+
+    def test_less_than(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        assert m.evaluate_expression_filter(30, "< 50") is True
+        assert m.evaluate_expression_filter(50, "< 50") is False
+
+    def test_less_equal(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        assert m.evaluate_expression_filter(50, "<= 50") is True
+        assert m.evaluate_expression_filter(51, "<= 50") is False
+
+    def test_equals(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        assert m.evaluate_expression_filter(50, "= 50") is True
+        assert m.evaluate_expression_filter(51, "= 50") is False
+
+    def test_not_equals(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        assert m.evaluate_expression_filter(50, "!= 50") is False
+        assert m.evaluate_expression_filter(51, "!= 50") is True
+
+    def test_contains(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        assert m.evaluate_expression_filter("active user", 'contains "active"') is True
+        assert m.evaluate_expression_filter("inactive", 'contains "ACTIVE"') is True
+        assert m.evaluate_expression_filter("pending", 'contains "active"') is False
+
+    def test_startswith(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        assert m.evaluate_expression_filter("active", 'startswith "act"') is True
+        assert m.evaluate_expression_filter("inactive", 'startswith "act"') is False
+
+    def test_endswith(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        assert m.evaluate_expression_filter("active", 'endswith "ive"') is True
+        assert m.evaluate_expression_filter("pending", 'endswith "ive"') is False
+
+    def test_between(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        assert m.evaluate_expression_filter(50, "between 10 and 100") is True
+        assert m.evaluate_expression_filter(10, "between 10 and 100") is True
+        assert m.evaluate_expression_filter(100, "between 10 and 100") is True
+        assert m.evaluate_expression_filter(5, "between 10 and 100") is False
+
+    def test_empty(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        assert m.evaluate_expression_filter("", "empty") is True
+        assert m.evaluate_expression_filter(None, "empty") is True
+        assert m.evaluate_expression_filter("val", "empty") is False
+
+    def test_not_empty(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        assert m.evaluate_expression_filter("val", "not empty") is True
+        assert m.evaluate_expression_filter("", "not empty") is False
+
+    def test_empty_expression_passes_all(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        assert m.evaluate_expression_filter("anything", "") is True
+
+
+class TestMixinApplyExpressionFilters:
+    """Apply expression filters to row sets."""
+
+    def test_filter_rows(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_columns = NUMERIC_COLUMNS
+        m.init_table_state()
+        m.table_active_expressions = {"score": "> 50"}
+        rows = [
+            {"name": "Alice", "score": 90},
+            {"name": "Bob", "score": 60},
+            {"name": "Charlie", "score": 30},
+        ]
+        result = m.apply_expression_filters(rows)
+        assert len(result) == 2
+        assert result[0]["name"] == "Alice"
+        assert result[1]["name"] == "Bob"
+
+    def test_no_active_expressions(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_columns = NUMERIC_COLUMNS
+        m.init_table_state()
+        rows = [{"name": "Alice", "score": 90}]
+        result = m.apply_expression_filters(rows)
+        assert result == rows
+
+    def test_multiple_expressions(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_columns = NUMERIC_COLUMNS
+        m.init_table_state()
+        m.table_active_expressions = {
+            "score": "> 50",
+            "name": 'contains "Alice"',
+        }
+        rows = [
+            {"name": "Alice", "score": 90},
+            {"name": "Bob", "score": 60},
+        ]
+        result = m.apply_expression_filters(rows)
+        assert len(result) == 1
+        assert result[0]["name"] == "Alice"
+
+
+class TestMixinExpressionEvent:
+    """Expression event handler."""
+
+    def test_set_expression(self):
+        import json
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_columns = NUMERIC_COLUMNS
+        m.init_table_state()
+        m.on_table_expression(json.dumps({"column": "score", "expression": "> 50"}))
+        assert m.table_active_expressions == {"score": "> 50"}
+
+    def test_clear_expression(self):
+        import json
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_columns = NUMERIC_COLUMNS
+        m.init_table_state()
+        m.table_active_expressions = {"score": "> 50"}
+        m.on_table_expression(json.dumps({"column": "score", "expression": ""}))
+        assert "score" not in m.table_active_expressions
+
+    def test_expression_resets_page(self):
+        import json
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_columns = NUMERIC_COLUMNS
+        m.init_table_state()
+        m.table_page = 5
+        m.on_table_expression(json.dumps({"column": "score", "expression": "> 50"}))
+        assert m.table_page == 1
+
+    def test_bad_json_ignored(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_columns = NUMERIC_COLUMNS
+        m.init_table_state()
+        m.on_table_expression("not json")  # Should not raise
+
+
+class TestHandlerExpressionFilters:
+    """Handler renders expression filter inputs."""
+
+    def test_expression_row_rendered(self):
+        html = _render(
+            rows=NUMERIC_ROWS,
+            columns=NUMERIC_COLUMNS,
+            column_expressions={"score": "> 50"},
+        )
+        assert "data-table-expression-row" in html
+        assert "data-table-expression" in html
+
+    def test_expression_value_preserved(self):
+        html = _render(
+            rows=NUMERIC_ROWS,
+            columns=NUMERIC_COLUMNS,
+            column_expressions={"score": "Expression..."},
+            active_expressions={"score": "> 50"},
+        )
+        assert 'value="&gt; 50"' in html or 'value="> 50"' in html
+
+    def test_no_expression_no_row(self):
+        html = _render(rows=NUMERIC_ROWS, columns=NUMERIC_COLUMNS)
+        assert "data-table-expression-row" not in html
+
+
+# ── 5E. Conditional Formatting Presets ──
+
+
+class TestMixinConditionalFormatting:
+    """Conditional formatting helpers."""
+
+    def test_data_bar(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_conditional_formatting = [
+            {"column": "score", "type": "data_bar", "min": 0, "max": 100},
+        ]
+        result = m.get_conditional_formatting(75, "score")
+        assert result["type"] == "data_bar"
+        assert result["percent"] == 75.0
+
+    def test_data_bar_clamped(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_conditional_formatting = [
+            {"column": "score", "type": "data_bar", "min": 0, "max": 100},
+        ]
+        result = m.get_conditional_formatting(150, "score")
+        assert result["percent"] == 100.0
+
+    def test_color_scale(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_conditional_formatting = [
+            {"column": "score", "type": "color_scale", "min": 0, "max": 100,
+             "colors": ["#ff0000", "#00ff00"]},
+        ]
+        result = m.get_conditional_formatting(50, "score")
+        assert result["type"] == "color_scale"
+        assert result["color"].startswith("#")
+
+    def test_color_scale_at_min(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_conditional_formatting = [
+            {"column": "score", "type": "color_scale", "min": 0, "max": 100,
+             "colors": ["#ff0000", "#00ff00"]},
+        ]
+        result = m.get_conditional_formatting(0, "score")
+        assert result["color"] == "#ff0000"
+
+    def test_color_scale_at_max(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_conditional_formatting = [
+            {"column": "score", "type": "color_scale", "min": 0, "max": 100,
+             "colors": ["#ff0000", "#00ff00"]},
+        ]
+        result = m.get_conditional_formatting(100, "score")
+        assert result["color"] == "#00ff00"
+
+    def test_icon_set(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_conditional_formatting = [
+            {"column": "score", "type": "icon_set", "min": 0, "max": 100,
+             "icons": ["\u25bc", "\u25b6", "\u25b2"],
+             "thresholds": [33, 66]},
+        ]
+        low = m.get_conditional_formatting(20, "score")
+        assert low["icon"] == "\u25bc"
+        mid = m.get_conditional_formatting(50, "score")
+        assert mid["icon"] == "\u25b6"
+        high = m.get_conditional_formatting(80, "score")
+        assert high["icon"] == "\u25b2"
+
+    def test_no_matching_column(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_conditional_formatting = [
+            {"column": "other", "type": "data_bar", "min": 0, "max": 100},
+        ]
+        result = m.get_conditional_formatting(50, "score")
+        assert result == {}
+
+    def test_non_numeric_value(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_conditional_formatting = [
+            {"column": "score", "type": "data_bar", "min": 0, "max": 100},
+        ]
+        result = m.get_conditional_formatting("abc", "score")
+        assert result == {}
+
+    def test_three_color_scale(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_conditional_formatting = [
+            {"column": "score", "type": "color_scale", "min": 0, "max": 100,
+             "colors": ["#ff0000", "#ffff00", "#00ff00"]},
+        ]
+        mid = m.get_conditional_formatting(50, "score")
+        assert mid["type"] == "color_scale"
+        assert mid["color"].startswith("#")
+
+
+class TestHandlerConditionalFormatting:
+    """Handler renders conditional formatting in cells."""
+
+    def test_data_bar_rendered(self):
+        html = _render(
+            rows=[{"id": 1, "score": 75}],
+            columns=[{"key": "score", "label": "Score"}],
+            conditional_formatting=[
+                {"column": "score", "type": "data_bar", "min": 0, "max": 100},
+            ],
+        )
+        assert "data-table-cf-data-bar" in html
+        assert "data-table-data-bar" in html
+        assert "width:75" in html
+
+    def test_color_scale_rendered(self):
+        html = _render(
+            rows=[{"id": 1, "score": 50}],
+            columns=[{"key": "score", "label": "Score"}],
+            conditional_formatting=[
+                {"column": "score", "type": "color_scale", "min": 0, "max": 100,
+                 "colors": ["#ff0000", "#00ff00"]},
+            ],
+        )
+        assert "data-table-cf-color-scale" in html
+        assert "background-color:#" in html
+
+    def test_icon_set_rendered(self):
+        html = _render(
+            rows=[{"id": 1, "score": 20}],
+            columns=[{"key": "score", "label": "Score"}],
+            conditional_formatting=[
+                {"column": "score", "type": "icon_set", "min": 0, "max": 100,
+                 "icons": ["\u25bc", "\u25b6", "\u25b2"],
+                 "thresholds": [33, 66]},
+            ],
+        )
+        assert "data-table-cf-icon-set" in html
+        assert "data-table-cf-icon" in html
+
+    def test_no_formatting(self):
+        html = _render(
+            rows=[{"id": 1, "score": 75}],
+            columns=[{"key": "score", "label": "Score"}],
+        )
+        assert "data-table-cf" not in html
+
+
+# ── Phase 5 — Handler Import Rendering ──
+
+
+class TestHandlerImport:
+    """Handler renders import toolbar and preview."""
+
+    def test_import_button_rendered(self):
+        html = _render(
+            rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS,
+            importable=True,
+        )
+        assert "data-table-import" in html
+        assert "data-table-import-btn" in html
+        assert "Import CSV" in html
+        assert "Import JSON" in html
+
+    def test_import_file_input(self):
+        html = _render(
+            rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS,
+            importable=True,
+        )
+        assert "data-table-import-file" in html
+
+    def test_import_preview_rendered(self):
+        html = _render(
+            rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS,
+            importable=True,
+            import_pending=True,
+            import_preview_data=[{"name": "Dave", "email": "dave@example.com"}],
+        )
+        assert "data-table-import-preview" in html
+        assert "1 rows ready to import" in html
+        assert "data-table-import-confirm" in html
+        assert "data-table-import-cancel" in html
+
+    def test_import_errors_rendered(self):
+        html = _render(
+            rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS,
+            importable=True,
+            import_errors=["Row 1: no matching columns"],
+        )
+        assert "data-table-import-errors" in html
+        assert "Row 1: no matching columns" in html
+
+    def test_no_import_no_button(self):
+        html = _render(rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS)
+        assert "data-table-import" not in html
+
+    def test_import_wrapper_attrs(self):
+        html = _render(
+            rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS,
+            importable=True,
+        )
+        assert 'data-importable="true"' in html
+        assert 'data-import-event="table_import"' in html
+
+
+# ── Phase 5 — Mixin Context ──
+
+
+class TestMixinPhase5Context:
+    """get_table_context includes Phase 5 fields."""
+
+    def test_context_has_phase5_keys(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_columns = SAMPLE_COLUMNS
+        m.init_table_state()
+        ctx = m.get_table_context()
+        for key in [
+            "importable", "import_event", "import_formats", "import_preview",
+            "import_preview_data", "import_errors", "import_pending",
+            "computed_columns", "cell_merge_key",
+            "column_expressions", "expression_event", "active_expressions",
+            "conditional_formatting",
+        ]:
+            assert key in ctx, f"Missing key: {key}"
+
+    def test_context_defaults(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        m.table_columns = SAMPLE_COLUMNS
+        m.init_table_state()
+        ctx = m.get_table_context()
+        assert ctx["importable"] is False
+        assert ctx["import_formats"] == ["csv", "json"]
+        assert ctx["import_preview"] is True
+        assert ctx["import_preview_data"] == []
+        assert ctx["import_errors"] == []
+        assert ctx["import_pending"] is False
+        assert ctx["computed_columns"] == []
+        assert ctx["cell_merge_key"] == "_merge"
+        assert ctx["column_expressions"] == {}
+        assert ctx["active_expressions"] == {}
+        assert ctx["conditional_formatting"] == []
+
+
+# ── Phase 5 — Template Tag ──
+
+
+class TestTemplateTagPhase5:
+    """Template tag includes Phase 5 params."""
+
+    def test_phase5_params_in_context(self):
+        from djust_components.templatetags.djust_components import data_table
+        ctx = data_table(
+            rows=SAMPLE_ROWS, columns=SAMPLE_COLUMNS,
+            importable=True,
+            import_event="my_import",
+            import_formats=["csv"],
+            import_preview=False,
+            import_preview_data=[{"name": "X"}],
+            import_errors=["err"],
+            import_pending=True,
+            computed_columns=[{"key": "c", "expression": "a+b"}],
+            cell_merge_key="_span",
+            column_expressions={"score": "> 50"},
+            expression_event="my_expr",
+            active_expressions={"score": "> 50"},
+            conditional_formatting=[{"column": "score", "type": "data_bar"}],
+        )
+        assert ctx["importable"] is True
+        assert ctx["import_event"] == "my_import"
+        assert ctx["import_formats"] == ["csv"]
+        assert ctx["import_preview"] is False
+        assert ctx["import_preview_data"] == [{"name": "X"}]
+        assert ctx["import_errors"] == ["err"]
+        assert ctx["import_pending"] is True
+        assert ctx["computed_columns"] == [{"key": "c", "expression": "a+b"}]
+        assert ctx["cell_merge_key"] == "_span"
+        assert ctx["column_expressions"] == {"score": "> 50"}
+        assert ctx["expression_event"] == "my_expr"
+        assert ctx["active_expressions"] == {"score": "> 50"}
+        assert ctx["conditional_formatting"] == [{"column": "score", "type": "data_bar"}]
+
+    def test_phase5_defaults(self):
+        from djust_components.templatetags.djust_components import data_table
+        ctx = data_table(rows=[], columns=[])
+        assert ctx["importable"] is False
+        assert ctx["import_formats"] == ["csv", "json"]
+        assert ctx["computed_columns"] == []
+        assert ctx["column_expressions"] == {}
+        assert ctx["conditional_formatting"] == []
+
+
+# ── Phase 5 — CSS Tests ──
+
+
+class TestPhase5CSS:
+    """Phase 5 CSS class definitions exist."""
+
+    @pytest.fixture(autouse=True)
+    def load_css(self):
+        import pathlib
+        css_path = pathlib.Path(__file__).parent.parent / "src" / "djust_components" / "static" / "djust_components" / "components.css"
+        self.css = css_path.read_text()
+
+    def test_import_btn_class(self):
+        assert ".data-table-import-btn" in self.css
+
+    def test_import_errors_class(self):
+        assert ".data-table-import-errors" in self.css
+
+    def test_import_preview_class(self):
+        assert ".data-table-import-preview" in self.css
+
+    def test_import_confirm_class(self):
+        assert ".data-table-import-confirm" in self.css
+
+    def test_computed_header_class(self):
+        assert ".data-table-computed-header" in self.css
+
+    def test_computed_cell_class(self):
+        assert ".data-table-computed" in self.css
+
+    def test_merged_class(self):
+        assert ".data-table-merged" in self.css
+
+    def test_expression_class(self):
+        assert ".data-table-expression" in self.css
+
+    def test_expression_row_class(self):
+        assert ".data-table-expression-row" in self.css
+
+    def test_cf_data_bar_class(self):
+        assert ".data-table-cf-data-bar" in self.css
+
+    def test_data_bar_class(self):
+        assert ".data-table-data-bar" in self.css
+
+    def test_cf_color_scale_class(self):
+        assert ".data-table-cf-color-scale" in self.css
+
+    def test_cf_icon_set_class(self):
+        assert ".data-table-cf-icon-set" in self.css
+
+    def test_cf_icon_class(self):
+        assert ".data-table-cf-icon" in self.css
+
+
+# ── Phase 5 — Color Interpolation ──
+
+
+class TestColorInterpolation:
+    """Test _interpolate_color helper on mixin."""
+
+    def test_two_colors_midpoint(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        result = m._interpolate_color(["#000000", "#ffffff"], 0.5)
+        # Should be roughly #7f7f7f or #808080
+        assert result.startswith("#")
+        assert len(result) == 7
+
+    def test_two_colors_start(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        result = m._interpolate_color(["#ff0000", "#00ff00"], 0.0)
+        assert result == "#ff0000"
+
+    def test_two_colors_end(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        result = m._interpolate_color(["#ff0000", "#00ff00"], 1.0)
+        assert result == "#00ff00"
+
+    def test_three_colors(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        result = m._interpolate_color(["#ff0000", "#ffff00", "#00ff00"], 0.5)
+        assert result.startswith("#")
+
+    def test_single_color(self):
+        from djust_components.mixins.data_table import DataTableMixin
+        m = DataTableMixin()
+        result = m._interpolate_color(["#ff0000"], 0.5)
+        assert result == "#ff0000"

@@ -107,6 +107,17 @@ class DataTableMixin:
     table_copy_event = "table_copy"
     table_copy_format = "csv"  # "csv" or "tsv"
 
+    # Phase 5 class-level configuration
+    table_importable = False
+    table_import_event = "table_import"
+    table_import_formats = ["csv", "json"]
+    table_import_preview = True  # preview before confirming
+    table_computed_columns = []  # list of {"key": ..., "label": ..., "expression": ...}
+    table_cell_merge_key = "_merge"  # row data key for colspan info
+    table_column_expressions = {}  # {col_key: expression_string} for advanced filtering
+    table_expression_event = "table_expression"
+    table_conditional_formatting = []  # list of formatting preset dicts
+
     def init_table_state(self):
         """Initialize instance state. Call from mount()."""
         self.table_sort_by = self.table_default_sort
@@ -134,6 +145,11 @@ class DataTableMixin:
         self.table_column_stats = {}
         # Phase 4 state
         self.table_row_order = []  # for drag reorder tracking
+        # Phase 5 state
+        self.table_import_preview_data = []  # staged rows before confirm
+        self.table_import_errors = []  # validation errors from last import
+        self.table_import_pending = False  # True when preview is shown, awaiting confirm
+        self.table_active_expressions = {}  # {col_key: expression_string}
 
     # ── Event Handlers ──
 
@@ -370,6 +386,339 @@ class DataTableMixin:
         for row in rows_to_copy:
             lines.append(sep.join(str(row.get(k, "")) for k in col_keys))
         self.table_copy_data = "\n".join(lines)
+
+    # ── Phase 5 Event Handlers ──
+
+    def on_table_import(self, value, **kwargs):
+        """Handle import event. value is JSON: {format, data, confirm}.
+
+        When confirm=False (or absent), parses and stages preview.
+        When confirm=True, commits the previewed rows.
+        """
+        try:
+            data = json.loads(str(value)) if isinstance(value, str) else value
+        except (json.JSONDecodeError, TypeError):
+            return
+        if not isinstance(data, dict):
+            return
+
+        confirm = data.get("confirm", False)
+        if confirm and self.table_import_pending:
+            self._confirm_import()
+            return
+
+        fmt = str(data.get("format", "csv"))
+        raw = data.get("data", "")
+        self._parse_import(fmt, raw)
+
+    def _parse_import(self, fmt, raw):
+        """Parse imported data and stage for preview."""
+        self.table_import_errors = []
+        self.table_import_preview_data = []
+        self.table_import_pending = False
+
+        col_keys = [
+            col.get("key", col) if isinstance(col, dict) else str(col)
+            for col in self.table_columns
+        ]
+
+        try:
+            if fmt == "csv":
+                reader = csv.DictReader(io.StringIO(str(raw)))
+                rows = list(reader)
+            elif fmt == "json":
+                parsed = json.loads(str(raw))
+                if not isinstance(parsed, list):
+                    self.table_import_errors.append("JSON must be an array of objects")
+                    return
+                rows = parsed
+            else:
+                self.table_import_errors.append(f"Unsupported format: {fmt}")
+                return
+        except Exception as e:
+            self.table_import_errors.append(f"Parse error: {str(e)}")
+            return
+
+        # Validate rows have at least some known columns
+        valid_rows = []
+        for i, row in enumerate(rows):
+            if not isinstance(row, dict):
+                self.table_import_errors.append(f"Row {i + 1}: not a dict")
+                continue
+            # Keep only known column keys
+            cleaned = {k: row.get(k, "") for k in col_keys if k in row}
+            if cleaned:
+                valid_rows.append(cleaned)
+            else:
+                self.table_import_errors.append(f"Row {i + 1}: no matching columns")
+
+        self.table_import_preview_data = valid_rows
+        if valid_rows:
+            self.table_import_pending = True if self.table_import_preview else False
+            if not self.table_import_preview:
+                self._confirm_import()
+
+    def _confirm_import(self):
+        """Commit previewed import rows."""
+        imported = list(self.table_import_preview_data)
+        self.table_import_preview_data = []
+        self.table_import_pending = False
+        self.handle_import(imported)
+
+    def handle_import(self, rows):
+        """Override this to persist imported rows. Default appends to table_rows."""
+        self.table_rows.extend(rows)
+
+    def on_table_expression(self, value, **kwargs):
+        """Handle column expression filter. value is JSON: {column, expression}."""
+        try:
+            data = json.loads(str(value)) if isinstance(value, str) else value
+        except (json.JSONDecodeError, TypeError):
+            return
+        if not isinstance(data, dict):
+            return
+        column = str(data.get("column", ""))
+        expression = str(data.get("expression", ""))
+        if column:
+            if expression:
+                self.table_active_expressions[column] = expression
+            else:
+                self.table_active_expressions.pop(column, None)
+            self.table_page = 1
+
+    # ── Phase 5 Computed Helpers ──
+
+    def evaluate_computed_columns(self, rows):
+        """Evaluate computed columns and inject values into rows.
+
+        Each computed column has:
+          - key: virtual column key
+          - expression: string like "revenue - cost" referencing other column keys
+
+        Returns the rows with computed values injected.
+        """
+        if not self.table_computed_columns:
+            return rows
+        result = []
+        for row in rows:
+            row_copy = dict(row)
+            for cc in self.table_computed_columns:
+                if not isinstance(cc, dict):
+                    continue
+                key = cc.get("key", "")
+                expr = cc.get("expression", "")
+                if key and expr:
+                    row_copy[key] = self._eval_expression(expr, row_copy)
+            result.append(row_copy)
+        return result
+
+    def _eval_expression(self, expression, row):
+        """Safely evaluate a computed column expression against a row.
+
+        Supports basic arithmetic (+, -, *, /) with column references.
+        """
+        # Build namespace of numeric row values
+        namespace = {}
+        for k, v in row.items():
+            try:
+                namespace[k] = float(v)
+            except (ValueError, TypeError):
+                namespace[k] = 0
+        try:
+            # Only allow safe identifiers and arithmetic
+            allowed = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_+-*/.(). ")
+            if not all(c in allowed for c in expression):
+                return ""
+            result = eval(expression, {"__builtins__": {}}, namespace)  # noqa: S307
+            if isinstance(result, float) and result == int(result):
+                return int(result)
+            return round(result, 2) if isinstance(result, float) else result
+        except Exception:
+            return ""
+
+    def evaluate_expression_filter(self, value, expression):
+        """Evaluate a column expression filter against a cell value.
+
+        Supported expression syntax:
+          > N, >= N, < N, <= N, = N, != N  (numeric comparison)
+          contains "text"                   (substring match)
+          startswith "text"                 (prefix match)
+          endswith "text"                   (suffix match)
+          between N and M                   (range, inclusive)
+          empty / not empty                 (null/blank check)
+
+        Returns True if value passes the filter, False otherwise.
+        """
+        expr = expression.strip()
+        if not expr:
+            return True
+
+        str_val = str(value)
+
+        # empty / not empty
+        if expr.lower() == "empty":
+            return str_val == "" or value is None
+        if expr.lower() == "not empty":
+            return str_val != "" and value is not None
+
+        # contains "text"
+        if expr.lower().startswith("contains "):
+            text = expr[9:].strip().strip('"').strip("'")
+            return text.lower() in str_val.lower()
+
+        # startswith "text"
+        if expr.lower().startswith("startswith "):
+            text = expr[11:].strip().strip('"').strip("'")
+            return str_val.lower().startswith(text.lower())
+
+        # endswith "text"
+        if expr.lower().startswith("endswith "):
+            text = expr[9:].strip().strip('"').strip("'")
+            return str_val.lower().endswith(text.lower())
+
+        # between N and M
+        if expr.lower().startswith("between "):
+            parts = expr[8:].lower().split(" and ")
+            if len(parts) == 2:
+                try:
+                    lo = float(parts[0].strip())
+                    hi = float(parts[1].strip())
+                    num_val = float(value)
+                    return lo <= num_val <= hi
+                except (ValueError, TypeError):
+                    return False
+
+        # Numeric comparisons: >=, <=, !=, >, <, =
+        for op in (">=", "<=", "!=", ">", "<", "="):
+            if expr.startswith(op):
+                rest = expr[len(op):].strip()
+                try:
+                    threshold = float(rest)
+                    num_val = float(value)
+                    if op == ">":
+                        return num_val > threshold
+                    elif op == ">=":
+                        return num_val >= threshold
+                    elif op == "<":
+                        return num_val < threshold
+                    elif op == "<=":
+                        return num_val <= threshold
+                    elif op == "=":
+                        return num_val == threshold
+                    elif op == "!=":
+                        return num_val != threshold
+                except (ValueError, TypeError):
+                    return False
+
+        return True
+
+    def apply_expression_filters(self, rows):
+        """Filter rows using active column expressions."""
+        if not self.table_active_expressions:
+            return rows
+        result = []
+        for row in rows:
+            passes = True
+            for col_key, expr in self.table_active_expressions.items():
+                val = row.get(col_key, "")
+                if not self.evaluate_expression_filter(val, expr):
+                    passes = False
+                    break
+            if passes:
+                result.append(row)
+        return result
+
+    def get_conditional_formatting(self, value, col_key):
+        """Evaluate conditional formatting presets for a cell value.
+
+        Each preset in table_conditional_formatting is a dict:
+          {
+            "column": col_key,
+            "type": "data_bar" | "color_scale" | "icon_set",
+            "min": 0, "max": 100,        # for data_bar / color_scale
+            "colors": ["#f00", "#0f0"],   # for color_scale (2-3 colors)
+            "icons": ["▼", "▶", "▲"],    # for icon_set
+            "thresholds": [33, 66],       # boundaries for icon_set
+          }
+
+        Returns dict with formatting info or empty dict.
+        """
+        for preset in self.table_conditional_formatting:
+            if not isinstance(preset, dict):
+                continue
+            if preset.get("column") != col_key:
+                continue
+            fmt_type = preset.get("type", "")
+            try:
+                num_val = float(value)
+            except (ValueError, TypeError):
+                continue
+            pmin = float(preset.get("min", 0))
+            pmax = float(preset.get("max", 100))
+            span = pmax - pmin if pmax != pmin else 1
+
+            if fmt_type == "data_bar":
+                pct = max(0, min(100, ((num_val - pmin) / span) * 100))
+                return {"type": "data_bar", "percent": round(pct, 1)}
+            elif fmt_type == "color_scale":
+                colors = preset.get("colors", ["#ff0000", "#00ff00"])
+                ratio = max(0.0, min(1.0, (num_val - pmin) / span))
+                color = self._interpolate_color(colors, ratio)
+                return {"type": "color_scale", "color": color}
+            elif fmt_type == "icon_set":
+                icons = preset.get("icons", ["▼", "▶", "▲"])
+                thresholds = preset.get("thresholds", [])
+                icon = icons[-1] if icons else ""
+                for i, t in enumerate(thresholds):
+                    if num_val < float(t):
+                        icon = icons[i] if i < len(icons) else icons[-1]
+                        break
+                return {"type": "icon_set", "icon": icon}
+        return {}
+
+    def _interpolate_color(self, colors, ratio):
+        """Interpolate between hex colors based on ratio (0.0-1.0)."""
+        if len(colors) < 2:
+            return colors[0] if colors else "#000000"
+
+        # For 2 colors: simple lerp
+        # For 3 colors: first half between 0-1, second half between 1-2
+        if len(colors) == 2:
+            idx = 0
+            local_ratio = ratio
+        else:
+            segments = len(colors) - 1
+            segment = min(int(ratio * segments), segments - 1)
+            idx = segment
+            local_ratio = (ratio * segments) - segment
+
+        c1 = colors[idx]
+        c2 = colors[idx + 1] if idx + 1 < len(colors) else colors[idx]
+
+        def hex_to_rgb(h):
+            h = h.lstrip("#")
+            return tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
+
+        def rgb_to_hex(r, g, b):
+            return f"#{int(r):02x}{int(g):02x}{int(b):02x}"
+
+        r1, g1, b1 = hex_to_rgb(c1)
+        r2, g2, b2 = hex_to_rgb(c2)
+        r = r1 + (r2 - r1) * local_ratio
+        g = g1 + (g2 - g1) * local_ratio
+        b = b1 + (b2 - b1) * local_ratio
+        return rgb_to_hex(r, g, b)
+
+    def get_cell_merge(self, row, col_key):
+        """Get colspan for a cell from row's _merge data.
+
+        Row merge data format: {_merge: {col_key: colspan_int, ...}}
+        Returns colspan int (1 = normal, >1 = spans multiple columns, 0 = hidden/merged).
+        """
+        merge_data = row.get(self.table_cell_merge_key, {})
+        if not isinstance(merge_data, dict):
+            return 1
+        return merge_data.get(col_key, 1)
 
     # ── Phase 4 Computed Helpers ──
 
@@ -625,6 +974,20 @@ class DataTableMixin:
             "copyable": self.table_copyable,
             "copy_event": self.table_copy_event,
             "copy_format": self.table_copy_format,
+            # Phase 5
+            "importable": self.table_importable,
+            "import_event": self.table_import_event,
+            "import_formats": self.table_import_formats,
+            "import_preview": self.table_import_preview,
+            "import_preview_data": self.table_import_preview_data,
+            "import_errors": self.table_import_errors,
+            "import_pending": self.table_import_pending,
+            "computed_columns": self.table_computed_columns,
+            "cell_merge_key": self.table_cell_merge_key,
+            "column_expressions": self.table_column_expressions,
+            "expression_event": self.table_expression_event,
+            "active_expressions": self.table_active_expressions,
+            "conditional_formatting": self.table_conditional_formatting,
         }
 
     # ── Queryset Pipeline ──
