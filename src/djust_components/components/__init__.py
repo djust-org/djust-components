@@ -70,6 +70,10 @@ from .thinking_indicator import ThinkingIndicator
 from .multimodal_input import MultimodalInput
 from .feedback_widget import FeedbackWidget
 from .form_validation import FormErrors, FieldError
+from .approval_gate import ApprovalGate
+from .source_citation import SourceCitation
+from .model_selector import ModelSelector
+from .token_counter import TokenCounter
 
 __all__ = [
     "Alert",
@@ -110,4 +114,8 @@ __all__ = [
     "ThinkingIndicator",
     "MultimodalInput",
     "FeedbackWidget",
+    "ApprovalGate",
+    "SourceCitation",
+    "ModelSelector",
+    "TokenCounter",
 ]
