@@ -2,7 +2,20 @@
 
 import pytest
 
-from djust_components.components import Badge, Button, Card, Markdown, StatusDot
+from djust_components.components import (
+    Alert,
+    Badge,
+    Button,
+    Card,
+    Markdown,
+    Progress,
+    Spinner,
+    StatCard,
+    StatusDot,
+    Switch,
+    Tag,
+    Toast,
+)
 
 
 class TestBadge:
@@ -513,3 +526,543 @@ class TestMarkdown:
         html = md._render_custom()
         assert "&amp;lt;" not in html
         assert "&lt;" in html
+
+
+class TestAlert:
+    """Test Alert component."""
+
+    def test_basic_alert(self):
+        """Test basic alert creation."""
+        alert = Alert("Something happened")
+        out = alert._render_custom()
+        assert "dj-alert" in out
+        assert "dj-alert-info" in out  # default variant
+        assert "Something happened" in out
+        assert 'role="alert"' in out
+
+    def test_alert_variants(self):
+        """Test alert color variants."""
+        for variant in ["info", "success", "warning", "danger"]:
+            alert = Alert("test", variant=variant)
+            out = alert._render_custom()
+            assert f"dj-alert-{variant}" in out
+
+    def test_alert_factory_methods(self):
+        """Test factory methods set correct variant."""
+        assert Alert.info("msg").variant == "info"
+        assert Alert.success("msg").variant == "success"
+        assert Alert.warning("msg").variant == "warning"
+        assert Alert.danger("msg").variant == "danger"
+
+    def test_alert_dismissible(self):
+        """Test dismissible alert has dismiss button."""
+        alert = Alert("notice", dismissible=True)
+        out = alert._render_custom()
+        assert "dj-alert-dismissible" in out
+        assert "dj-alert-dismiss" in out
+        assert "&times;" in out
+
+    def test_alert_dismiss_action(self):
+        """Test dismiss button has dj-click when action set."""
+        alert = Alert("notice", dismissible=True, action="dismiss_alert")
+        out = alert._render_custom()
+        assert 'dj-click="dismiss_alert"' in out
+
+    def test_alert_not_dismissible_no_button(self):
+        """Test non-dismissible alert has no dismiss button."""
+        alert = Alert("notice", dismissible=False)
+        out = alert._render_custom()
+        assert "dj-alert-dismiss" not in out
+
+    def test_alert_with_icon(self):
+        """Test alert with icon."""
+        alert = Alert("notice", icon="⚠️")
+        out = alert._render_custom()
+        assert "dj-alert-icon" in out
+        assert "⚠️" in out
+
+    def test_alert_html_escaping(self):
+        """Test message is HTML escaped."""
+        alert = Alert("<script>alert('xss')</script>")
+        out = alert._render_custom()
+        assert "<script>" not in out
+        assert "&lt;script&gt;" in out
+
+    def test_alert_custom_class(self):
+        """Test custom CSS class."""
+        alert = Alert("test", custom_class="my-alert")
+        out = alert._render_custom()
+        assert "my-alert" in out
+
+    def test_alert_factory_passes_kwargs(self):
+        """Test factory methods pass through kwargs."""
+        alert = Alert.success("Saved!", dismissible=True, custom_class="extra")
+        assert alert.dismissible is True
+        assert alert.custom_class == "extra"
+
+
+class TestStatCard:
+    """Test StatCard component."""
+
+    def test_basic_stat_card(self):
+        """Test basic stat card creation."""
+        sc = StatCard(label="Revenue", value="$12,345")
+        out = sc._render_custom()
+        assert "dj-stat-card" in out
+        assert "dj-stat-card-label" in out
+        assert "Revenue" in out
+        assert "$12,345" in out
+
+    def test_stat_card_variants(self):
+        """Test stat card style variants."""
+        for variant in ["bordered", "elevated"]:
+            sc = StatCard(label="x", value="1", variant=variant)
+            out = sc._render_custom()
+            assert f"dj-stat-card-{variant}" in out
+
+    def test_stat_card_default_variant_no_extra_class(self):
+        """Test default variant does not add extra class."""
+        sc = StatCard(label="x", value="1")
+        out = sc._render_custom()
+        assert "dj-stat-card-default" not in out
+
+    def test_stat_card_trend_up(self):
+        """Test trend up indicator."""
+        sc = StatCard(label="Users", value="1000", trend="up", trend_value="+12%")
+        out = sc._render_custom()
+        assert "dj-stat-card-trend" in out
+        assert "dj-stat-card-trend-up" in out
+        assert "+12%" in out
+
+    def test_stat_card_trend_down(self):
+        """Test trend down indicator."""
+        sc = StatCard(label="Errors", value="5", trend="down", trend_value="-20%")
+        out = sc._render_custom()
+        assert "dj-stat-card-trend-down" in out
+        assert "-20%" in out
+
+    def test_stat_card_trend_flat(self):
+        """Test flat trend indicator."""
+        sc = StatCard(label="Uptime", value="99.9%", trend="flat")
+        out = sc._render_custom()
+        assert "dj-stat-card-trend-flat" in out
+
+    def test_stat_card_no_trend(self):
+        """Test stat card without trend."""
+        sc = StatCard(label="x", value="1")
+        out = sc._render_custom()
+        assert "dj-stat-card-trend" not in out
+
+    def test_stat_card_with_icon(self):
+        """Test stat card with icon."""
+        sc = StatCard(label="Revenue", value="$1", icon="💰")
+        out = sc._render_custom()
+        assert "dj-stat-card-icon" in out
+        assert "💰" in out
+
+    def test_stat_card_html_escaping(self):
+        """Test label and value are HTML escaped."""
+        sc = StatCard(label="<b>bad</b>", value="<script>")
+        out = sc._render_custom()
+        assert "<b>" not in out
+        assert "<script>" not in out
+        assert "&lt;b&gt;" in out
+        assert "&lt;script&gt;" in out
+
+    def test_stat_card_custom_class(self):
+        """Test custom CSS class."""
+        sc = StatCard(label="x", value="1", custom_class="my-stat")
+        out = sc._render_custom()
+        assert "my-stat" in out
+
+
+class TestTag:
+    """Test Tag component."""
+
+    def test_basic_tag(self):
+        """Test basic tag creation."""
+        tag = Tag("Python")
+        out = tag._render_custom()
+        assert "dj-tag" in out
+        assert "Python" in out
+
+    def test_tag_variants(self):
+        """Test tag color variants."""
+        for variant in ["primary", "success", "info", "warning", "danger"]:
+            tag = Tag("test", variant=variant)
+            out = tag._render_custom()
+            assert f"dj-tag-{variant}" in out
+
+    def test_tag_default_variant_no_extra_class(self):
+        """Test default variant has no extra class."""
+        tag = Tag("test")
+        out = tag._render_custom()
+        assert "dj-tag-default" not in out
+
+    def test_tag_sizes(self):
+        """Test tag size variants."""
+        sm = Tag("test", size="sm")
+        md = Tag("test", size="md")
+        lg = Tag("test", size="lg")
+        assert "dj-tag-sm" in sm._render_custom()
+        assert "dj-tag-sm" not in md._render_custom()
+        assert "dj-tag-lg" in lg._render_custom()
+
+    def test_tag_dismissible(self):
+        """Test dismissible tag has dismiss button."""
+        tag = Tag("filter", dismissible=True)
+        out = tag._render_custom()
+        assert "dj-tag-dismiss" in out
+        assert "&times;" in out
+
+    def test_tag_dismiss_action(self):
+        """Test dismiss button with dj-click."""
+        tag = Tag("filter", dismissible=True, action="remove_tag")
+        out = tag._render_custom()
+        assert 'dj-click="remove_tag"' in out
+
+    def test_tag_not_dismissible_no_button(self):
+        """Test non-dismissible tag has no dismiss button."""
+        tag = Tag("test")
+        out = tag._render_custom()
+        assert "dj-tag-dismiss" not in out
+
+    def test_tag_html_escaping(self):
+        """Test label is HTML escaped."""
+        tag = Tag("<script>alert('xss')</script>")
+        out = tag._render_custom()
+        assert "<script>" not in out
+        assert "&lt;script&gt;" in out
+
+    def test_tag_custom_class(self):
+        """Test custom CSS class."""
+        tag = Tag("test", custom_class="my-tag")
+        out = tag._render_custom()
+        assert "my-tag" in out
+
+
+class TestToast:
+    """Test Toast component."""
+
+    def test_basic_toast(self):
+        """Test basic toast creation."""
+        toast = Toast("Hello")
+        out = toast._render_custom()
+        assert "dj-toast" in out
+        assert "dj-toast-info" in out  # default type
+        assert "Hello" in out
+        assert 'role="status"' in out
+
+    def test_toast_types(self):
+        """Test toast type variants."""
+        for t in ["info", "success", "warning", "error"]:
+            toast = Toast("test", type=t)
+            out = toast._render_custom()
+            assert f"dj-toast-{t}" in out
+
+    def test_toast_factory_methods(self):
+        """Test factory methods set correct type."""
+        assert Toast.info("msg").type == "info"
+        assert Toast.success("msg").type == "success"
+        assert Toast.warning("msg").type == "warning"
+        assert Toast.error("msg").type == "error"
+
+    def test_toast_duration(self):
+        """Test duration data attribute."""
+        toast = Toast("test", duration=5000)
+        out = toast._render_custom()
+        assert 'data-duration="5000"' in out
+
+    def test_toast_no_duration(self):
+        """Test zero duration means no data attribute."""
+        toast = Toast("test", duration=0)
+        out = toast._render_custom()
+        assert "data-duration" not in out
+
+    def test_toast_dismissible(self):
+        """Test dismissible toast has dismiss button."""
+        toast = Toast("test", dismissible=True)
+        out = toast._render_custom()
+        assert "dj-toast-dismiss" in out
+        assert "&times;" in out
+
+    def test_toast_dismiss_action(self):
+        """Test dismiss button with dj-click."""
+        toast = Toast("test", dismissible=True, action="close_toast")
+        out = toast._render_custom()
+        assert 'dj-click="close_toast"' in out
+
+    def test_toast_not_dismissible(self):
+        """Test non-dismissible toast has no dismiss button."""
+        toast = Toast("test", dismissible=False)
+        out = toast._render_custom()
+        assert "dj-toast-dismiss" not in out
+
+    def test_toast_html_escaping(self):
+        """Test message is HTML escaped."""
+        toast = Toast("<script>alert('xss')</script>")
+        out = toast._render_custom()
+        assert "<script>" not in out
+        assert "&lt;script&gt;" in out
+
+    def test_toast_custom_class(self):
+        """Test custom CSS class."""
+        toast = Toast("test", custom_class="my-toast")
+        out = toast._render_custom()
+        assert "my-toast" in out
+
+    def test_toast_factory_passes_kwargs(self):
+        """Test factory methods pass through kwargs."""
+        toast = Toast.error("Fail", duration=10000, dismissible=False)
+        assert toast.duration == 10000
+        assert toast.dismissible is False
+
+
+class TestProgress:
+    """Test Progress component."""
+
+    def test_basic_progress(self):
+        """Test basic progress bar creation."""
+        p = Progress(value=50)
+        out = p._render_custom()
+        assert "dj-progress" in out
+        assert "dj-progress-track" in out
+        assert "dj-progress-bar" in out
+        assert 'role="progressbar"' in out
+
+    def test_progress_percentage(self):
+        """Test percentage calculation."""
+        assert Progress(value=50, max=100).percentage == 50.0
+        assert Progress(value=3, max=10).percentage == 30.0
+        assert Progress(value=0, max=100).percentage == 0.0
+        assert Progress(value=100, max=100).percentage == 100.0
+
+    def test_progress_percentage_clamped(self):
+        """Test percentage is clamped to 0-100."""
+        assert Progress(value=150, max=100).percentage == 100.0
+        assert Progress(value=-10, max=100).percentage == 0.0
+
+    def test_progress_zero_max(self):
+        """Test zero max returns 0 percentage."""
+        assert Progress(value=50, max=0).percentage == 0.0
+
+    def test_progress_style_width(self):
+        """Test the bar width style matches percentage."""
+        p = Progress(value=75, max=100)
+        out = p._render_custom()
+        assert "width:75.0%" in out
+
+    def test_progress_variants(self):
+        """Test progress color variants."""
+        for variant in ["success", "info", "warning", "danger"]:
+            p = Progress(value=50, variant=variant)
+            out = p._render_custom()
+            assert f"dj-progress-{variant}" in out
+
+    def test_progress_default_variant_no_extra_class(self):
+        """Test default variant has no extra class."""
+        p = Progress(value=50)
+        out = p._render_custom()
+        assert "dj-progress-default" not in out
+
+    def test_progress_sizes(self):
+        """Test progress size variants."""
+        sm = Progress(value=50, size="sm")
+        md = Progress(value=50, size="md")
+        lg = Progress(value=50, size="lg")
+        assert "dj-progress-sm" in sm._render_custom()
+        assert "dj-progress-sm" not in md._render_custom()
+        assert "dj-progress-lg" in lg._render_custom()
+
+    def test_progress_with_label(self):
+        """Test progress bar with label."""
+        p = Progress(value=50, label="Uploading...")
+        out = p._render_custom()
+        assert "dj-progress-label" in out
+        assert "Uploading..." in out
+
+    def test_progress_show_value(self):
+        """Test progress bar with percentage display."""
+        p = Progress(value=75, show_value=True)
+        out = p._render_custom()
+        assert "dj-progress-value" in out
+        assert "75%" in out
+
+    def test_progress_no_value_by_default(self):
+        """Test percentage not shown by default."""
+        p = Progress(value=50)
+        out = p._render_custom()
+        assert "dj-progress-value" not in out
+
+    def test_progress_aria_attributes(self):
+        """Test ARIA attributes on the bar."""
+        p = Progress(value=30, max=200)
+        out = p._render_custom()
+        assert 'aria-valuenow="30"' in out
+        assert 'aria-valuemin="0"' in out
+        assert 'aria-valuemax="200"' in out
+
+    def test_progress_html_escaping(self):
+        """Test label is HTML escaped."""
+        p = Progress(value=50, label="<script>alert('xss')</script>")
+        out = p._render_custom()
+        assert "<script>" not in out
+        assert "&lt;script&gt;" in out
+
+    def test_progress_custom_class(self):
+        """Test custom CSS class."""
+        p = Progress(value=50, custom_class="my-progress")
+        out = p._render_custom()
+        assert "my-progress" in out
+
+
+class TestSpinner:
+    """Test Spinner component."""
+
+    def test_basic_spinner(self):
+        """Test basic spinner creation."""
+        s = Spinner()
+        out = s._render_custom()
+        assert "dj-spinner" in out
+        assert 'role="status"' in out
+
+    def test_spinner_sizes(self):
+        """Test spinner size variants."""
+        sm = Spinner(size="sm")
+        md = Spinner(size="md")
+        lg = Spinner(size="lg")
+        assert "dj-spinner-sm" in sm._render_custom()
+        assert "dj-spinner-sm" not in md._render_custom()
+        assert "dj-spinner-lg" in lg._render_custom()
+
+    def test_spinner_variants(self):
+        """Test spinner color variants."""
+        for variant in ["primary", "muted"]:
+            s = Spinner(variant=variant)
+            out = s._render_custom()
+            assert f"dj-spinner-{variant}" in out
+
+    def test_spinner_default_variant_no_extra_class(self):
+        """Test default variant has no extra class."""
+        s = Spinner()
+        out = s._render_custom()
+        assert "dj-spinner-default" not in out
+
+    def test_spinner_label(self):
+        """Test spinner with screen-reader label."""
+        s = Spinner(label="Loading data...")
+        out = s._render_custom()
+        assert "dj-sr-only" in out
+        assert "Loading data..." in out
+
+    def test_spinner_default_label(self):
+        """Test spinner has default Loading... label."""
+        s = Spinner()
+        out = s._render_custom()
+        assert "Loading..." in out
+
+    def test_spinner_no_label(self):
+        """Test spinner with no label."""
+        s = Spinner(label=None)
+        out = s._render_custom()
+        assert "dj-sr-only" not in out
+
+    def test_spinner_custom_class(self):
+        """Test custom CSS class."""
+        s = Spinner(custom_class="my-spinner")
+        out = s._render_custom()
+        assert "my-spinner" in out
+
+    def test_spinner_aria_label(self):
+        """Test aria-label attribute."""
+        s = Spinner(label="Saving...")
+        out = s._render_custom()
+        assert 'aria-label="Saving..."' in out
+
+
+class TestSwitch:
+    """Test Switch component."""
+
+    def test_basic_switch(self):
+        """Test basic switch creation."""
+        sw = Switch(name="toggle")
+        out = sw._render_custom()
+        assert "dj-switch" in out
+        assert 'type="checkbox"' in out
+        assert 'name="toggle"' in out
+
+    def test_switch_checked(self):
+        """Test checked switch."""
+        sw = Switch(name="opt", checked=True)
+        out = sw._render_custom()
+        assert "checked" in out
+        assert "dj-switch-checked" in out
+
+    def test_switch_unchecked(self):
+        """Test unchecked switch."""
+        sw = Switch(name="opt", checked=False)
+        out = sw._render_custom()
+        assert "dj-switch-checked" not in out
+
+    def test_switch_with_label(self):
+        """Test switch with label text."""
+        sw = Switch(name="opt", label="Enable notifications")
+        out = sw._render_custom()
+        assert "dj-switch-label" in out
+        assert "Enable notifications" in out
+
+    def test_switch_no_label(self):
+        """Test switch without label."""
+        sw = Switch(name="opt")
+        out = sw._render_custom()
+        assert "dj-switch-label" not in out
+
+    def test_switch_disabled(self):
+        """Test disabled switch."""
+        sw = Switch(name="opt", disabled=True, action="toggle")
+        out = sw._render_custom()
+        assert "disabled" in out
+        assert "dj-switch-disabled" in out
+        assert "dj-change" not in out  # no event when disabled
+
+    def test_switch_action(self):
+        """Test switch with djust event."""
+        sw = Switch(name="opt", action="toggle_setting")
+        out = sw._render_custom()
+        assert 'dj-change="toggle_setting"' in out
+
+    def test_switch_toggle(self):
+        """Test toggle method flips checked state."""
+        sw = Switch(name="opt", checked=False)
+        assert sw.checked is False
+        sw.toggle()
+        assert sw.checked is True
+        sw.toggle()
+        assert sw.checked is False
+
+    def test_switch_slider(self):
+        """Test switch has slider span."""
+        sw = Switch(name="opt")
+        out = sw._render_custom()
+        assert "dj-switch-slider" in out
+
+    def test_switch_html_escaping(self):
+        """Test label and name are HTML escaped."""
+        sw = Switch(name="<bad>", label="<script>xss</script>")
+        out = sw._render_custom()
+        assert "<script>" not in out
+        assert "&lt;script&gt;" in out
+        assert "&lt;bad&gt;" in out
+
+    def test_switch_custom_class(self):
+        """Test custom CSS class."""
+        sw = Switch(name="opt", custom_class="my-switch")
+        out = sw._render_custom()
+        assert "my-switch" in out
+
+    def test_switch_wraps_in_label(self):
+        """Test switch renders as a label element."""
+        sw = Switch(name="opt")
+        out = sw._render_custom()
+        assert out.startswith("<label")
+        assert out.endswith("</label>")
