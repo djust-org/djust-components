@@ -1526,4 +1526,54 @@ button.rating-star:hover ~ .rating-star { color: hsl(var(--muted-foreground) / 0
   .dj-filter-bar__date-range { flex-wrap: wrap; }
 }
 
+/* ==========================================================================
+   Avatar Group
+   Stacked overlapping avatar circles with "+N" overflow.
+   ========================================================================== */
+.dj-avatar-group { display: flex; align-items: center; }
+.dj-avatar-group__item { display: inline-flex; align-items: center; justify-content: center; border-radius: var(--dj-avatar-group-radius, 50%); border: var(--dj-avatar-group-border, 2px solid white); background: var(--dj-avatar-group-bg, hsl(var(--muted, 210 40% 96%))); color: var(--dj-avatar-group-fg, hsl(var(--foreground, 222 47% 11%))); overflow: hidden; font-weight: 600; cursor: default; }
+.dj-avatar-group__item + .dj-avatar-group__item { margin-inline-start: var(--dj-avatar-group-overlap, -0.75rem); }
+.dj-avatar-group__img { width: 100%; height: 100%; object-fit: cover; }
+.dj-avatar-group__initials { font-size: 0.75em; text-transform: uppercase; }
+.dj-avatar-group__overflow { font-size: 0.7em; background: hsl(var(--muted, 210 40% 96%)); color: hsl(var(--muted-foreground, 215 16% 47%)); }
+/* Sizes */
+.dj-avatar-group--sm .dj-avatar-group__item { width: 1.75rem; height: 1.75rem; }
+.dj-avatar-group--md .dj-avatar-group__item { width: var(--dj-avatar-group-size, 2.5rem); height: var(--dj-avatar-group-size, 2.5rem); }
+.dj-avatar-group--lg .dj-avatar-group__item { width: 3.25rem; height: 3.25rem; }
+
+/* ==========================================================================
+   Hover Card
+   Rich content popover on hover, GitHub-style user cards.
+   ========================================================================== */
+.dj-hover-card { position: relative; display: inline-block; }
+.dj-hover-card__trigger { cursor: pointer; border-bottom: 1px dashed hsl(var(--primary, 222 47% 51%)); }
+.dj-hover-card__content { display: none; position: absolute; z-index: 50; background: var(--dj-hover-card-bg, hsl(var(--background, 0 0% 100%))); border: 1px solid var(--dj-hover-card-border, hsl(var(--border, 214 32% 91%))); border-radius: var(--dj-hover-card-radius, 0.5rem); box-shadow: var(--dj-hover-card-shadow, 0 4px 12px rgba(0,0,0,0.1)); padding: var(--dj-hover-card-padding, 0.75rem 1rem); max-width: var(--dj-hover-card-max-width, 20rem); min-width: 12rem; white-space: normal; }
+.dj-hover-card:hover .dj-hover-card__content, .dj-hover-card:focus-within .dj-hover-card__content { display: block; }
+/* Positions */
+.dj-hover-card--bottom .dj-hover-card__content { top: 100%; left: 50%; transform: translateX(-50%); margin-top: 0.5rem; }
+.dj-hover-card--top .dj-hover-card__content { bottom: 100%; left: 50%; transform: translateX(-50%); margin-bottom: 0.5rem; }
+.dj-hover-card--left .dj-hover-card__content { right: 100%; top: 50%; transform: translateY(-50%); margin-right: 0.5rem; }
+.dj-hover-card--right .dj-hover-card__content { left: 100%; top: 50%; transform: translateY(-50%); margin-left: 0.5rem; }
+
+/* ==========================================================================
+   Notification Popover
+   Bell icon with unread badge + popover notification list.
+   ========================================================================== */
+.dj-notif-popover { position: relative; display: inline-block; }
+.dj-notif-popover__bell { position: relative; background: none; border: none; cursor: pointer; padding: var(--space-1, 0.25rem); color: hsl(var(--foreground, 222 47% 11%)); border-radius: var(--radius-sm, 0.25rem); }
+.dj-notif-popover__bell:hover { background: hsl(var(--accent, 210 40% 96%)); }
+.dj-notif-popover__icon { display: block; }
+.dj-notif-popover__badge { position: absolute; top: -0.25rem; right: -0.25rem; min-width: 1.15rem; height: 1.15rem; padding: 0 0.3rem; font-size: 0.625rem; font-weight: 700; line-height: 1.15rem; text-align: center; border-radius: 9999px; background: var(--dj-notif-popover-badge-bg, #ef4444); color: var(--dj-notif-popover-badge-fg, white); }
+.dj-notif-popover__panel { display: none; position: absolute; right: 0; top: 100%; margin-top: 0.5rem; width: var(--dj-notif-popover-width, 20rem); max-height: 24rem; overflow-y: auto; background: var(--dj-notif-popover-bg, hsl(var(--background, 0 0% 100%))); border: 1px solid var(--dj-notif-popover-border, hsl(var(--border, 214 32% 91%))); border-radius: var(--radius-md, 0.5rem); box-shadow: var(--dj-notif-popover-shadow, 0 4px 16px rgba(0,0,0,0.12)); z-index: 50; }
+.dj-notif-popover--open .dj-notif-popover__panel { display: block; }
+.dj-notif-popover__header { padding: 0.75rem 1rem; font-weight: 600; font-size: var(--text-sm, 0.875rem); border-bottom: 1px solid hsl(var(--border, 214 32% 91%)); }
+.dj-notif-popover__item { padding: 0.625rem 1rem; cursor: pointer; border-bottom: 1px solid hsl(var(--border, 214 32% 91%) / 0.5); }
+.dj-notif-popover__item:last-child { border-bottom: none; }
+.dj-notif-popover__item:hover { background: hsl(var(--accent, 210 40% 96%)); }
+.dj-notif-popover__item--read { opacity: 0.6; }
+.dj-notif-popover__item-title { font-weight: 600; font-size: var(--text-sm, 0.875rem); }
+.dj-notif-popover__item-body { font-size: var(--text-sm, 0.875rem); color: hsl(var(--muted-foreground, 215 16% 47%)); margin-top: 0.125rem; }
+.dj-notif-popover__item-time { font-size: var(--text-xs, 0.75rem); color: hsl(var(--muted-foreground, 215 16% 47%)); margin-top: 0.25rem; }
+.dj-notif-popover__empty { padding: 1.5rem 1rem; text-align: center; color: hsl(var(--muted-foreground, 215 16% 47%)); font-size: var(--text-sm, 0.875rem); }
+
 } /* end @layer djust-components */

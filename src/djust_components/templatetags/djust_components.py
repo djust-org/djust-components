@@ -7308,3 +7308,219 @@ def do_filter_search(parser, token):
     bits = token.split_contents()[1:]
     kwargs = _parse_kv_args(bits, parser)
     return FilterSearchNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Avatar Group
+# ---------------------------------------------------------------------------
+
+class AvatarGroupNode(template.Node):
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        users = kw.get("users", [])
+        max_display = int(kw.get("max", 5))
+        size = kw.get("size", "md")
+        custom_class = kw.get("class", "")
+
+        e_size = conditional_escape(str(size))
+        e_class = conditional_escape(str(custom_class))
+
+        visible = users[:max_display]
+        overflow = len(users) - max_display
+
+        avatars_html = []
+        for i, user in enumerate(visible):
+            if isinstance(user, dict):
+                name = user.get("name", "")
+                src = user.get("avatar", "") or user.get("src", "")
+            elif hasattr(user, "get_full_name"):
+                name = user.get_full_name() or str(user)
+                src = getattr(user, "avatar", "")
+                if hasattr(src, "url"):
+                    src = src.url
+            else:
+                name = str(user)
+                src = ""
+            e_name = conditional_escape(str(name))
+            e_src = conditional_escape(str(src))
+            initials = conditional_escape(
+                "".join(w[0].upper() for w in str(name).split()[:2] if w)
+            )
+            z = len(visible) - i
+            if e_src:
+                avatars_html.append(
+                    f'<span class="dj-avatar-group__item" title="{e_name}" style="z-index:{z}">'
+                    f'<img src="{e_src}" alt="{e_name}" class="dj-avatar-group__img">'
+                    f'</span>'
+                )
+            else:
+                avatars_html.append(
+                    f'<span class="dj-avatar-group__item dj-avatar-group__initials" '
+                    f'title="{e_name}" style="z-index:{z}">{initials}</span>'
+                )
+
+        overflow_html = ""
+        if overflow > 0:
+            overflow_html = (
+                f'<span class="dj-avatar-group__item dj-avatar-group__overflow">'
+                f'+{overflow}</span>'
+            )
+
+        cls = f"dj-avatar-group dj-avatar-group--{e_size}"
+        if e_class:
+            cls += f" {e_class}"
+        return mark_safe(
+            f'<div class="{cls}">{"".join(avatars_html)}{overflow_html}</div>'
+        )
+
+
+@register.tag("avatar_group")
+def do_avatar_group(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return AvatarGroupNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Hover Card
+# ---------------------------------------------------------------------------
+
+class HoverCardNode(template.Node):
+    def __init__(self, nodelist, kwargs):
+        self.nodelist = nodelist
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        trigger = kw.get("trigger", "")
+        position = kw.get("position", "bottom")
+        delay_in = kw.get("delay_in", 200)
+        delay_out = kw.get("delay_out", 300)
+        custom_class = kw.get("class", "")
+
+        e_trigger = conditional_escape(str(trigger))
+        e_position = conditional_escape(str(position))
+        e_class = conditional_escape(str(custom_class))
+
+        content = self.nodelist.render(context)
+
+        cls = f"dj-hover-card dj-hover-card--{e_position}"
+        if e_class:
+            cls += f" {e_class}"
+        return mark_safe(
+            f'<span class="{cls}" data-delay-in="{int(delay_in)}" '
+            f'data-delay-out="{int(delay_out)}">'
+            f'<span class="dj-hover-card__trigger">{e_trigger}</span>'
+            f'<div class="dj-hover-card__content">{content}</div>'
+            f'</span>'
+        )
+
+
+@register.tag("hover_card")
+def do_hover_card(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    nodelist = parser.parse(("endhover_card",))
+    parser.delete_first_token()
+    return HoverCardNode(nodelist, kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Notification Popover
+# ---------------------------------------------------------------------------
+
+class NotificationPopoverNode(template.Node):
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        notifications = kw.get("notifications", [])
+        unread_count = int(kw.get("unread_count", 0))
+        mark_read_event = kw.get("mark_read_event", "mark_read")
+        toggle_event = kw.get("toggle_event", "toggle_notifications")
+        is_open = kw.get("open", False)
+        custom_class = kw.get("class", "")
+        title = kw.get("title", "Notifications")
+
+        e_mark_read = conditional_escape(str(mark_read_event))
+        e_toggle = conditional_escape(str(toggle_event))
+        e_class = conditional_escape(str(custom_class))
+        e_title = conditional_escape(str(title))
+
+        badge_html = ""
+        if unread_count > 0:
+            display = "99+" if unread_count > 99 else str(unread_count)
+            badge_html = f'<span class="dj-notif-popover__badge">{display}</span>'
+
+        open_cls = "dj-notif-popover--open" if is_open else ""
+        cls = f"dj-notif-popover {open_cls}"
+        if e_class:
+            cls += f" {e_class}"
+
+        bell_html = (
+            f'<button class="dj-notif-popover__bell" dj-click="{e_toggle}" '
+            f'aria-label="Notifications">'
+            f'<svg class="dj-notif-popover__icon" viewBox="0 0 24 24" fill="none" '
+            f'stroke="currentColor" stroke-width="2" stroke-linecap="round" '
+            f'stroke-linejoin="round" width="20" height="20">'
+            f'<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>'
+            f'<path d="M13.73 21a2 2 0 0 1-3.46 0"/>'
+            f'</svg>'
+            f'{badge_html}'
+            f'</button>'
+        )
+
+        items_html = []
+        for notif in notifications:
+            if isinstance(notif, dict):
+                n_id = notif.get("id", "")
+                n_title = notif.get("title", "")
+                n_body = notif.get("body", notif.get("message", ""))
+                n_time = notif.get("time", "")
+                n_read = notif.get("read", False)
+            else:
+                n_id = getattr(notif, "id", "")
+                n_title = getattr(notif, "title", "")
+                n_body = getattr(notif, "body", getattr(notif, "message", ""))
+                n_time = getattr(notif, "time", "")
+                n_read = getattr(notif, "read", False)
+            e_n_id = conditional_escape(str(n_id))
+            e_n_title = conditional_escape(str(n_title))
+            e_n_body = conditional_escape(str(n_body))
+            e_n_time = conditional_escape(str(n_time))
+            read_cls = "dj-notif-popover__item--read" if n_read else ""
+            mark_attr = ""
+            if not n_read:
+                mark_attr = f' dj-click="{e_mark_read}" data-id="{e_n_id}"'
+            items_html.append(
+                f'<div class="dj-notif-popover__item {read_cls}"{mark_attr}>'
+                f'<div class="dj-notif-popover__item-title">{e_n_title}</div>'
+                f'<div class="dj-notif-popover__item-body">{e_n_body}</div>'
+                f'<div class="dj-notif-popover__item-time">{e_n_time}</div>'
+                f'</div>'
+            )
+
+        panel_html = ""
+        if is_open:
+            empty = ""
+            if not notifications:
+                empty = '<div class="dj-notif-popover__empty">No notifications</div>'
+            panel_html = (
+                f'<div class="dj-notif-popover__panel">'
+                f'<div class="dj-notif-popover__header">{e_title}</div>'
+                f'{"".join(items_html)}{empty}'
+                f'</div>'
+            )
+
+        return mark_safe(f'<div class="{cls}">{bell_html}{panel_html}</div>')
+
+
+@register.tag("notification_popover")
+def do_notification_popover(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return NotificationPopoverNode(kwargs)
