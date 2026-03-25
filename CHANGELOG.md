@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **CSS**: Styles for Combobox, Color Picker, Date Picker, and File Dropzone form control components — combobox with searchable dropdown and option hover/selected states, color picker with swatch grid/preview/hex input, date picker with calendar grid/nav/today/selected/range states, file dropzone with dashed border/drag-over highlight/file-count feedback
 - **CSS**: Styles for Popover, Sheet/Drawer, Context Menu, and Command Palette components — popover with positioned placement arrows and fade-scale transition, sheet/drawer with slide-in from left/right/bottom and backdrop overlay, context menu with absolute positioning and scale transition, command palette with modal overlay, search input, and scrollable results list
 - **CSS**: Styles for Kbd, Copy Button, Rating, Code Block, and Collapsible components — keyboard shortcut keys with raised-border look, star ratings with gold/muted coloring and hover effects, code blocks with header/filename/language/copy-button layout, and collapsible panels with animated icon and toggle visibility
 
