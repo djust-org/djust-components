@@ -1,0 +1,31 @@
+Files changed:
+
+1. src/djust_components/static/djust_components/components.css
+   - Added ~150 lines of CSS for 9 components under "Batch 4 — Data & Complex Interactive Components" section
+   - Notification Center: 18 rules (.notif-center, .notif-trigger, .notif-bell, .notif-badge, .notif-dropdown, .notif-header, .notif-title, .notif-list, .notif-item, .notif-item-unread, .notif-item-msg, .notif-item-time, .notif-empty, .notif-footer)
+   - Tree View: 10 rules (.tree, .tree-node, .tree-node-row, .tree-toggle, .tree-toggle-placeholder, .tree-node-label, .tree-node-selected, .tree-children, .tree-node-expanded)
+   - Gauge/Donut: 9 rules (.gauge, .gauge-track, .gauge-fill, .gauge-fill-{primary,success,warning,danger,info}, .gauge-value-text, .gauge-label)
+   - Image Carousel: 14 rules (.carousel, .carousel-empty, .carousel-track, .carousel-slide, .carousel-slide-active, .carousel-img, .carousel-caption, .carousel-btn, .carousel-btn-prev/next, .carousel-dots, .carousel-dot, .carousel-dot-active, .carousel-counter)
+   - Virtual List: 9 rules (.virtual-list, .vl-info, .vl-scroll, .vl-item, .vl-item-label, .vl-item-sub, .vl-load-more)
+   - Kanban Board: 16 rules (.kanban, .kanban-col, .kanban-col-over, .kanban-col-header, .kanban-col-title, .kanban-col-count, .kanban-cards, .kanban-card, .kanban-card-title, .kanban-card-sub, .kanban-card-label, .kanban-label-bug/feature/urgent, .kanban-add-card)
+   - Table of Contents: 8 rules (.toc, .toc-title, .toc-list, .toc-item, .toc-item-active, .toc-level-2, .toc-level-3)
+   - Split Pane: 8 rules (.split-pane, .split-pane-horizontal/vertical, .sp-pane, .sp-pane-1/2, .sp-handle, .sp-handle-horizontal/vertical)
+   - Rich Text Editor: 7 rules (.rte, .rte-toolbar, .rte-btn, .rte-sep, .rte-editor, placeholder pseudo, focus state)
+
+2. tests/test_css_batch4_data_complex.py (NEW)
+   - 75 tests across 9 test classes verifying CSS classes in rendered HTML output
+   - TestNotificationCenterCSS (12 tests)
+   - TestTreeViewCSS (11 tests)
+   - TestGaugeCSS (7 tests)
+   - TestCarouselCSS (10 tests)
+   - TestVirtualListCSS (7 tests)
+   - TestKanbanBoardCSS (11 tests)
+   - TestTableOfContentsCSS (6 tests)
+   - TestSplitPaneCSS (3 tests)
+   - TestRichTextEditorCSS (8 tests)
+
+3. CHANGELOG.md
+   - Added batch 4 CSS entry under [Unreleased] > Added
+
+4. .pipeline-state/feat-css-batch-4-data-complex-plan.md (NEW)
+   - Planning doc with class inventory and conventions
