@@ -97,6 +97,13 @@ from .export_dialog import ExportDialog
 from .import_wizard import ImportWizard
 from .audit_log import AuditLog
 from .error_boundary import ErrorBoundary
+from .sortable_list import SortableList
+from .sortable_grid import SortableGrid
+from .image_cropper import ImageCropper
+from .signature_pad import SignaturePad
+from .resizable_panel import ResizablePanel
+from .image_lightbox import ImageLightbox
+from .dashboard_grid import DashboardGrid
 
 __all__ = [
     "Alert",
@@ -164,4 +171,11 @@ __all__ = [
     "ImportWizard",
     "AuditLog",
     "ErrorBoundary",
+    "SortableList",
+    "SortableGrid",
+    "ImageCropper",
+    "SignaturePad",
+    "ResizablePanel",
+    "ImageLightbox",
+    "DashboardGrid",
 ]
