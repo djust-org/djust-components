@@ -129,6 +129,18 @@ from .live_indicator import LiveIndicator
 from .collab_selection import CollabSelection
 from .activity_feed import ActivityFeed
 from .reactions import Reactions
+from .map_picker import MapPicker
+from .prompt_editor import PromptEditor
+from .voice_input import VoiceInput
+from .cron_input import CronInput
+from .error_page import ErrorPage
+from .image_upload_preview import ImageUploadPreview
+from .animated_number import AnimatedNumber
+from .ribbon import Ribbon
+from .breadcrumb_dropdown import BreadcrumbDropdown
+from .data_card_grid import DataCardGrid
+from .agent_step import AgentStep
+from .qr_code import QRCode
 
 __all__ = [
     "Alert",
@@ -228,4 +240,16 @@ __all__ = [
     "CollabSelection",
     "ActivityFeed",
     "Reactions",
+    "MapPicker",
+    "PromptEditor",
+    "VoiceInput",
+    "CronInput",
+    "ErrorPage",
+    "ImageUploadPreview",
+    "AnimatedNumber",
+    "Ribbon",
+    "BreadcrumbDropdown",
+    "DataCardGrid",
+    "AgentStep",
+    "QRCode",
 ]
