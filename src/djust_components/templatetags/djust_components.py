@@ -5417,3 +5417,150 @@ def autocomplete(name="", label="", value="", display_value="",
         f'{error_html}'
         f'</div>'
     )
+
+
+# ---------------------------------------------------------------------------
+# Confirmation Dialog
+# ---------------------------------------------------------------------------
+
+class ConfirmDialogNode(template.Node):
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        message = kw.get("message", "Are you sure?")
+        confirm_event = kw.get("confirm_event", "confirm")
+        cancel_event = kw.get("cancel_event", "cancel")
+        title = kw.get("title", "Confirm")
+        is_open = kw.get("open", False)
+        variant = kw.get("variant", "default")  # default or danger
+        confirm_label = kw.get("confirm_label", "Confirm")
+        cancel_label = kw.get("cancel_label", "Cancel")
+        custom_class = kw.get("custom_class", "")
+
+        if not is_open:
+            return ""
+
+        e_confirm_event = conditional_escape(confirm_event)
+        e_cancel_event = conditional_escape(cancel_event)
+        e_title = conditional_escape(title)
+        e_message = conditional_escape(message)
+        e_variant = conditional_escape(variant)
+        e_confirm_label = conditional_escape(confirm_label)
+        e_cancel_label = conditional_escape(cancel_label)
+        e_custom_class = conditional_escape(custom_class)
+
+        variant_cls = f" dj-confirm-dialog--{e_variant}" if variant != "default" else ""
+        extra_cls = f" {e_custom_class}" if custom_class else ""
+
+        return mark_safe(
+            f'<div class="dj-confirm-dialog-backdrop" dj-click="{e_cancel_event}">'
+            f'<div class="dj-confirm-dialog{variant_cls}{extra_cls}" '
+            f'role="alertdialog" aria-modal="true" aria-labelledby="dj-confirm-title" '
+            f'aria-describedby="dj-confirm-msg" onclick="event.stopPropagation()">'
+            f'<div class="dj-confirm-dialog__header">'
+            f'<h3 class="dj-confirm-dialog__title" id="dj-confirm-title">{e_title}</h3>'
+            f'<button class="dj-confirm-dialog__close" dj-click="{e_cancel_event}" '
+            f'aria-label="Close">&times;</button>'
+            f'</div>'
+            f'<div class="dj-confirm-dialog__body" id="dj-confirm-msg">'
+            f'<p class="dj-confirm-dialog__message">{e_message}</p>'
+            f'</div>'
+            f'<div class="dj-confirm-dialog__footer">'
+            f'<button class="dj-confirm-dialog__btn dj-confirm-dialog__btn--cancel" '
+            f'dj-click="{e_cancel_event}">{e_cancel_label}</button>'
+            f'<button class="dj-confirm-dialog__btn dj-confirm-dialog__btn--confirm" '
+            f'dj-click="{e_confirm_event}">{e_confirm_label}</button>'
+            f'</div>'
+            f'</div>'
+            f'</div>'
+        )
+
+
+@register.tag("confirm_dialog")
+def do_confirm_dialog(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return ConfirmDialogNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Popconfirm
+# ---------------------------------------------------------------------------
+
+class PopconfirmNode(template.Node):
+    def __init__(self, nodelist, kwargs):
+        self.nodelist = nodelist
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        message = kw.get("message", "Are you sure?")
+        confirm_event = kw.get("confirm_event", "confirm")
+        cancel_event = kw.get("cancel_event", "cancel")
+        confirm_label = kw.get("confirm_label", "Yes")
+        cancel_label = kw.get("cancel_label", "No")
+        placement = kw.get("placement", "top")
+        variant = kw.get("variant", "default")  # default or danger
+        custom_class = kw.get("custom_class", "")
+        uid = kw.get("id", f"popconfirm-{uuid.uuid4().hex[:6]}")
+
+        content = self.nodelist.render(context)
+
+        e_message = conditional_escape(message)
+        e_confirm_event = conditional_escape(confirm_event)
+        e_cancel_event = conditional_escape(cancel_event)
+        e_confirm_label = conditional_escape(confirm_label)
+        e_cancel_label = conditional_escape(cancel_label)
+        e_placement = conditional_escape(placement)
+        e_variant = conditional_escape(variant)
+        e_custom_class = conditional_escape(custom_class)
+        e_uid = conditional_escape(uid)
+
+        variant_cls = f" dj-popconfirm--{e_variant}" if variant != "default" else ""
+        extra_cls = f" {e_custom_class}" if custom_class else ""
+
+        js_toggle = (
+            "(function(el){"
+            "var w=el.closest('.dj-popconfirm-wrapper');"
+            "w.classList.toggle('dj-popconfirm-open');"
+            "document.addEventListener('click',function h(e){"
+            "if(!w.contains(e.target)){"
+            "w.classList.remove('dj-popconfirm-open');"
+            "document.removeEventListener('click',h);"
+            "}},true);"
+            "})(this)"
+        )
+
+        js_close = (
+            "(function(el){"
+            "el.closest('.dj-popconfirm-wrapper').classList.remove('dj-popconfirm-open');"
+            "})(this)"
+        )
+
+        return mark_safe(
+            f'<div class="dj-popconfirm-wrapper{variant_cls}{extra_cls}" id="{e_uid}">'
+            f'<div class="dj-popconfirm-trigger" onclick="{js_toggle}">'
+            f'{content}'
+            f'</div>'
+            f'<div class="dj-popconfirm dj-popconfirm-{e_placement}" role="tooltip">'
+            f'<p class="dj-popconfirm__message">{e_message}</p>'
+            f'<div class="dj-popconfirm__actions">'
+            f'<button class="dj-popconfirm__btn dj-popconfirm__btn--cancel" '
+            f'onclick="{js_close}" dj-click="{e_cancel_event}">{e_cancel_label}</button>'
+            f'<button class="dj-popconfirm__btn dj-popconfirm__btn--confirm" '
+            f'onclick="{js_close}" dj-click="{e_confirm_event}">{e_confirm_label}</button>'
+            f'</div>'
+            f'</div>'
+            f'</div>'
+        )
+
+
+@register.tag("popconfirm")
+def do_popconfirm(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    nodelist = parser.parse(("endpopconfirm",))
+    parser.delete_first_token()
+    return PopconfirmNode(nodelist, kwargs)
