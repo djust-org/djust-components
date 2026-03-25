@@ -872,3 +872,75 @@ button.rating-star:hover ~ .rating-star { color: hsl(var(--muted-foreground) / 0
 .fieldset:disabled { opacity: 0.6; pointer-events: none; }
 .fieldset-legend { font-size: var(--text-sm); font-weight: var(--font-semibold); color: hsl(var(--foreground)); padding: 0 var(--space-2); }
 .fieldset-content { display: flex; flex-direction: column; gap: var(--space-4); }
+
+/* ═══ Toggle Group (#61) ═══ */
+.toggle-group { display: inline-flex; border: 1px solid hsl(var(--border)); border-radius: var(--radius-md); overflow: hidden; background: hsl(var(--muted) / 0.3); }
+.toggle-group-btn { display: inline-flex; align-items: center; gap: var(--space-1); padding: var(--space-2) var(--space-4); background: transparent; border: none; border-right: 1px solid hsl(var(--border)); color: hsl(var(--muted-foreground)); font-size: var(--text-sm); font-weight: var(--font-medium); cursor: pointer; transition: all var(--duration-fast) ease; }
+.toggle-group-btn:last-child { border-right: none; }
+.toggle-group-btn:hover:not(:disabled) { background: hsl(var(--accent)); color: hsl(var(--foreground)); }
+.toggle-group-btn--active { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+.toggle-group-btn--active:hover:not(:disabled) { background: hsl(var(--primary) / 0.85); }
+.toggle-group-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.toggle-group-sm .toggle-group-btn { padding: var(--space-1) var(--space-3); font-size: var(--text-xs); }
+.toggle-group-lg .toggle-group-btn { padding: var(--space-3) var(--space-6); font-size: var(--text-base); }
+.toggle-group-disabled { opacity: 0.6; pointer-events: none; }
+.toggle-group-icon { flex-shrink: 0; width: 1em; height: 1em; }
+.toggle-group-label { white-space: nowrap; }
+
+/* ═══ Floating Action Button (#65) ═══ */
+.fab-container { position: fixed; z-index: 50; display: flex; flex-direction: column-reverse; align-items: center; gap: var(--space-3); }
+.fab-bottom-right { bottom: var(--space-6); right: var(--space-6); }
+.fab-bottom-left { bottom: var(--space-6); left: var(--space-6); }
+.fab-top-right { top: var(--space-6); right: var(--space-6); flex-direction: column; }
+.fab-top-left { top: var(--space-6); left: var(--space-6); flex-direction: column; }
+.fab { display: inline-flex; align-items: center; justify-content: center; width: 3.5rem; height: 3.5rem; border: none; border-radius: 50%; font-size: 1.5rem; cursor: pointer; box-shadow: var(--shadow-lg); transition: all var(--duration-normal) ease; }
+.fab-primary { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+.fab-primary:hover:not(:disabled) { background: hsl(var(--primary) / 0.85); box-shadow: var(--shadow-xl, var(--shadow-lg)); }
+.fab-secondary { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+.fab-secondary:hover:not(:disabled) { background: hsl(var(--accent)); }
+.fab-danger { background: hsl(var(--destructive)); color: hsl(var(--destructive-foreground, 0 0% 100%)); }
+.fab-danger:hover:not(:disabled) { background: hsl(var(--destructive) / 0.85); }
+.fab-success { background: hsl(var(--success)); color: hsl(0 0% 100%); }
+.fab-success:hover:not(:disabled) { background: hsl(var(--success) / 0.85); }
+.fab-sm { width: 2.5rem; height: 2.5rem; font-size: 1rem; }
+.fab-lg { width: 4.5rem; height: 4.5rem; font-size: 2rem; }
+.fab:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+.fab-icon { display: flex; align-items: center; justify-content: center; }
+.fab-actions { display: flex; flex-direction: column-reverse; align-items: center; gap: var(--space-2); }
+.fab-top-right .fab-actions, .fab-top-left .fab-actions { flex-direction: column; }
+.fab-action { display: inline-flex; align-items: center; justify-content: center; width: 2.5rem; height: 2.5rem; border: none; border-radius: 50%; background: hsl(var(--card)); color: hsl(var(--foreground)); box-shadow: var(--shadow-md); cursor: pointer; transition: all var(--duration-fast) ease; }
+.fab-action:hover:not(:disabled) { background: hsl(var(--accent)); box-shadow: var(--shadow-lg); }
+.fab-action:disabled { opacity: 0.5; cursor: not-allowed; }
+.fab-action-icon { display: flex; align-items: center; justify-content: center; font-size: var(--text-sm); }
+
+/* ═══ Split Button (#133) ═══ */
+.split-btn { position: relative; display: inline-flex; border-radius: var(--radius-md); overflow: visible; }
+.split-btn-primary { display: inline-flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-4); border: none; border-radius: var(--radius-md) 0 0 var(--radius-md); font-size: var(--text-sm); font-weight: var(--font-medium); cursor: pointer; transition: all var(--duration-fast) ease; }
+.split-btn-toggle { display: inline-flex; align-items: center; justify-content: center; padding: var(--space-2) var(--space-2); border: none; border-left: 1px solid rgba(255,255,255,0.2); border-radius: 0 var(--radius-md) var(--radius-md) 0; cursor: pointer; transition: all var(--duration-fast) ease; }
+.split-btn-caret { font-size: 0.75em; }
+.split-btn-label { white-space: nowrap; }
+.split-btn-primary { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+.split-btn-primary:hover:not(:disabled) { background: hsl(var(--primary) / 0.85); }
+.split-btn-toggle { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+.split-btn-toggle:hover:not(:disabled) { background: hsl(var(--primary) / 0.75); }
+.split-btn-secondary .split-btn-primary, .split-btn-secondary .split-btn-toggle { background: hsl(var(--muted)); color: hsl(var(--foreground)); border-left-color: hsl(var(--border)); }
+.split-btn-secondary .split-btn-primary:hover:not(:disabled) { background: hsl(var(--accent)); }
+.split-btn-secondary .split-btn-toggle:hover:not(:disabled) { background: hsl(var(--accent)); }
+.split-btn-danger .split-btn-primary, .split-btn-danger .split-btn-toggle { background: hsl(var(--destructive)); color: hsl(var(--destructive-foreground, 0 0% 100%)); }
+.split-btn-danger .split-btn-primary:hover:not(:disabled) { background: hsl(var(--destructive) / 0.85); }
+.split-btn-danger .split-btn-toggle:hover:not(:disabled) { background: hsl(var(--destructive) / 0.75); }
+.split-btn-success .split-btn-primary, .split-btn-success .split-btn-toggle { background: hsl(var(--success)); color: hsl(0 0% 100%); }
+.split-btn-success .split-btn-primary:hover:not(:disabled) { background: hsl(var(--success) / 0.85); }
+.split-btn-success .split-btn-toggle:hover:not(:disabled) { background: hsl(var(--success) / 0.75); }
+.split-btn-sm .split-btn-primary { padding: var(--space-1) var(--space-3); font-size: var(--text-xs); }
+.split-btn-sm .split-btn-toggle { padding: var(--space-1) var(--space-1); }
+.split-btn-lg .split-btn-primary { padding: var(--space-3) var(--space-6); font-size: var(--text-base); }
+.split-btn-lg .split-btn-toggle { padding: var(--space-3) var(--space-3); }
+.split-btn-primary:disabled, .split-btn-toggle:disabled { opacity: 0.5; cursor: not-allowed; }
+.split-btn-loading .split-btn-primary { pointer-events: none; opacity: 0.75; }
+.split-btn-spinner { display: inline-block; width: 1em; height: 1em; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite; }
+.split-btn-menu { position: absolute; top: 100%; left: 0; right: 0; z-index: 40; margin-top: var(--space-1); padding: var(--space-1); background: hsl(var(--card) / 0.95); backdrop-filter: blur(20px); border: 1px solid hsl(var(--border)); border-radius: var(--radius-md); box-shadow: var(--shadow-lg); opacity: 0; visibility: hidden; transform: translateY(calc(-1 * var(--space-1))); transition: all var(--duration-normal) ease; }
+.split-btn-menu[data-open="true"] { opacity: 1; visibility: visible; transform: translateY(0); }
+.split-btn-option { display: block; width: 100%; padding: var(--space-2) var(--space-3); background: transparent; border: none; border-radius: var(--radius-sm); color: hsl(var(--muted-foreground)); font-size: var(--text-sm); text-align: left; cursor: pointer; transition: all var(--duration-fast) ease; }
+.split-btn-option:hover:not(:disabled) { background: hsl(var(--accent)); color: hsl(var(--foreground)); }
+.split-btn-option:disabled { opacity: 0.5; cursor: not-allowed; }

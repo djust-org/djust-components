@@ -2249,3 +2249,201 @@ BLOCK_HANDLERS.extend([
     ("dj_label", "enddj_label", DjLabelHandler()),
     ("fieldset", "endfieldset", FieldsetHandler()),
 ])
+
+
+# ===========================================================================
+# BUTTON & CONTROL VARIANT HANDLERS
+# ===========================================================================
+
+
+class ToggleGroupHandler:
+    """Inline handler for {% toggle_group name=... options=... value=... %}"""
+    def render(self, args, context):
+        kw = _parse_args(args, context)
+        name = conditional_escape(kw.get("name", ""))
+        options = kw.get("options", [])
+        if not isinstance(options, (list, tuple)):
+            options = []
+        value = kw.get("value", "")
+        # In multi mode, value can be a list
+        mode = kw.get("mode", "single")
+        event = conditional_escape(kw.get("event", "toggle_select"))
+        disabled = kw.get("disabled", False)
+        size = kw.get("size", "md")
+
+        size_cls = ""
+        if size and size != "md":
+            size_cls = f" toggle-group-{conditional_escape(size)}"
+        disabled_cls = " toggle-group-disabled" if disabled else ""
+
+        buttons = []
+        for opt in options:
+            if not isinstance(opt, dict):
+                continue
+            opt_value = conditional_escape(str(opt.get("value", "")))
+            opt_label = conditional_escape(str(opt.get("label", "")))
+            opt_icon = opt.get("icon", "")
+
+            # Determine if this option is active
+            if mode == "multi" and isinstance(value, (list, tuple)):
+                is_active = opt.get("value", "") in value
+            else:
+                is_active = str(opt.get("value", "")) == str(value)
+
+            active_cls = " toggle-group-btn--active" if is_active else ""
+            aria_pressed = "true" if is_active else "false"
+            disabled_attr = " disabled" if disabled else ""
+            click_attr = "" if disabled else f' dj-click="{event}" data-value="{opt_value}"'
+
+            icon_html = ""
+            if opt_icon:
+                icon_html = f'<span class="toggle-group-icon">{conditional_escape(str(opt_icon))}</span>'
+
+            buttons.append(
+                f'<button class="toggle-group-btn{active_cls}" '
+                f'aria-pressed="{aria_pressed}" '
+                f'data-name="{name}"{click_attr}{disabled_attr}>'
+                f'{icon_html}'
+                f'<span class="toggle-group-label">{opt_label}</span>'
+                f'</button>'
+            )
+
+        return mark_safe(
+            f'<div class="toggle-group{size_cls}{disabled_cls}" '
+            f'role="group" data-mode="{conditional_escape(mode)}">'
+            f'{"".join(buttons)}'
+            f'</div>'
+        )
+
+
+class FabHandler:
+    """Inline handler for {% fab icon=... event=... position=... %}"""
+    def render(self, args, context):
+        kw = _parse_args(args, context)
+        icon = conditional_escape(kw.get("icon", "+"))
+        event = conditional_escape(kw.get("event", ""))
+        position = kw.get("position", "bottom-right")
+        label = conditional_escape(kw.get("label", ""))
+        size = kw.get("size", "md")
+        variant = kw.get("variant", "primary")
+        disabled = kw.get("disabled", False)
+        actions = kw.get("actions", [])
+        if not isinstance(actions, (list, tuple)):
+            actions = []
+
+        valid_positions = ("bottom-right", "bottom-left", "top-right", "top-left")
+        pos_cls = position if position in valid_positions else "bottom-right"
+        pos_cls = conditional_escape(pos_cls)
+
+        size_cls = ""
+        if size and size != "md":
+            size_cls = f" fab-{conditional_escape(size)}"
+        variant_cls = f" fab-{conditional_escape(variant)}"
+        disabled_attr = " disabled" if disabled else ""
+        click_attr = "" if disabled or not event else f' dj-click="{event}"'
+        aria_label = f' aria-label="{label}"' if label else ""
+
+        # Speed-dial sub-actions
+        actions_html = ""
+        if actions:
+            action_items = []
+            for act in actions:
+                if not isinstance(act, dict):
+                    continue
+                act_icon = conditional_escape(str(act.get("icon", "")))
+                act_event = conditional_escape(str(act.get("event", "")))
+                act_label = conditional_escape(str(act.get("label", "")))
+                act_click = f' dj-click="{act_event}"' if act_event and not disabled else ""
+                act_aria = f' aria-label="{act_label}"' if act_label else ""
+                action_items.append(
+                    f'<button class="fab-action"{act_click}{act_aria}{disabled_attr}>'
+                    f'<span class="fab-action-icon">{act_icon}</span>'
+                    f'</button>'
+                )
+            if action_items:
+                actions_html = (
+                    f'<div class="fab-actions">{"".join(action_items)}</div>'
+                )
+
+        return mark_safe(
+            f'<div class="fab-container fab-{pos_cls}">'
+            f'{actions_html}'
+            f'<button class="fab{size_cls}{variant_cls}"{click_attr}{aria_label}{disabled_attr}>'
+            f'<span class="fab-icon">{icon}</span>'
+            f'</button>'
+            f'</div>'
+        )
+
+
+class SplitButtonHandler:
+    """Inline handler for {% split_button label=... event=... options=... %}"""
+    def render(self, args, context):
+        kw = _parse_args(args, context)
+        label = conditional_escape(kw.get("label", ""))
+        event = conditional_escape(kw.get("event", ""))
+        options = kw.get("options", [])
+        if not isinstance(options, (list, tuple)):
+            options = []
+        variant = kw.get("variant", "primary")
+        size = kw.get("size", "md")
+        disabled = kw.get("disabled", False)
+        loading = kw.get("loading", False)
+        is_open = kw.get("open", False)
+        toggle_event = conditional_escape(kw.get("toggle_event", "toggle_split_menu"))
+
+        variant_cls = f" split-btn-{conditional_escape(variant)}"
+        size_cls = ""
+        if size and size != "md":
+            size_cls = f" split-btn-{conditional_escape(size)}"
+        loading_cls = " split-btn-loading" if loading else ""
+        disabled_attr = " disabled" if disabled or loading else ""
+        click_attr = "" if disabled or loading or not event else f' dj-click="{event}"'
+
+        spinner_html = '<span class="split-btn-spinner"></span>' if loading else ""
+
+        # Build option items
+        option_items = []
+        for opt in options:
+            if not isinstance(opt, dict):
+                continue
+            opt_label = conditional_escape(str(opt.get("label", "")))
+            opt_event = conditional_escape(str(opt.get("event", "")))
+            opt_click = f' dj-click="{opt_event}"' if opt_event and not disabled else ""
+            opt_disabled = " disabled" if disabled else ""
+            option_items.append(
+                f'<button class="split-btn-option"{opt_click}{opt_disabled}>'
+                f'{opt_label}</button>'
+            )
+
+        open_data = "true" if is_open else "false"
+        toggle_disabled = " disabled" if disabled or loading else ""
+        toggle_click = "" if disabled or loading else f' dj-click="{toggle_event}"'
+
+        menu_html = ""
+        if option_items:
+            menu_html = (
+                f'<div class="split-btn-menu" data-open="{open_data}">'
+                f'{"".join(option_items)}'
+                f'</div>'
+            )
+
+        return mark_safe(
+            f'<div class="split-btn{variant_cls}{size_cls}{loading_cls}">'
+            f'<button class="split-btn-primary"{click_attr}{disabled_attr}>'
+            f'{spinner_html}'
+            f'<span class="split-btn-label">{label}</span>'
+            f'</button>'
+            f'<button class="split-btn-toggle"{toggle_click}{toggle_disabled}>'
+            f'<span class="split-btn-caret">&#9662;</span>'
+            f'</button>'
+            f'{menu_html}'
+            f'</div>'
+        )
+
+
+# Register button & control variant inline handlers
+INLINE_HANDLERS.extend([
+    ("toggle_group", ToggleGroupHandler()),
+    ("fab", FabHandler()),
+    ("split_button", SplitButtonHandler()),
+])

@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Button & Control Variants**: 3 new components with Django template tags, Rust engine handlers, CSS, and full test + XSS coverage:
+  - **Toggle Group** (`{% toggle_group %}`) — Segmented button group with single/multi select mode, icon support, size variants, ARIA pressed state; supports `name`, `options`, `value`, `event`, `mode`, `disabled`, `size`
+  - **Floating Action Button** (`{% fab %}`) — Fixed-position FAB with optional speed-dial sub-actions, position variants (4 corners), size/variant/disabled support; supports `icon`, `event`, `position`, `label`, `size`, `variant`, `disabled`, `actions`
+  - **Split Button** (`{% split_button %}`) — Primary action + dropdown for secondary actions with loading spinner, open/closed menu state, variant/size support; supports `label`, `event`, `options`, `variant`, `size`, `disabled`, `loading`, `open`, `toggle_event`
+
 - **Form Input Components**: 7 new form-related components with Django template tags, Rust engine handlers, CSS, and 94 tests (including XSS escaping coverage):
   - **Multi-select** (`{% multi_select %}`) — Checkbox list with client-side search filtering and tag output for selected values; supports `options`, `selected`, `event`, `placeholder`, `disabled`
   - **OTP Input** (`{% otp_input %}`) — One-time-code input with individual digit boxes (4/6/custom), hidden input for form submission, `inputmode="numeric"`; supports `digits`, `event`, `label`, `disabled`
