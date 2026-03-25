@@ -384,6 +384,279 @@
    Integration with djust-theming
    ============================================================================ */
 
+/* ============================================================================
+   Notification Badge Component
+   ============================================================================ */
+
+.dj-notification-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.375rem;
+  font-size: var(--dj-notification-badge-font-size, 0.625rem);
+  font-weight: 600;
+  line-height: 1;
+  border-radius: 9999px;
+  background: var(--dj-notification-badge-bg, hsl(var(--destructive, 0 84% 60%)));
+  color: var(--dj-notification-badge-fg, #fff);
+  white-space: nowrap;
+}
+
+.dj-notification-badge--sm {
+  min-width: 1rem;
+  height: 1rem;
+  padding: 0 0.25rem;
+  font-size: 0.5rem;
+}
+
+.dj-notification-badge--lg {
+  min-width: 1.5rem;
+  height: 1.5rem;
+  padding: 0 0.5rem;
+  font-size: 0.75rem;
+}
+
+.dj-notification-badge--dot {
+  min-width: var(--dj-notification-badge-size, 0.5rem);
+  width: var(--dj-notification-badge-size, 0.5rem);
+  height: var(--dj-notification-badge-size, 0.5rem);
+  padding: 0;
+}
+
+.dj-notification-badge--dot.dj-notification-badge--sm {
+  min-width: 0.375rem;
+  width: 0.375rem;
+  height: 0.375rem;
+}
+
+.dj-notification-badge--dot.dj-notification-badge--lg {
+  min-width: 0.75rem;
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+.dj-notification-badge--pulse {
+  animation: dj-notification-badge-pulse 2s ease-in-out infinite;
+}
+
+@keyframes dj-notification-badge-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.1); }
+}
+
+/* ============================================================================
+   Segmented Progress Component
+   ============================================================================ */
+
+.dj-segmented-progress {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.dj-segmented-progress__step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.dj-segmented-progress__indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 2px solid;
+  transition: all 0.2s ease;
+}
+
+.dj-segmented-progress--sm .dj-segmented-progress__indicator {
+  width: 1.5rem;
+  height: 1.5rem;
+  font-size: 0.625rem;
+}
+
+.dj-segmented-progress--lg .dj-segmented-progress__indicator {
+  width: 2.5rem;
+  height: 2.5rem;
+  font-size: 0.875rem;
+}
+
+.dj-segmented-progress__label {
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground, 215 14% 46%));
+  white-space: nowrap;
+}
+
+.dj-segmented-progress--sm .dj-segmented-progress__label {
+  font-size: 0.625rem;
+}
+
+.dj-segmented-progress--lg .dj-segmented-progress__label {
+  font-size: 0.875rem;
+}
+
+.dj-segmented-progress__step--completed .dj-segmented-progress__indicator {
+  background: var(--dj-segmented-progress-completed-bg, hsl(var(--success, 142 71% 45%)));
+  border-color: var(--dj-segmented-progress-completed-bg, hsl(var(--success, 142 71% 45%)));
+  color: #fff;
+}
+
+.dj-segmented-progress__step--active .dj-segmented-progress__indicator {
+  background: var(--dj-segmented-progress-active-bg, hsl(var(--primary, 221 83% 53%)));
+  border-color: var(--dj-segmented-progress-active-bg, hsl(var(--primary, 221 83% 53%)));
+  color: #fff;
+}
+
+.dj-segmented-progress__step--pending .dj-segmented-progress__indicator {
+  background: transparent;
+  border-color: var(--dj-segmented-progress-pending-bg, hsl(var(--muted, 220 13% 91%)));
+  color: hsl(var(--muted-foreground, 215 14% 46%));
+}
+
+.dj-segmented-progress__step--active .dj-segmented-progress__label {
+  color: hsl(var(--foreground, 222 47% 11%));
+  font-weight: 600;
+}
+
+.dj-segmented-progress__connector {
+  flex: 1;
+  height: 2px;
+  min-width: 2rem;
+  margin: 0 0.5rem;
+  margin-bottom: 1.5rem;
+  transition: background 0.2s ease;
+}
+
+.dj-segmented-progress__connector--completed {
+  background: var(--dj-segmented-progress-completed-bg, hsl(var(--success, 142 71% 45%)));
+}
+
+.dj-segmented-progress__connector--pending {
+  background: var(--dj-segmented-progress-pending-bg, hsl(var(--muted, 220 13% 91%)));
+}
+
+/* ============================================================================
+   Progress Circle Component
+   ============================================================================ */
+
+.dj-progress-circle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dj-progress-circle__track {
+  stroke: var(--dj-progress-circle-track, hsl(var(--muted, 220 13% 91%)));
+}
+
+.dj-progress-circle__fill {
+  stroke: var(--dj-progress-circle-fill, hsl(var(--primary, 221 83% 53%)));
+  transition: stroke-dashoffset 0.6s ease;
+}
+
+.dj-progress-circle--success .dj-progress-circle__fill {
+  stroke: hsl(var(--success, 142 71% 45%));
+}
+
+.dj-progress-circle--warning .dj-progress-circle__fill {
+  stroke: hsl(var(--warning, 38 92% 50%));
+}
+
+.dj-progress-circle--danger .dj-progress-circle__fill {
+  stroke: hsl(var(--destructive, 0 84% 60%));
+}
+
+.dj-progress-circle__value {
+  fill: var(--dj-progress-circle-value-color, hsl(var(--foreground, 222 47% 11%)));
+  font-weight: 600;
+}
+
+/* ============================================================================
+   Status Indicator Component
+   ============================================================================ */
+
+.dj-status-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dj-status-indicator--sm {
+  gap: 0.375rem;
+}
+
+.dj-status-indicator--lg {
+  gap: 0.625rem;
+}
+
+.dj-status-indicator__dot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  flex-shrink: 0;
+}
+
+.dj-status-indicator--sm .dj-status-indicator__dot {
+  width: 0.375rem;
+  height: 0.375rem;
+}
+
+.dj-status-indicator--lg .dj-status-indicator__dot {
+  width: 0.625rem;
+  height: 0.625rem;
+}
+
+.dj-status-indicator--green .dj-status-indicator__dot {
+  background: var(--dj-status-indicator-green, hsl(var(--success, 142 71% 45%)));
+}
+
+.dj-status-indicator--yellow .dj-status-indicator__dot {
+  background: var(--dj-status-indicator-yellow, hsl(var(--warning, 38 92% 50%)));
+}
+
+.dj-status-indicator--red .dj-status-indicator__dot {
+  background: var(--dj-status-indicator-red, hsl(var(--destructive, 0 84% 60%)));
+}
+
+.dj-status-indicator--blue .dj-status-indicator__dot {
+  background: var(--dj-status-indicator-blue, hsl(var(--info, 217 91% 60%)));
+}
+
+.dj-status-indicator--gray .dj-status-indicator__dot {
+  background: hsl(var(--muted-foreground, 215 14% 46%));
+}
+
+.dj-status-indicator__label {
+  font-size: 0.875rem;
+  color: hsl(var(--foreground, 222 47% 11%));
+}
+
+.dj-status-indicator--sm .dj-status-indicator__label {
+  font-size: 0.75rem;
+}
+
+.dj-status-indicator--lg .dj-status-indicator__label {
+  font-size: 1rem;
+}
+
+.dj-status-indicator--pulse .dj-status-indicator__dot {
+  animation: dj-status-indicator-pulse 2s ease-in-out infinite;
+}
+
+@keyframes dj-status-indicator-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.2); }
+}
+
 /*
  * When djust-theming is installed, it will provide CSS custom properties
  * that these components can use:

@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Status/Progress Indicators**: 4 new components with Django template tags, Rust engine handlers, component classes, CSS, and 74 tests (including XSS coverage):
+  - **Notification Badge** (`{% notification_badge count=5 %}`) — Small count badge for icons/buttons with dot-only mode, max count overflow (99+), pulse animation; supports `count`, `max`, `dot`, `pulse`, `size`, `custom_class`
+  - **Segmented Progress** (`{% segmented_progress steps=steps current=2 %}`) — Multi-step progress bar with labeled segments, numbered indicators, and connector lines; supports string or dict steps, `current`, `size`, `custom_class`
+  - **Progress Circle** (`{% progress_circle value=65 size="md" %}`) — SVG circular progress indicator with stroke-dasharray animation, percentage text, ARIA progressbar role; supports `value`, `size` (sm/md/lg), `color` (primary/success/warning/danger), `show_value`, `custom_class`
+  - **Status Indicator** (`{% status_indicator status="online" label="API" %}`) — Colored dot with optional label and pulse animation; maps online=green, degraded=yellow, offline=red, maintenance=blue; supports `status`, `label`, `pulse`, `size`, `custom_class`
+
 - **Display/Layout Primitives**: 5 new components with Django template tags, CSS, and full test + XSS coverage:
   - **Scroll Area** (`{% scroll_area %}...{% endscroll_area %}`) — Custom-styled scrollbar container with `max_height` prop, CSS custom properties for thumb/track colors, and thin-scrollbar support; `max_height`, `custom_class`
   - **Callout / Blockquote** (`{% callout %}...{% endcallout %}`) — Styled content block with colored left border, icon, and title; type variants (info/warning/danger/success) with auto-icons; `type`, `title`, `icon`, `custom_class`
