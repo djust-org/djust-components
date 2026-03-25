@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **CSS @layer adoption**: All component CSS (`components.css`, `components-classes.css`) is now wrapped in `@layer djust-components`, giving consumers explicit control over cascade precedence when overriding styles
+- **Animation consistency**: Consolidated 17 scattered `@keyframes` declarations into 9 shared keyframes (`dj-spin`, `dj-pulse`, `dj-fade`, `dj-shimmer`, `dj-slide-in-right`, `dj-slide-in-up`, `dj-slide-out-up`, `dj-flash`, `dj-counter-roll`) defined once outside the layer; all components now reference these shared animations with consistent naming
+- **RTL support via logical properties**: Replaced physical CSS properties (`padding-left`/`padding-right`, `margin-left`/`margin-right`, `border-left`/`border-right`, `text-align: left`, directional `border-radius`) with CSS logical property equivalents (`padding-inline-start`/`padding-inline-end`, `margin-inline-start`/`margin-inline-end`, `border-inline-start`/`border-inline-end`, `text-align: start`, `border-start-end-radius`, etc.) across all flow-relative contexts — components now render correctly in RTL layouts without additional CSS
+- **Hardcoded transition durations**: Replaced remaining hardcoded `0.3s` and `0.2s` transition durations in accordion and collapsible icons with design token variables (`--duration-normal`, `--duration-fast`)
+
 ### Added
 - **Page Header** (`{% page_header title="Products" subtitle="Manage inventory" %}{% page_header_actions %}...{% endpage_header_actions %}{% endpage_header %}`): Structured page-level header with title, optional subtitle, optional description, optional breadcrumb slot (direct child content), and right-aligned action buttons area via nested `{% page_header_actions %}` block tag. Responsive: actions stack below title on mobile (640px breakpoint). Template tags, Rust engine handlers (`PageHeaderHandler`, `PageHeaderActionsHandler`), CSS with flexbox layout, and tests including XSS coverage (#179)
 - **Icon System** (`{% icon name="check" size="md" set="heroicons" %}`): Shared SVG icon rendering primitive with bundled Heroicons Outline set (60+ icons). Four size presets: xs (12px), sm (16px), md (20px), lg (24px). Extensible via `DJUST_COMPONENTS_ICON_SETS` Django setting for custom icon sets. Python helper `render_icon(name, size, ...)` for use in Rust handlers and component classes — eliminates inline SVG paths. Template tag, Rust handler, CSS size classes, and 34 tests including XSS coverage (#178)
