@@ -5,6 +5,8 @@
  * Uses CSS custom properties with sensible fallbacks.
  */
 
+@layer djust-components {
+
 /* ============================================================================
    Badge Component
    ============================================================================ */
@@ -105,11 +107,11 @@
 
 /* Animation variants */
 .dj-status-dot-pulse {
-  animation: dj-status-dot-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  animation: dj-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 .dj-status-dot-spin {
-  animation: dj-status-dot-spin 1s linear infinite;
+  animation: dj-spin 1s linear infinite;
   /* Note: Spin works better with a non-circular shape like a crescent */
   background: linear-gradient(
     to right,
@@ -119,38 +121,10 @@
 }
 
 .dj-status-dot-fade {
-  animation: dj-status-dot-fade 2s ease-in-out infinite;
+  animation: dj-fade 2s ease-in-out infinite;
 }
 
-/* Keyframes */
-@keyframes dj-status-dot-pulse {
-  0%, 100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.5;
-    transform: scale(1.1);
-  }
-}
-
-@keyframes dj-status-dot-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes dj-status-dot-fade {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.3;
-  }
-}
+/* Keyframes — uses shared dj-spin, dj-pulse, dj-fade from components.css */
 
 /* ============================================================================
    Button Component
@@ -260,13 +234,7 @@
   border: 2px solid currentColor;
   border-right-color: transparent;
   border-radius: 50%;
-  animation: dj-btn-spin 0.6s linear infinite;
-}
-
-@keyframes dj-btn-spin {
-  to {
-    transform: rotate(360deg);
-  }
+  animation: dj-spin 0.6s linear infinite;
 }
 
 /* Icon positioning */
@@ -438,12 +406,7 @@
 }
 
 .dj-notification-badge--pulse {
-  animation: dj-notification-badge-pulse 2s ease-in-out infinite;
-}
-
-@keyframes dj-notification-badge-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.7; transform: scale(1.1); }
+  animation: dj-pulse 2s ease-in-out infinite;
 }
 
 /* ============================================================================
@@ -649,12 +612,7 @@
 }
 
 .dj-status-indicator--pulse .dj-status-indicator__dot {
-  animation: dj-status-indicator-pulse 2s ease-in-out infinite;
-}
-
-@keyframes dj-status-indicator-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(1.2); }
+  animation: dj-pulse 2s ease-in-out infinite;
 }
 
 /*
@@ -676,3 +634,5 @@
  * This CSS uses fallbacks so components work without theming,
  * but automatically pick up theme tokens when available.
  */
+
+} /* end @layer djust-components */
