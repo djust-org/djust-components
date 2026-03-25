@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **CSS**: Styles for Kbd, Copy Button, Rating, Code Block, and Collapsible components — keyboard shortcut keys with raised-border look, star ratings with gold/muted coloring and hover effects, code blocks with header/filename/language/copy-button layout, and collapsible panels with animated icon and toggle visibility
+
 ### Fixed
 - **Virtual List**: Rust handler now deserializes JSON strings for `items` when the Rust engine passes list-of-dicts as serialized JSON
 - **Kanban Board**: Rust handler now deserializes JSON strings for `columns` (same fix as Virtual List)

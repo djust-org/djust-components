@@ -227,3 +227,110 @@ class TestSplitPaneHandler:
         assert "split-pane" in result
         assert "pane content" in result
         assert isinstance(result, SafeData)
+
+
+# ─── CSS class presence tests for Batch 1 components ───
+
+
+class TestKbdHandlerCSS:
+    def test_kbd_classes_present(self):
+        from djust_components.rust_handlers import KbdHandler
+        handler = KbdHandler()
+        result = handler.render(["Ctrl", "K"], {})
+        assert "kbd-group" in result
+        assert "kbd" in result
+        assert "kbd-sep" in result
+
+    def test_kbd_single_key(self):
+        from djust_components.rust_handlers import KbdHandler
+        handler = KbdHandler()
+        result = handler.render(["Enter"], {})
+        assert "kbd-group" in result
+        assert "kbd" in result
+        # Single key should not have a separator
+        assert "kbd-sep" not in result
+
+
+class TestCopyButtonHandlerCSS:
+    def test_copy_button_classes_present(self):
+        from djust_components.rust_handlers import CopyButtonHandler
+        handler = CopyButtonHandler()
+        result = handler.render(['text="hello"'], {})
+        assert "copy-btn" in result
+        assert "btn" in result
+        assert "btn-outline" in result
+        assert "btn-sm" in result
+
+    def test_copy_button_variant_class(self):
+        from djust_components.rust_handlers import CopyButtonHandler
+        handler = CopyButtonHandler()
+        result = handler.render(['text="hello"', 'variant="primary"'], {})
+        assert "btn-primary" in result
+        assert "copy-btn" in result
+
+
+class TestRatingHandlerCSS:
+    def test_rating_classes_present(self):
+        from djust_components.rust_handlers import RatingHandler
+        handler = RatingHandler()
+        result = handler.render(['value=3', 'max_stars=5'], {})
+        assert "rating" in result
+        assert "rating-star" in result
+        assert "rating-star-full" in result
+        assert "rating-star-empty" in result
+
+    def test_rating_readonly_uses_spans(self):
+        from djust_components.rust_handlers import RatingHandler
+        handler = RatingHandler()
+        result = handler.render(['value=2', 'readonly=True'], {})
+        assert "<span" in result
+        assert "rating-star-full" in result
+
+    def test_rating_size_class(self):
+        from djust_components.rust_handlers import RatingHandler
+        handler = RatingHandler()
+        result = handler.render(['value=1', 'size="lg"'], {})
+        assert "rating-lg" in result
+
+
+class TestCodeBlockHandlerCSS:
+    def test_code_block_classes_present(self):
+        from djust_components.rust_handlers import CodeBlockHandler
+        handler = CodeBlockHandler()
+        result = handler.render(['code="print(1)"', 'language="python"'], {})
+        assert "code-block" in result
+        assert "code-block-header" in result
+        assert "code-block-lang" in result
+        assert "code-block-copy" in result
+        assert "code-block-pre" in result
+
+    def test_code_block_filename_class(self):
+        from djust_components.rust_handlers import CodeBlockHandler
+        handler = CodeBlockHandler()
+        result = handler.render(
+            ['code="x=1"', 'language="python"', 'filename="app.py"'], {}
+        )
+        assert "code-block-filename" in result
+        assert "app.py" in result
+
+
+class TestCollapsibleHandlerCSS:
+    def test_collapsible_closed_classes(self):
+        from djust_components.rust_handlers import CollapsibleHandler
+        handler = CollapsibleHandler()
+        result = handler.render(['trigger="Details"'], "inner content", {})
+        assert "collapsible" in result
+        assert "collapsible-trigger" in result
+        assert "collapsible-label" in result
+        assert "collapsible-icon" in result
+        assert "collapsible-content" in result
+        # When closed, the wrapper class should NOT include collapsible-open
+        assert 'class="collapsible"' in result
+
+    def test_collapsible_open_class(self):
+        from djust_components.rust_handlers import CollapsibleHandler
+        handler = CollapsibleHandler()
+        result = handler.render(["open=True", 'trigger="Show"'], "body", {})
+        assert "collapsible-open" in result
+        assert "collapsible-trigger" in result
+        assert "collapsible-content" in result

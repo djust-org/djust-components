@@ -375,6 +375,47 @@
 .dp-day-in-range { background: hsl(var(--primary) / 0.15); color: hsl(var(--foreground)); border-radius: 0; }
 .dp-day-range-start.dp-day-range-end { border-radius: var(--radius-md); }
 
-/* Code Block Highlight */
+/* Code Block */
+.code-block { background: hsl(var(--card) / 0.8); border: 1px solid hsl(var(--border)); border-radius: var(--radius-lg); overflow: hidden; font-size: var(--text-sm); }
+.code-block-header { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-4); background: hsl(var(--muted) / 0.5); border-bottom: 1px solid hsl(var(--border)); }
+.code-block-filename { font-size: var(--text-xs); font-weight: var(--font-semibold); color: hsl(var(--foreground)); font-family: var(--font-mono, ui-monospace, monospace); }
+.code-block-lang { font-size: var(--text-xs); font-weight: var(--font-medium); color: hsl(var(--muted-foreground)); margin-left: auto; text-transform: uppercase; letter-spacing: 0.05em; }
+.code-block-filename + .code-block-lang { margin-left: 0; }
+.code-block-filename ~ .code-block-lang + .code-block-copy { margin-left: auto; }
+.code-block-copy { margin-left: auto; padding: var(--space-1) var(--space-2); background: hsl(var(--muted) / 0.5); border: 1px solid hsl(var(--border)); border-radius: var(--radius-sm); font-size: var(--text-xs); font-weight: var(--font-medium); color: hsl(var(--muted-foreground)); cursor: pointer; transition: all var(--duration-fast) ease; }
+.code-block-copy:hover { color: hsl(var(--foreground)); background: hsl(var(--accent)); }
+.code-block-pre { margin: 0; padding: var(--space-4); overflow-x: auto; font-family: var(--font-mono, ui-monospace, monospace); font-size: var(--text-sm); line-height: var(--leading-relaxed); color: hsl(var(--foreground) / 0.9); }
+.code-block-pre code { font-family: inherit; font-size: inherit; background: transparent; }
 .code-block[data-highlight] pre { min-height: 2rem; }
 .code-block[data-highlight] code.hljs { background: transparent; padding: 0; }
+
+/* Kbd / Keyboard Shortcut */
+.kbd-group { display: inline-flex; align-items: center; gap: var(--space-1); }
+.kbd { display: inline-flex; align-items: center; justify-content: center; min-width: 1.5rem; padding: var(--space-1) var(--space-2); background: hsl(var(--muted) / 0.6); border: 1px solid hsl(var(--border)); border-bottom-width: 2px; border-radius: var(--radius-sm); font-family: var(--font-mono, ui-monospace, monospace); font-size: var(--text-xs); font-weight: var(--font-medium); color: hsl(var(--foreground)); line-height: 1; white-space: nowrap; box-shadow: 0 1px 0 hsl(var(--border)); }
+.kbd-sep { font-size: var(--text-xs); color: hsl(var(--muted-foreground) / 0.6); user-select: none; }
+
+/* Copy Button */
+.copy-btn { position: relative; }
+.copy-btn:active { transform: scale(0.96); }
+
+/* Rating */
+.rating { display: inline-flex; align-items: center; gap: var(--space-1); }
+.rating-star { font-size: 1.25rem; line-height: 1; background: none; border: none; padding: 0; cursor: default; transition: transform var(--duration-fast) ease, color var(--duration-fast) ease; }
+.rating-star-full { color: hsl(45 93% 47%); }
+.rating-star-half { color: hsl(45 93% 47%); opacity: 0.55; }
+.rating-star-empty { color: hsl(var(--muted-foreground) / 0.3); }
+button.rating-star { cursor: pointer; }
+button.rating-star:hover { transform: scale(1.2); }
+button.rating-star:hover ~ .rating-star { color: hsl(var(--muted-foreground) / 0.3); }
+.rating-sm .rating-star { font-size: 1rem; }
+.rating-lg .rating-star { font-size: 1.75rem; }
+
+/* Collapsible */
+.collapsible { border: 1px solid hsl(var(--border)); border-radius: var(--radius-lg); overflow: hidden; background: hsl(var(--card) / 0.4); }
+.collapsible-trigger { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: var(--space-3) var(--space-4); background: transparent; border: none; cursor: pointer; text-align: left; transition: background var(--duration-fast) ease; }
+.collapsible-trigger:hover { background: hsl(var(--accent)); }
+.collapsible-label { font-size: var(--text-sm); font-weight: var(--font-semibold); color: hsl(var(--foreground)); }
+.collapsible-icon { font-size: var(--text-sm); color: hsl(var(--muted-foreground)); transition: transform 0.2s ease; }
+.collapsible-open .collapsible-icon { transform: rotate(180deg); color: hsl(var(--primary)); }
+.collapsible-content { display: none; padding: 0 var(--space-4) var(--space-4); color: hsl(var(--muted-foreground)); font-size: var(--text-sm); line-height: var(--leading-relaxed); }
+.collapsible-open .collapsible-content { display: block; }
