@@ -755,4 +755,41 @@
 .dj-token--warn .dj-token__bar { background: var(--dj-token-warn-color, #eab308); }
 .dj-token--danger .dj-token__bar { background: var(--dj-token-danger-color, #ef4444); }
 
+/* --- Chat Bubble (classes) --- */
+.dj-bubble { display: flex; gap: 0.5rem; align-items: flex-start; max-width: 80%; }
+.dj-bubble--user { align-self: flex-end; flex-direction: row-reverse; }
+.dj-bubble--other { align-self: flex-start; }
+.dj-bubble__avatar { display: flex; align-items: center; justify-content: center; width: 2.25rem; height: 2.25rem; min-width: 2.25rem; border-radius: 9999px; overflow: hidden; font-size: 0.75rem; font-weight: 600; flex-shrink: 0; }
+.dj-bubble__avatar-img { width: 100%; height: 100%; object-fit: cover; }
+.dj-bubble__content { border-radius: 0.75rem; padding: 0.5rem 0.75rem; }
+.dj-bubble__header { display: flex; align-items: baseline; gap: 0.5rem; margin-bottom: 0.125rem; }
+.dj-bubble__name { font-size: 0.75rem; font-weight: 600; }
+.dj-bubble__time { font-size: 0.75rem; opacity: 0.6; }
+.dj-bubble__text { font-size: 0.875rem; line-height: 1.625; white-space: pre-wrap; }
+.dj-bubble__footer { display: flex; justify-content: flex-end; margin-top: 0.125rem; }
+.dj-bubble__status { font-size: 0.625rem; opacity: 0.7; }
+
+/* --- Presence Avatars (classes) --- */
+.dj-presence { display: flex; align-items: center; }
+.dj-presence__item { position: relative; display: flex; align-items: center; justify-content: center; width: 2.25rem; height: 2.25rem; border-radius: 9999px; border: 2px solid white; overflow: visible; font-size: 0.75rem; font-weight: 600; flex-shrink: 0; }
+.dj-presence__item + .dj-presence__item { margin-left: -0.5rem; }
+.dj-presence__img { width: 100%; height: 100%; object-fit: cover; border-radius: 9999px; }
+.dj-presence__dot { position: absolute; bottom: 0; right: 0; width: 0.5rem; height: 0.5rem; border-radius: 9999px; border: 1.5px solid white; }
+.dj-presence__dot--online { background: #22c55e; }
+.dj-presence__dot--away { background: #eab308; }
+.dj-presence__dot--busy { background: #ef4444; }
+.dj-presence__dot--offline { background: #9ca3af; }
+.dj-presence__overflow { font-size: 0.6875rem; font-weight: 600; }
+
+/* --- Mentions Input (classes) --- */
+.dj-mentions { position: relative; display: inline-block; width: 100%; }
+.dj-mentions--disabled { opacity: 0.5; pointer-events: none; }
+.dj-mentions__input { width: 100%; padding: 0.5rem 0.75rem; border: 1px solid; border-radius: 0.5rem; font: inherit; font-size: 0.875rem; outline: none; }
+.dj-mentions__dropdown { display: none; position: absolute; top: 100%; left: 0; right: 0; margin: 0; padding: 0.25rem 0; list-style: none; border: 1px solid; border-radius: 0.375rem; max-height: 12rem; overflow-y: auto; z-index: 50; }
+.dj-mentions__item { display: flex; align-items: center; gap: 0.5rem; padding: 0.375rem 0.75rem; cursor: pointer; }
+.dj-mentions__avatar { display: flex; align-items: center; justify-content: center; width: 1.5rem; height: 1.5rem; border-radius: 9999px; overflow: hidden; flex-shrink: 0; }
+.dj-mentions__avatar-img { width: 100%; height: 100%; object-fit: cover; }
+.dj-mentions__avatar-initials { font-size: 0.625rem; font-weight: 600; }
+.dj-mentions__name { font-size: 0.875rem; }
+
 } /* end @layer djust-components */

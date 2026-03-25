@@ -74,6 +74,9 @@ from .approval_gate import ApprovalGate
 from .source_citation import SourceCitation
 from .model_selector import ModelSelector
 from .token_counter import TokenCounter
+from .chat_bubble import ChatBubble
+from .presence_avatars import PresenceAvatars
+from .mentions_input import MentionsInput
 
 __all__ = [
     "Alert",
@@ -118,4 +121,7 @@ __all__ = [
     "SourceCitation",
     "ModelSelector",
     "TokenCounter",
+    "ChatBubble",
+    "PresenceAvatars",
+    "MentionsInput",
 ]
