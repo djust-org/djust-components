@@ -6626,3 +6626,402 @@ def model_table(queryset=None, exclude=None, include=None,
         f'{pagination_html}'
         f'</div>'
     )
+
+
+# ---------------------------------------------------------------------------
+# Sidebar Nav (#86)
+# ---------------------------------------------------------------------------
+
+class SidebarItemNode(template.Node):
+    """A single sidebar menu item."""
+    def __init__(self, kwargs, nodelist):
+        self.kwargs = kwargs
+        self.nodelist = nodelist  # sub-items if nested
+
+    def render(self, context):
+        return ""  # rendered by parent SidebarNode
+
+
+class SidebarSectionNode(template.Node):
+    """A section header within a sidebar."""
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
+
+    def render(self, context):
+        return ""  # rendered by parent SidebarNode
+
+
+class SidebarNode(template.Node):
+    def __init__(self, nodelist, kwargs):
+        self.nodelist = nodelist
+        self.kwargs = kwargs
+
+    def _render_item(self, item, context, active_path, level=0):
+        kw = {k: _resolve(v, context) for k, v in item.kwargs.items()}
+        label = kw.get("label", "")
+        href = kw.get("href", "#")
+        icon = kw.get("icon", "")
+        item_id = kw.get("id", "")
+        event = kw.get("event", "")
+
+        is_active = item_id == active_path or href == active_path
+        active_cls = " dj-sidebar__item--active" if is_active else ""
+        level_cls = f" dj-sidebar__item--level-{level}" if level > 0 else ""
+
+        icon_html = ""
+        if icon:
+            icon_html = f'<span class="dj-sidebar__icon">{conditional_escape(icon)}</span>'
+
+        # Check for nested sub-items
+        sub_items = [n for n in item.nodelist if isinstance(n, SidebarItemNode)]
+
+        if event:
+            trigger = (
+                f'<button class="dj-sidebar__link{active_cls}{level_cls}" '
+                f'dj-click="{conditional_escape(event)}">'
+                f'{icon_html}<span class="dj-sidebar__label">'
+                f'{conditional_escape(label)}</span></button>'
+            )
+        else:
+            trigger = (
+                f'<a class="dj-sidebar__link{active_cls}{level_cls}" '
+                f'href="{conditional_escape(href)}">'
+                f'{icon_html}<span class="dj-sidebar__label">'
+                f'{conditional_escape(label)}</span></a>'
+            )
+
+        if sub_items:
+            children = "".join(
+                self._render_item(si, context, active_path, level + 1)
+                for si in sub_items
+            )
+            return (
+                f'<li class="dj-sidebar__item dj-sidebar__item--parent">'
+                f'{trigger}'
+                f'<ul class="dj-sidebar__submenu">{children}</ul></li>'
+            )
+
+        return f'<li class="dj-sidebar__item">{trigger}</li>'
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        sidebar_id = kw.get("id", "sidebar")
+        active = kw.get("active", "")
+        collapsed = kw.get("collapsed", False)
+        title = kw.get("title", "")
+        toggle_event = kw.get("toggle_event", "toggle_sidebar")
+        custom_class = kw.get("class", "")
+
+        collapsed_cls = " dj-sidebar--collapsed" if collapsed else ""
+        cls = f"dj-sidebar{collapsed_cls}"
+        if custom_class:
+            cls += f" {conditional_escape(custom_class)}"
+
+        header_html = ""
+        if title:
+            header_html = (
+                f'<div class="dj-sidebar__header">'
+                f'<span class="dj-sidebar__title">{conditional_escape(title)}</span>'
+                f'<button class="dj-sidebar__toggle" dj-click="{conditional_escape(toggle_event)}">'
+                f'&#9776;</button></div>'
+            )
+
+        # Collect sections and items
+        parts = []
+        for node in self.nodelist:
+            if isinstance(node, SidebarSectionNode):
+                skw = {k: _resolve(v, context) for k, v in node.kwargs.items()}
+                section_label = skw.get("label", "")
+                parts.append(
+                    f'<li class="dj-sidebar__section">'
+                    f'<span class="dj-sidebar__section-label">'
+                    f'{conditional_escape(section_label)}</span></li>'
+                )
+            elif isinstance(node, SidebarItemNode):
+                parts.append(self._render_item(node, context, active))
+
+        menu_html = f'<ul class="dj-sidebar__menu">{"".join(parts)}</ul>'
+
+        # Mobile overlay backdrop
+        backdrop = (
+            f'<div class="dj-sidebar__backdrop" dj-click="{conditional_escape(toggle_event)}"></div>'
+        )
+
+        return mark_safe(
+            f'<nav class="{cls}" id="{conditional_escape(sidebar_id)}" role="navigation">'
+            f'{header_html}{menu_html}{backdrop}</nav>'
+        )
+
+
+@register.tag("sidebar")
+def do_sidebar(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    nodelist = parser.parse(("endsidebar",))
+    parser.delete_first_token()
+    return SidebarNode(nodelist, kwargs)
+
+
+@register.tag("sidebar_item")
+def do_sidebar_item(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    nodelist = parser.parse(("endsidebar_item",))
+    parser.delete_first_token()
+    return SidebarItemNode(kwargs, nodelist)
+
+
+@register.tag("sidebar_section")
+def do_sidebar_section(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    return SidebarSectionNode(kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Navigation Menu (#90)
+# ---------------------------------------------------------------------------
+
+class NavItemNode(template.Node):
+    """A single nav menu item, optionally containing dropdown children."""
+    def __init__(self, kwargs, nodelist):
+        self.kwargs = kwargs
+        self.nodelist = nodelist
+
+    def render(self, context):
+        return ""  # rendered by parent NavMenuNode
+
+
+class NavMenuNode(template.Node):
+    def __init__(self, nodelist, kwargs):
+        self.nodelist = nodelist
+        self.kwargs = kwargs
+
+    def _render_nav_item(self, item, context, active_path):
+        kw = {k: _resolve(v, context) for k, v in item.kwargs.items()}
+        label = kw.get("label", "")
+        href = kw.get("href", "#")
+        item_id = kw.get("id", "")
+        event = kw.get("event", "")
+        mega = kw.get("mega", False)
+
+        is_active = item_id == active_path or href == active_path
+        active_cls = " dj-nav__item--active" if is_active else ""
+
+        # Check for sub-items (dropdown children)
+        sub_items = [n for n in item.nodelist if isinstance(n, NavItemNode)]
+
+        if sub_items:
+            children = "".join(
+                self._render_dropdown_item(si, context, active_path)
+                for si in sub_items
+            )
+            mega_cls = " dj-nav__dropdown--mega" if mega else ""
+            return (
+                f'<li class="dj-nav__item dj-nav__item--has-dropdown{active_cls}">'
+                f'<button class="dj-nav__link">{conditional_escape(label)}'
+                f'<span class="dj-nav__caret">&#9662;</span></button>'
+                f'<div class="dj-nav__dropdown{mega_cls}">'
+                f'<ul class="dj-nav__dropdown-list">{children}</ul></div></li>'
+            )
+
+        if event:
+            return (
+                f'<li class="dj-nav__item{active_cls}">'
+                f'<button class="dj-nav__link" dj-click="{conditional_escape(event)}">'
+                f'{conditional_escape(label)}</button></li>'
+            )
+
+        return (
+            f'<li class="dj-nav__item{active_cls}">'
+            f'<a class="dj-nav__link" href="{conditional_escape(href)}">'
+            f'{conditional_escape(label)}</a></li>'
+        )
+
+    def _render_dropdown_item(self, item, context, active_path):
+        kw = {k: _resolve(v, context) for k, v in item.kwargs.items()}
+        label = kw.get("label", "")
+        href = kw.get("href", "#")
+        desc = kw.get("description", "")
+        event = kw.get("event", "")
+        item_id = kw.get("id", "")
+
+        is_active = item_id == active_path or href == active_path
+        active_cls = " dj-nav__dropdown-item--active" if is_active else ""
+
+        desc_html = ""
+        if desc:
+            desc_html = f'<span class="dj-nav__dropdown-desc">{conditional_escape(desc)}</span>'
+
+        if event:
+            return (
+                f'<li class="dj-nav__dropdown-item{active_cls}">'
+                f'<button class="dj-nav__dropdown-link" dj-click="{conditional_escape(event)}">'
+                f'{conditional_escape(label)}{desc_html}</button></li>'
+            )
+
+        return (
+            f'<li class="dj-nav__dropdown-item{active_cls}">'
+            f'<a class="dj-nav__dropdown-link" href="{conditional_escape(href)}">'
+            f'{conditional_escape(label)}{desc_html}</a></li>'
+        )
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        nav_id = kw.get("id", "nav-menu")
+        active = kw.get("active", "")
+        brand = kw.get("brand", "")
+        brand_href = kw.get("brand_href", "/")
+        toggle_event = kw.get("toggle_event", "toggle_nav")
+        mobile_open = kw.get("mobile_open", False)
+        custom_class = kw.get("class", "")
+
+        cls = "dj-nav"
+        if custom_class:
+            cls += f" {conditional_escape(custom_class)}"
+
+        mobile_cls = " dj-nav__list--open" if mobile_open else ""
+
+        brand_html = ""
+        if brand:
+            brand_html = (
+                f'<a class="dj-nav__brand" href="{conditional_escape(brand_href)}">'
+                f'{conditional_escape(brand)}</a>'
+            )
+
+        hamburger = (
+            f'<button class="dj-nav__hamburger" dj-click="{conditional_escape(toggle_event)}" '
+            f'aria-label="Toggle navigation">&#9776;</button>'
+        )
+
+        items = [n for n in self.nodelist if isinstance(n, NavItemNode)]
+        items_html = "".join(
+            self._render_nav_item(item, context, active) for item in items
+        )
+
+        return mark_safe(
+            f'<nav class="{cls}" id="{conditional_escape(nav_id)}" role="navigation">'
+            f'<div class="dj-nav__container">'
+            f'{brand_html}{hamburger}'
+            f'<ul class="dj-nav__list{mobile_cls}">{items_html}</ul>'
+            f'</div></nav>'
+        )
+
+
+@register.tag("nav_menu")
+def do_nav_menu(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    nodelist = parser.parse(("endnav_menu",))
+    parser.delete_first_token()
+    return NavMenuNode(nodelist, kwargs)
+
+
+@register.tag("nav_item")
+def do_nav_item(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    nodelist = parser.parse(("endnav_item",))
+    parser.delete_first_token()
+    return NavItemNode(kwargs, nodelist)
+
+
+# ---------------------------------------------------------------------------
+# App Shell (#167)
+# ---------------------------------------------------------------------------
+
+class AppSidebarNode(template.Node):
+    def __init__(self, nodelist):
+        self.nodelist = nodelist
+    def render(self, context):
+        return ""  # rendered by AppShellNode
+
+
+class AppHeaderNode(template.Node):
+    def __init__(self, nodelist):
+        self.nodelist = nodelist
+    def render(self, context):
+        return ""  # rendered by AppShellNode
+
+
+class AppContentNode(template.Node):
+    def __init__(self, nodelist):
+        self.nodelist = nodelist
+    def render(self, context):
+        return ""  # rendered by AppShellNode
+
+
+class AppShellNode(template.Node):
+    def __init__(self, nodelist, kwargs):
+        self.nodelist = nodelist
+        self.kwargs = kwargs
+
+    def render(self, context):
+        kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
+        shell_id = kw.get("id", "app-shell")
+        sidebar_collapsed = kw.get("sidebar_collapsed", False)
+        custom_class = kw.get("class", "")
+
+        cls = "dj-app-shell"
+        if sidebar_collapsed:
+            cls += " dj-app-shell--sidebar-collapsed"
+        if custom_class:
+            cls += f" {conditional_escape(custom_class)}"
+
+        # Find sub-nodes
+        sidebar_nodes = [n for n in self.nodelist if isinstance(n, AppSidebarNode)]
+        header_nodes = [n for n in self.nodelist if isinstance(n, AppHeaderNode)]
+        content_nodes = [n for n in self.nodelist if isinstance(n, AppContentNode)]
+
+        sidebar_html = ""
+        if sidebar_nodes:
+            sidebar_content = sidebar_nodes[0].nodelist.render(context)
+            sidebar_html = f'<aside class="dj-app-shell__sidebar">{sidebar_content}</aside>'
+
+        header_html = ""
+        if header_nodes:
+            header_content = header_nodes[0].nodelist.render(context)
+            header_html = f'<header class="dj-app-shell__header">{header_content}</header>'
+
+        content_html = ""
+        if content_nodes:
+            main_content = content_nodes[0].nodelist.render(context)
+            content_html = f'<main class="dj-app-shell__content">{main_content}</main>'
+
+        return mark_safe(
+            f'<div class="{cls}" id="{conditional_escape(shell_id)}">'
+            f'{sidebar_html}'
+            f'<div class="dj-app-shell__main">'
+            f'{header_html}{content_html}'
+            f'</div></div>'
+        )
+
+
+@register.tag("app_shell")
+def do_app_shell(parser, token):
+    bits = token.split_contents()[1:]
+    kwargs = _parse_kv_args(bits, parser)
+    nodelist = parser.parse(("endapp_shell",))
+    parser.delete_first_token()
+    return AppShellNode(nodelist, kwargs)
+
+
+@register.tag("app_sidebar")
+def do_app_sidebar(parser, token):
+    nodelist = parser.parse(("endapp_sidebar",))
+    parser.delete_first_token()
+    return AppSidebarNode(nodelist)
+
+
+@register.tag("app_header")
+def do_app_header(parser, token):
+    nodelist = parser.parse(("endapp_header",))
+    parser.delete_first_token()
+    return AppHeaderNode(nodelist)
+
+
+@register.tag("app_content")
+def do_app_content(parser, token):
+    nodelist = parser.parse(("endapp_content",))
+    parser.delete_first_token()
+    return AppContentNode(nodelist)

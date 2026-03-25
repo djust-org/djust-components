@@ -4372,3 +4372,265 @@ INLINE_HANDLERS.extend([
 BLOCK_HANDLERS.extend([
     ("popconfirm", "endpopconfirm", PopconfirmHandler()),
 ])
+
+
+# ===========================================================================
+# APP CHROME COMPONENTS (Sidebar, Nav Menu, App Shell)
+# ===========================================================================
+
+
+class SidebarHandler:
+    """Block handler for {% sidebar %}...{% endsidebar %}
+
+    Renders a collapsible sidebar navigation with menu items, sections,
+    and mobile drawer support.
+    """
+
+    def render(self, args, content, context):
+        kw = _parse_args(args, context)
+        sidebar_id = conditional_escape(kw.get("id", "sidebar"))
+        active = kw.get("active", "")
+        collapsed = kw.get("collapsed", False)
+        title = kw.get("title", "")
+        toggle_event = conditional_escape(kw.get("toggle_event", "toggle_sidebar"))
+        custom_class = conditional_escape(kw.get("class", ""))
+
+        collapsed_cls = " dj-sidebar--collapsed" if collapsed else ""
+        cls = f"dj-sidebar{collapsed_cls}"
+        if custom_class:
+            cls += f" {custom_class}"
+
+        header_html = ""
+        if title:
+            header_html = (
+                f'<div class="dj-sidebar__header">'
+                f'<span class="dj-sidebar__title">{conditional_escape(title)}</span>'
+                f'<button class="dj-sidebar__toggle" dj-click="{toggle_event}">'
+                f'&#9776;</button></div>'
+            )
+
+        backdrop = (
+            f'<div class="dj-sidebar__backdrop" dj-click="{toggle_event}"></div>'
+        )
+
+        return mark_safe(
+            f'<nav class="{cls}" id="{sidebar_id}" role="navigation">'
+            f'{header_html}'
+            f'<ul class="dj-sidebar__menu">{content}</ul>'
+            f'{backdrop}</nav>'
+        )
+
+
+class SidebarItemHandler:
+    """Block handler for {% sidebar_item %}...{% endsidebar_item %}"""
+
+    def render(self, args, content, context):
+        kw = _parse_args(args, context)
+        label = conditional_escape(kw.get("label", ""))
+        href = conditional_escape(kw.get("href", "#"))
+        icon = kw.get("icon", "")
+        item_id = conditional_escape(kw.get("id", ""))
+        event = kw.get("event", "")
+        active = conditional_escape(kw.get("active", ""))
+
+        is_active = (item_id and item_id == active) or (href and href == active)
+        active_cls = " dj-sidebar__item--active" if is_active else ""
+
+        icon_html = ""
+        if icon:
+            icon_html = f'<span class="dj-sidebar__icon">{conditional_escape(icon)}</span>'
+
+        has_children = content.strip() != ""
+
+        if event:
+            trigger = (
+                f'<button class="dj-sidebar__link{active_cls}" '
+                f'dj-click="{conditional_escape(event)}">'
+                f'{icon_html}<span class="dj-sidebar__label">{label}</span></button>'
+            )
+        else:
+            trigger = (
+                f'<a class="dj-sidebar__link{active_cls}" href="{href}">'
+                f'{icon_html}<span class="dj-sidebar__label">{label}</span></a>'
+            )
+
+        if has_children:
+            return mark_safe(
+                f'<li class="dj-sidebar__item dj-sidebar__item--parent">'
+                f'{trigger}'
+                f'<ul class="dj-sidebar__submenu">{content}</ul></li>'
+            )
+
+        return mark_safe(f'<li class="dj-sidebar__item">{trigger}</li>')
+
+
+class SidebarSectionHandler:
+    """Inline handler for {% sidebar_section label="..." %}"""
+
+    def render(self, args, context):
+        kw = _parse_args(args, context)
+        label = conditional_escape(kw.get("label", ""))
+        return mark_safe(
+            f'<li class="dj-sidebar__section">'
+            f'<span class="dj-sidebar__section-label">{label}</span></li>'
+        )
+
+
+class NavMenuHandler:
+    """Block handler for {% nav_menu %}...{% endnav_menu %}
+
+    Renders a top horizontal navigation bar with brand, hamburger toggle,
+    and responsive mobile collapse.
+    """
+
+    def render(self, args, content, context):
+        kw = _parse_args(args, context)
+        nav_id = conditional_escape(kw.get("id", "nav-menu"))
+        brand = kw.get("brand", "")
+        brand_href = conditional_escape(kw.get("brand_href", "/"))
+        toggle_event = conditional_escape(kw.get("toggle_event", "toggle_nav"))
+        mobile_open = kw.get("mobile_open", False)
+        custom_class = conditional_escape(kw.get("class", ""))
+
+        cls = "dj-nav"
+        if custom_class:
+            cls += f" {custom_class}"
+
+        mobile_cls = " dj-nav__list--open" if mobile_open else ""
+
+        brand_html = ""
+        if brand:
+            brand_html = (
+                f'<a class="dj-nav__brand" href="{brand_href}">'
+                f'{conditional_escape(brand)}</a>'
+            )
+
+        hamburger = (
+            f'<button class="dj-nav__hamburger" dj-click="{toggle_event}" '
+            f'aria-label="Toggle navigation">&#9776;</button>'
+        )
+
+        return mark_safe(
+            f'<nav class="{cls}" id="{nav_id}" role="navigation">'
+            f'<div class="dj-nav__container">'
+            f'{brand_html}{hamburger}'
+            f'<ul class="dj-nav__list{mobile_cls}">{content}</ul>'
+            f'</div></nav>'
+        )
+
+
+class NavItemHandler:
+    """Block handler for {% nav_item %}...{% endnav_item %}
+
+    Renders a navigation item. If content is present, it becomes a dropdown parent.
+    """
+
+    def render(self, args, content, context):
+        kw = _parse_args(args, context)
+        label = conditional_escape(kw.get("label", ""))
+        href = conditional_escape(kw.get("href", "#"))
+        event = kw.get("event", "")
+        item_id = conditional_escape(kw.get("id", ""))
+        active = conditional_escape(kw.get("active", ""))
+        mega = kw.get("mega", False)
+        description = kw.get("description", "")
+
+        is_active = (item_id and item_id == active) or (href and href == active)
+        active_cls = " dj-nav__item--active" if is_active else ""
+
+        has_children = content.strip() != ""
+
+        if has_children:
+            mega_cls = " dj-nav__dropdown--mega" if mega else ""
+            return mark_safe(
+                f'<li class="dj-nav__item dj-nav__item--has-dropdown{active_cls}">'
+                f'<button class="dj-nav__link">{label}'
+                f'<span class="dj-nav__caret">&#9662;</span></button>'
+                f'<div class="dj-nav__dropdown{mega_cls}">'
+                f'<ul class="dj-nav__dropdown-list">{content}</ul></div></li>'
+            )
+
+        desc_html = ""
+        if description:
+            desc_html = f'<span class="dj-nav__dropdown-desc">{conditional_escape(description)}</span>'
+
+        if event:
+            return mark_safe(
+                f'<li class="dj-nav__item{active_cls}">'
+                f'<button class="dj-nav__link" dj-click="{conditional_escape(event)}">'
+                f'{label}{desc_html}</button></li>'
+            )
+
+        return mark_safe(
+            f'<li class="dj-nav__item{active_cls}">'
+            f'<a class="dj-nav__link" href="{href}">'
+            f'{label}{desc_html}</a></li>'
+        )
+
+
+class AppShellHandler:
+    """Block handler for {% app_shell %}...{% endapp_shell %}
+
+    Wraps sidebar, header, and content regions in a responsive layout.
+    """
+
+    def render(self, args, content, context):
+        kw = _parse_args(args, context)
+        shell_id = conditional_escape(kw.get("id", "app-shell"))
+        sidebar_collapsed = kw.get("sidebar_collapsed", False)
+        custom_class = conditional_escape(kw.get("class", ""))
+
+        cls = "dj-app-shell"
+        if sidebar_collapsed:
+            cls += " dj-app-shell--sidebar-collapsed"
+        if custom_class:
+            cls += f" {custom_class}"
+
+        # In Rust block mode, content is pre-rendered; wrap in shell layout
+        return mark_safe(
+            f'<div class="{cls}" id="{shell_id}">'
+            f'{content}</div>'
+        )
+
+
+class AppSidebarHandler:
+    """Block handler for {% app_sidebar %}...{% endapp_sidebar %}"""
+
+    def render(self, args, content, context):
+        return mark_safe(
+            f'<aside class="dj-app-shell__sidebar">{content}</aside>'
+        )
+
+
+class AppHeaderHandler:
+    """Block handler for {% app_header %}...{% endapp_header %}"""
+
+    def render(self, args, content, context):
+        return mark_safe(
+            f'<header class="dj-app-shell__header">{content}</header>'
+        )
+
+
+class AppContentHandler:
+    """Block handler for {% app_content %}...{% endapp_content %}"""
+
+    def render(self, args, content, context):
+        return mark_safe(
+            f'<main class="dj-app-shell__content">{content}</main>'
+        )
+
+
+INLINE_HANDLERS.extend([
+    ("sidebar_section", SidebarSectionHandler()),
+])
+
+BLOCK_HANDLERS.extend([
+    ("sidebar", "endsidebar", SidebarHandler()),
+    ("sidebar_item", "endsidebar_item", SidebarItemHandler()),
+    ("nav_menu", "endnav_menu", NavMenuHandler()),
+    ("nav_item", "endnav_item", NavItemHandler()),
+    ("app_shell", "endapp_shell", AppShellHandler()),
+    ("app_sidebar", "endapp_sidebar", AppSidebarHandler()),
+    ("app_header", "endapp_header", AppHeaderHandler()),
+    ("app_content", "endapp_content", AppContentHandler()),
+])
