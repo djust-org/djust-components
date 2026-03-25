@@ -6203,3 +6203,854 @@ BLOCK_HANDLERS.extend([
     ("expandable_text", "endexpandable_text", ExpandableTextHandler()),
     ("await", "endawait", AwaitHandler()),
 ])
+
+
+# ---------------------------------------------------------------------------
+# v1.5 Remaining Components
+# ---------------------------------------------------------------------------
+
+class TimePickerHandler:
+    def render(self, args, context):
+        kw = _parse_args(args, context)
+        name = kw.get("name", "time")
+        value = kw.get("value", "")
+        event = kw.get("event", "")
+        format_24h = kw.get("format_24h", False)
+        step = kw.get("step", 1)
+        disabled = kw.get("disabled", False)
+        label = kw.get("label", "")
+        custom_class = kw.get("class", "")
+
+        e_name = conditional_escape(str(name))
+        e_value = conditional_escape(str(value))
+        e_event = conditional_escape(str(event)) if event else ""
+        e_label = conditional_escape(str(label)) if label else ""
+        e_class = conditional_escape(str(custom_class))
+
+        classes = ["dj-time-picker"]
+        if disabled:
+            classes.append("dj-time-picker--disabled")
+        if e_class:
+            classes.append(e_class)
+        class_str = " ".join(classes)
+
+        hour, minute = 0, 0
+        if value:
+            parts = str(value).split(":")
+            try:
+                hour = int(parts[0])
+                minute = int(parts[1]) if len(parts) > 1 else 0
+            except (ValueError, IndexError):
+                pass
+
+        parts_html = []
+        if e_label:
+            parts_html.append(
+                f'<label class="dj-time-picker__label" for="{e_name}">{e_label}</label>'
+            )
+
+        event_attr = f' dj-change="{e_event}"' if e_event else ""
+        disabled_attr = " disabled" if disabled else ""
+
+        parts_html.append(f'<input type="hidden" name="{e_name}" value="{e_value}"{event_attr}>')
+        parts_html.append('<div class="dj-time-picker__controls">')
+
+        hour_options = []
+        if format_24h:
+            for h in range(24):
+                sel = " selected" if h == hour else ""
+                hour_options.append(f'<option value="{h}"{sel}>{h:02d}</option>')
+        else:
+            display_hour = hour % 12 or 12
+            for h in range(1, 13):
+                sel = " selected" if h == display_hour else ""
+                hour_options.append(f'<option value="{h}"{sel}>{h}</option>')
+
+        parts_html.append(
+            f'<select class="dj-time-picker__hour" aria-label="Hour"{disabled_attr}>'
+            f'{"".join(hour_options)}</select>'
+        )
+        parts_html.append('<span class="dj-time-picker__separator">:</span>')
+
+        try:
+            step_val = max(1, int(step))
+        except (ValueError, TypeError):
+            step_val = 1
+        minute_options = []
+        for m in range(0, 60, step_val):
+            sel = " selected" if m == minute else ""
+            minute_options.append(f'<option value="{m}"{sel}>{m:02d}</option>')
+
+        parts_html.append(
+            f'<select class="dj-time-picker__minute" aria-label="Minute"{disabled_attr}>'
+            f'{"".join(minute_options)}</select>'
+        )
+
+        if not format_24h:
+            is_pm = hour >= 12
+            parts_html.append(
+                f'<select class="dj-time-picker__period" aria-label="AM/PM"{disabled_attr}>'
+                f'<option value="AM"{"" if is_pm else " selected"}>AM</option>'
+                f'<option value="PM"{" selected" if is_pm else ""}>PM</option></select>'
+            )
+
+        parts_html.append('</div>')
+        return mark_safe(f'<div class="{class_str}">{"".join(parts_html)}</div>')
+
+
+class WizardHandler:
+    def render(self, args, content, context):
+        kw = _parse_args(args, context)
+        steps = kw.get("steps", [])
+        active = kw.get("active", "")
+        event = kw.get("event", "set_step")
+        show_numbers = kw.get("show_numbers", True)
+        custom_class = kw.get("class", "")
+
+        e_event = conditional_escape(str(event))
+        e_class = conditional_escape(str(custom_class))
+
+        classes = ["dj-wizard"]
+        if e_class:
+            classes.append(e_class)
+        class_str = " ".join(classes)
+
+        if not isinstance(steps, list):
+            steps = []
+
+        active_idx = 0
+        for i, step in enumerate(steps):
+            if isinstance(step, dict) and step.get("id") == active:
+                active_idx = i
+                break
+
+        indicators = []
+        for i, step in enumerate(steps):
+            if not isinstance(step, dict):
+                continue
+            step_id = conditional_escape(str(step.get("id", "")))
+            step_label = conditional_escape(str(step.get("label", "")))
+            step_cls = "dj-wizard__step"
+            if i < active_idx:
+                step_cls += " dj-wizard__step--completed"
+            elif i == active_idx:
+                step_cls += " dj-wizard__step--active"
+            number_html = f'<span class="dj-wizard__number">{i + 1}</span>' if show_numbers else ""
+            indicators.append(
+                f'<button class="{step_cls}" dj-click="{e_event}" data-value="{step_id}">'
+                f'{number_html}<span class="dj-wizard__label">{step_label}</span></button>'
+            )
+
+        nav_items = []
+        for i, ind in enumerate(indicators):
+            nav_items.append(ind)
+            if i < len(indicators) - 1:
+                conn_cls = "dj-wizard__connector"
+                if i < active_idx:
+                    conn_cls += " dj-wizard__connector--completed"
+                nav_items.append(f'<div class="{conn_cls}"></div>')
+
+        nav = f'<nav class="dj-wizard__nav" role="tablist">{"".join(nav_items)}</nav>'
+        return mark_safe(f'<div class="{class_str}">{nav}<div class="dj-wizard__body">{content}</div></div>')
+
+
+class BottomSheetHandler:
+    def render(self, args, content, context):
+        kw = _parse_args(args, context)
+        title = kw.get("title", "")
+        is_open = kw.get("open", False)
+        close_event = kw.get("close_event", "close_sheet")
+        custom_class = kw.get("class", "")
+
+        if not is_open:
+            return ""
+
+        e_title = conditional_escape(str(title))
+        e_close = conditional_escape(str(close_event))
+        e_class = conditional_escape(str(custom_class))
+
+        classes = ["dj-bottom-sheet"]
+        if e_class:
+            classes.append(e_class)
+        class_str = " ".join(classes)
+
+        title_html = f'<h3 class="dj-bottom-sheet__title">{e_title}</h3>' if title else ""
+
+        return mark_safe(
+            f'<div class="dj-bottom-sheet__backdrop" dj-click="{e_close}">'
+            f'<div class="{class_str}" onclick="event.stopPropagation()">'
+            f'<div class="dj-bottom-sheet__handle"><div class="dj-bottom-sheet__handle-bar"></div></div>'
+            f'<div class="dj-bottom-sheet__header">{title_html}'
+            f'<button class="dj-bottom-sheet__close" dj-click="{e_close}">&times;</button></div>'
+            f'<div class="dj-bottom-sheet__body">{content}</div></div></div>'
+        )
+
+
+class InfiniteScrollHandler:
+    def render(self, args, content, context):
+        kw = _parse_args(args, context)
+        load_event = kw.get("load_event", "load_more")
+        threshold = kw.get("threshold", "200px")
+        loading = kw.get("loading", False)
+        finished = kw.get("finished", False)
+        custom_class = kw.get("class", "")
+
+        e_event = conditional_escape(str(load_event))
+        e_threshold = conditional_escape(str(threshold))
+        e_class = conditional_escape(str(custom_class))
+
+        classes = ["dj-infinite-scroll"]
+        if loading:
+            classes.append("dj-infinite-scroll--loading")
+        if finished:
+            classes.append("dj-infinite-scroll--finished")
+        if e_class:
+            classes.append(e_class)
+        class_str = " ".join(classes)
+
+        sentinel = ""
+        if loading:
+            sentinel = '<div class="dj-infinite-scroll__spinner" role="status" aria-label="Loading"></div>'
+        elif finished:
+            sentinel = '<div class="dj-infinite-scroll__done">No more items</div>'
+
+        return mark_safe(
+            f'<div class="{class_str}" dj-hook="InfiniteScroll" '
+            f'data-event="{e_event}" data-threshold="{e_threshold}">'
+            f'<div class="dj-infinite-scroll__content">{content}</div>{sentinel}</div>'
+        )
+
+
+class CountdownHandler:
+    def render(self, args, context):
+        kw = _parse_args(args, context)
+        target = kw.get("target", "")
+        event = kw.get("event", "")
+        show_days = kw.get("show_days", True)
+        show_seconds = kw.get("show_seconds", True)
+        custom_class = kw.get("class", "")
+
+        e_target = conditional_escape(str(target))
+        e_event = conditional_escape(str(event)) if event else ""
+        e_class = conditional_escape(str(custom_class))
+
+        classes = ["dj-countdown"]
+        if e_class:
+            classes.append(e_class)
+        class_str = " ".join(classes)
+        event_attr = f' data-event="{e_event}"' if e_event else ""
+
+        segments = []
+        if show_days:
+            segments.append(
+                '<div class="dj-countdown__segment">'
+                '<span class="dj-countdown__value" data-unit="days">00</span>'
+                '<span class="dj-countdown__label">Days</span></div>'
+            )
+        segments.append(
+            '<div class="dj-countdown__segment">'
+            '<span class="dj-countdown__value" data-unit="hours">00</span>'
+            '<span class="dj-countdown__label">Hours</span></div>'
+        )
+        segments.append(
+            '<div class="dj-countdown__segment">'
+            '<span class="dj-countdown__value" data-unit="minutes">00</span>'
+            '<span class="dj-countdown__label">Minutes</span></div>'
+        )
+        if show_seconds:
+            segments.append(
+                '<div class="dj-countdown__segment">'
+                '<span class="dj-countdown__value" data-unit="seconds">00</span>'
+                '<span class="dj-countdown__label">Seconds</span></div>'
+            )
+
+        separators = []
+        for i, seg in enumerate(segments):
+            separators.append(seg)
+            if i < len(segments) - 1:
+                separators.append('<span class="dj-countdown__separator">:</span>')
+
+        return mark_safe(
+            f'<div class="{class_str}" dj-hook="Countdown" '
+            f'data-target="{e_target}"{event_attr} '
+            f'role="timer">{"".join(separators)}</div>'
+        )
+
+
+class CookieConsentHandler:
+    def render(self, args, content, context):
+        kw = _parse_args(args, context)
+        message = kw.get("message", "We use cookies to improve your experience.")
+        accept_event = kw.get("accept_event", "accept_cookies")
+        reject_event = kw.get("reject_event", "")
+        accept_label = kw.get("accept_label", "Accept")
+        reject_label = kw.get("reject_label", "Decline")
+        privacy_url = kw.get("privacy_url", "")
+        show_reject = kw.get("show_reject", True)
+        position = kw.get("position", "bottom")
+        custom_class = kw.get("class", "")
+
+        e_msg = conditional_escape(str(message))
+        e_accept = conditional_escape(str(accept_event))
+        e_accept_label = conditional_escape(str(accept_label))
+        e_class = conditional_escape(str(custom_class))
+
+        classes = ["dj-cookie-consent", f"dj-cookie-consent--{conditional_escape(str(position))}"]
+        if e_class:
+            classes.append(e_class)
+        class_str = " ".join(classes)
+
+        msg_text = content.strip() if content and content.strip() else e_msg
+
+        privacy_html = ""
+        if privacy_url:
+            e_url = conditional_escape(str(privacy_url))
+            privacy_html = f' <a href="{e_url}" class="dj-cookie-consent__link">Privacy Policy</a>'
+
+        buttons = [
+            f'<button class="dj-cookie-consent__accept" dj-click="{e_accept}">{e_accept_label}</button>'
+        ]
+        if show_reject and reject_event:
+            e_reject = conditional_escape(str(reject_event))
+            e_reject_label = conditional_escape(str(reject_label))
+            buttons.append(
+                f'<button class="dj-cookie-consent__reject" dj-click="{e_reject}">{e_reject_label}</button>'
+            )
+
+        return mark_safe(
+            f'<div class="{class_str}" role="banner" aria-label="Cookie consent">'
+            f'<p class="dj-cookie-consent__message">{msg_text}{privacy_html}</p>'
+            f'<div class="dj-cookie-consent__actions">{"".join(buttons)}</div></div>'
+        )
+
+
+class FormArrayHandler:
+    def render(self, args, content, context):
+        kw = _parse_args(args, context)
+        name = kw.get("name", "items")
+        rows = kw.get("rows", [{"value": ""}])
+        min_rows = kw.get("min", 1)
+        max_rows = kw.get("max", 10)
+        add_event = kw.get("add_event", "add_row")
+        remove_event = kw.get("remove_event", "remove_row")
+        add_label = kw.get("add_label", "Add row")
+        custom_class = kw.get("class", "")
+
+        e_name = conditional_escape(str(name))
+        e_add_event = conditional_escape(str(add_event))
+        e_remove_event = conditional_escape(str(remove_event))
+        e_add_label = conditional_escape(str(add_label))
+        e_class = conditional_escape(str(custom_class))
+
+        try:
+            min_rows = int(min_rows)
+        except (ValueError, TypeError):
+            min_rows = 1
+        try:
+            max_rows = int(max_rows)
+        except (ValueError, TypeError):
+            max_rows = 10
+
+        if not isinstance(rows, list):
+            rows = [{"value": ""}]
+
+        classes = ["dj-form-array"]
+        if e_class:
+            classes.append(e_class)
+        class_str = " ".join(classes)
+
+        row_count = len(rows)
+        can_add = row_count < max_rows
+        can_remove = row_count > min_rows
+
+        rows_html = []
+        for i, row in enumerate(rows):
+            val = conditional_escape(str(row.get("value", "") if isinstance(row, dict) else row))
+            remove_html = ""
+            if can_remove:
+                remove_html = (
+                    f'<button class="dj-form-array__remove" type="button" '
+                    f'dj-click="{e_remove_event}" data-value="{i}" '
+                    f'aria-label="Remove row {i + 1}">&times;</button>'
+                )
+            rows_html.append(
+                f'<div class="dj-form-array__row" data-index="{i}">'
+                f'<input type="text" name="{e_name}[{i}]" value="{val}" '
+                f'class="dj-form-array__input">{remove_html}</div>'
+            )
+
+        add_disabled = "" if can_add else " disabled"
+        add_html = (
+            f'<button class="dj-form-array__add" type="button" '
+            f'dj-click="{e_add_event}"{add_disabled}>{e_add_label}</button>'
+        )
+
+        return mark_safe(
+            f'<div class="{class_str}" data-min="{min_rows}" data-max="{max_rows}">'
+            f'<div class="dj-form-array__rows">{"".join(rows_html)}</div>{add_html}</div>'
+        )
+
+
+class ScrollSpyHandler:
+    def render(self, args, context):
+        import json as _json
+        kw = _parse_args(args, context)
+        sections = kw.get("sections", [])
+        active = kw.get("active", "")
+        active_event = kw.get("active_event", "section_changed")
+        offset = kw.get("offset", "0px")
+        custom_class = kw.get("class", "")
+
+        e_event = conditional_escape(str(active_event))
+        e_offset = conditional_escape(str(offset))
+        e_class = conditional_escape(str(custom_class))
+
+        if not isinstance(sections, list):
+            sections = []
+
+        sections_json = conditional_escape(_json.dumps(sections))
+
+        classes = ["dj-scroll-spy"]
+        if e_class:
+            classes.append(e_class)
+        class_str = " ".join(classes)
+
+        nav_items = []
+        for section_id in sections:
+            e_id = conditional_escape(str(section_id))
+            active_cls = " dj-scroll-spy__item--active" if str(section_id) == str(active) else ""
+            nav_items.append(
+                f'<a href="#{e_id}" class="dj-scroll-spy__item{active_cls}" '
+                f'data-section="{e_id}">{e_id}</a>'
+            )
+
+        return mark_safe(
+            f'<nav class="{class_str}" dj-hook="ScrollSpy" '
+            f'data-sections="{sections_json}" data-event="{e_event}" '
+            f'data-offset="{e_offset}" role="navigation" aria-label="Section navigation">'
+            f'{"".join(nav_items)}</nav>'
+        )
+
+
+class PageAlertHandler:
+    def render(self, args, content, context):
+        kw = _parse_args(args, context)
+        alert_type = kw.get("type", "info")
+        dismissible = kw.get("dismissible", False)
+        dismiss_event = kw.get("dismiss_event", "dismiss_alert")
+        icon = kw.get("icon", "")
+        custom_class = kw.get("class", "")
+
+        e_type = conditional_escape(str(alert_type))
+        e_class = conditional_escape(str(custom_class))
+
+        classes = ["dj-page-alert", f"dj-page-alert--{e_type}"]
+        if dismissible:
+            classes.append("dj-page-alert--dismissible")
+        if e_class:
+            classes.append(e_class)
+        class_str = " ".join(classes)
+
+        icon_html = f'<span class="dj-page-alert__icon">{conditional_escape(str(icon))}</span>' if icon else ""
+
+        dismiss_html = ""
+        if dismissible:
+            e_dismiss = conditional_escape(str(dismiss_event))
+            dismiss_html = (
+                f'<button class="dj-page-alert__dismiss" dj-click="{e_dismiss}" '
+                f'aria-label="Dismiss">&times;</button>'
+            )
+
+        return mark_safe(
+            f'<div class="{class_str}" role="alert">{icon_html}'
+            f'<span class="dj-page-alert__message">{content}</span>{dismiss_html}</div>'
+        )
+
+
+class DropdownMenuHandler:
+    def render(self, args, content, context):
+        kw = _parse_args(args, context)
+        label = kw.get("label", "Menu")
+        items = kw.get("items", [])
+        is_open = kw.get("open", False)
+        toggle_event = kw.get("toggle_event", "toggle_menu")
+        align = kw.get("align", "left")
+        custom_class = kw.get("class", "")
+
+        e_label = conditional_escape(str(label))
+        e_toggle = conditional_escape(str(toggle_event))
+        e_class = conditional_escape(str(custom_class))
+
+        classes = ["dj-dropdown-menu"]
+        if is_open:
+            classes.append("dj-dropdown-menu--open")
+        if e_class:
+            classes.append(e_class)
+        class_str = " ".join(classes)
+
+        trigger = (
+            f'<button class="dj-dropdown-menu__trigger" dj-click="{e_toggle}" '
+            f'aria-expanded="{"true" if is_open else "false"}" aria-haspopup="true">{e_label}</button>'
+        )
+
+        if not is_open:
+            return mark_safe(f'<div class="{class_str}">{trigger}</div>')
+
+        if not isinstance(items, list):
+            items = []
+
+        menu_items = []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            if item.get("divider"):
+                menu_items.append('<hr class="dj-dropdown-menu__divider" role="separator">')
+                continue
+            item_cls = "dj-dropdown-menu__item"
+            if item.get("danger"):
+                item_cls += " dj-dropdown-menu__item--danger"
+            if item.get("disabled"):
+                item_cls += " dj-dropdown-menu__item--disabled"
+
+            e_item_label = conditional_escape(str(item.get("label", "")))
+            e_event = conditional_escape(str(item.get("event", "")))
+            disabled_attr = " disabled" if item.get("disabled") else ""
+            event_attr = f' dj-click="{e_event}"' if e_event else ""
+            icon_html = ""
+            if item.get("icon"):
+                icon_html = f'<span class="dj-dropdown-menu__icon">{conditional_escape(str(item["icon"]))}</span>'
+            menu_items.append(
+                f'<button class="{item_cls}" role="menuitem"{event_attr}{disabled_attr}>'
+                f'{icon_html}{e_item_label}</button>'
+            )
+
+        menu_html = (
+            f'<div class="dj-dropdown-menu__content dj-dropdown-menu--{conditional_escape(str(align))}" '
+            f'role="menu">{"".join(menu_items)}</div>'
+        )
+
+        return mark_safe(f'<div class="{class_str}">{trigger}{menu_html}</div>')
+
+
+class MeterHandler:
+    def render(self, args, context):
+        kw = _parse_args(args, context)
+        segments = kw.get("segments", [])
+        total = kw.get("total", 100)
+        label = kw.get("label", "")
+        show_legend = kw.get("show_legend", True)
+        custom_class = kw.get("class", "")
+
+        e_class = conditional_escape(str(custom_class))
+
+        classes = ["dj-meter"]
+        if e_class:
+            classes.append(e_class)
+        class_str = " ".join(classes)
+
+        try:
+            total = int(total)
+        except (ValueError, TypeError):
+            total = 100
+
+        if not isinstance(segments, list):
+            segments = []
+
+        label_html = f'<div class="dj-meter__label">{conditional_escape(str(label))}</div>' if label else ""
+
+        bar_parts = []
+        for seg in segments:
+            if not isinstance(seg, dict):
+                continue
+            val = seg.get("value", 0)
+            try:
+                val = float(val)
+            except (ValueError, TypeError):
+                val = 0
+            pct = min(100, max(0, (val / total) * 100)) if total > 0 else 0
+            color = conditional_escape(str(seg.get("color", "")))
+            seg_label = conditional_escape(str(seg.get("label", "")))
+            style = f"width:{pct:.1f}%"
+            if color:
+                style += f";background:{color}"
+            bar_parts.append(
+                f'<div class="dj-meter__segment" style="{style}" role="meter" '
+                f'aria-valuenow="{int(val)}" aria-valuemin="0" aria-valuemax="{total}" '
+                f'aria-label="{seg_label}"></div>'
+            )
+
+        bar = f'<div class="dj-meter__bar">{"".join(bar_parts)}</div>'
+
+        legend_html = ""
+        if show_legend and segments:
+            items = []
+            for seg in segments:
+                if not isinstance(seg, dict):
+                    continue
+                color = conditional_escape(str(seg.get("color", "")))
+                seg_label = conditional_escape(str(seg.get("label", "")))
+                val = seg.get("value", 0)
+                swatch_style = f"background:{color}" if color else ""
+                items.append(
+                    f'<div class="dj-meter__legend-item">'
+                    f'<span class="dj-meter__legend-swatch" style="{swatch_style}"></span>'
+                    f'<span class="dj-meter__legend-label">{seg_label}</span>'
+                    f'<span class="dj-meter__legend-value">{val}</span></div>'
+                )
+            legend_html = f'<div class="dj-meter__legend">{"".join(items)}</div>'
+
+        return mark_safe(f'<div class="{class_str}">{label_html}{bar}{legend_html}</div>')
+
+
+class ExportDialogHandler:
+    def render(self, args, context):
+        kw = _parse_args(args, context)
+        formats = kw.get("formats", [])
+        columns = kw.get("columns", [])
+        event = kw.get("event", "export")
+        is_open = kw.get("open", False)
+        close_event = kw.get("close_event", "close_export")
+        selected_format = kw.get("selected_format", "")
+        title = kw.get("title", "Export Data")
+        custom_class = kw.get("class", "")
+
+        if not is_open:
+            return ""
+
+        e_title = conditional_escape(str(title))
+        e_event = conditional_escape(str(event))
+        e_close = conditional_escape(str(close_event))
+        e_class = conditional_escape(str(custom_class))
+
+        classes = ["dj-export-dialog"]
+        if e_class:
+            classes.append(e_class)
+        class_str = " ".join(classes)
+
+        if not isinstance(formats, list):
+            formats = []
+        if not isinstance(columns, list):
+            columns = []
+        if not selected_format and formats:
+            selected_format = formats[0]
+
+        format_options = []
+        for fmt in formats:
+            e_fmt = conditional_escape(str(fmt))
+            checked = " checked" if str(fmt) == str(selected_format) else ""
+            format_options.append(
+                f'<label class="dj-export-dialog__format">'
+                f'<input type="radio" name="export_format" value="{e_fmt}"{checked}>'
+                f'<span class="dj-export-dialog__format-label">{e_fmt.upper()}</span></label>'
+            )
+
+        col_options = []
+        for col in columns:
+            if not isinstance(col, dict):
+                continue
+            e_id = conditional_escape(str(col.get("id", "")))
+            e_label = conditional_escape(str(col.get("label", "")))
+            checked = " checked" if col.get("checked", True) else ""
+            col_options.append(
+                f'<label class="dj-export-dialog__column">'
+                f'<input type="checkbox" name="export_col" value="{e_id}"{checked}>'
+                f'<span>{e_label}</span></label>'
+            )
+
+        return mark_safe(
+            f'<div class="dj-export-dialog__backdrop" dj-click="{e_close}">'
+            f'<div class="{class_str}" onclick="event.stopPropagation()">'
+            f'<div class="dj-export-dialog__header"><h3>{e_title}</h3>'
+            f'<button class="dj-export-dialog__close" dj-click="{e_close}">&times;</button></div>'
+            f'<div class="dj-export-dialog__body">'
+            f'<div class="dj-export-dialog__formats">'
+            f'<h4 class="dj-export-dialog__section-title">Format</h4>{"".join(format_options)}</div>'
+            f'<div class="dj-export-dialog__columns">'
+            f'<h4 class="dj-export-dialog__section-title">Columns</h4>{"".join(col_options)}</div></div>'
+            f'<div class="dj-export-dialog__footer">'
+            f'<button class="dj-export-dialog__cancel" dj-click="{e_close}">Cancel</button>'
+            f'<button class="dj-export-dialog__submit" dj-click="{e_event}">Export</button>'
+            f'</div></div></div>'
+        )
+
+
+class ImportWizardHandler:
+    def render(self, args, context):
+        kw = _parse_args(args, context)
+        accepted_formats = kw.get("accepted_formats", ".csv")
+        model_fields = kw.get("model_fields", [])
+        event = kw.get("event", "import_data")
+        step = kw.get("step", "upload")
+        upload_event = kw.get("upload_event", "upload_file")
+        custom_class = kw.get("class", "")
+
+        e_event = conditional_escape(str(event))
+        e_formats = conditional_escape(str(accepted_formats))
+        e_class = conditional_escape(str(custom_class))
+
+        classes = ["dj-import-wizard"]
+        if e_class:
+            classes.append(e_class)
+        class_str = " ".join(classes)
+
+        if not isinstance(model_fields, list):
+            model_fields = []
+
+        steps = ["upload", "map", "preview"]
+        step_labels = {"upload": "Upload", "map": "Map Fields", "preview": "Preview"}
+        active_idx = steps.index(step) if step in steps else 0
+
+        step_items = []
+        for i, s in enumerate(steps):
+            step_cls = "dj-import-wizard__step"
+            if i < active_idx:
+                step_cls += " dj-import-wizard__step--completed"
+            elif i == active_idx:
+                step_cls += " dj-import-wizard__step--active"
+            step_items.append(
+                f'<div class="{step_cls}">'
+                f'<span class="dj-import-wizard__step-number">{i + 1}</span>'
+                f'<span class="dj-import-wizard__step-label">{step_labels[s]}</span></div>'
+            )
+        nav = f'<div class="dj-import-wizard__nav">{"".join(step_items)}</div>'
+
+        if step == "upload":
+            e_upload = conditional_escape(str(upload_event))
+            body = (
+                f'<div class="dj-import-wizard__upload">'
+                f'<div class="dj-import-wizard__dropzone">'
+                f'<p>Drag &amp; drop or click to upload</p>'
+                f'<input type="file" accept="{e_formats}" '
+                f'class="dj-import-wizard__file-input" dj-change="{e_upload}">'
+                f'<p class="dj-import-wizard__formats">Accepted: {e_formats}</p></div></div>'
+            )
+        elif step == "map":
+            field_rows = []
+            for field in model_fields:
+                if not isinstance(field, dict):
+                    continue
+                e_id = conditional_escape(str(field.get("id", "")))
+                e_label = conditional_escape(str(field.get("label", "")))
+                field_rows.append(
+                    f'<div class="dj-import-wizard__field-row">'
+                    f'<span class="dj-import-wizard__field-label">{e_label}</span>'
+                    f'<select class="dj-import-wizard__field-select" name="map_{e_id}">'
+                    f'<option value="">-- Skip --</option></select></div>'
+                )
+            body = f'<div class="dj-import-wizard__mapping">{"".join(field_rows)}</div>'
+        else:
+            body = (
+                f'<div class="dj-import-wizard__preview">'
+                f'<p>Preview your data before importing.</p>'
+                f'<button class="dj-import-wizard__import-btn" dj-click="{e_event}">Import</button></div>'
+            )
+
+        return mark_safe(f'<div class="{class_str}">{nav}{body}</div>')
+
+
+class AuditLogHandler:
+    def render(self, args, context):
+        kw = _parse_args(args, context)
+        entries = kw.get("entries", [])
+        stream_event = kw.get("stream_event", "")
+        columns = kw.get("columns", ["timestamp", "user", "action", "resource", "detail"])
+        custom_class = kw.get("class", "")
+
+        e_class = conditional_escape(str(custom_class))
+        classes = ["dj-audit-log"]
+        if e_class:
+            classes.append(e_class)
+        class_str = " ".join(classes)
+
+        if not isinstance(entries, list):
+            entries = []
+        if not isinstance(columns, list):
+            columns = ["timestamp", "user", "action", "resource", "detail"]
+
+        stream_attr = ""
+        if stream_event:
+            stream_attr = f' data-stream-event="{conditional_escape(str(stream_event))}"'
+
+        col_labels = {"timestamp": "Timestamp", "user": "User", "action": "Action",
+                      "resource": "Resource", "detail": "Detail"}
+
+        headers = [f'<th class="dj-audit-log__th">{conditional_escape(col_labels.get(c, c.title()))}</th>'
+                   for c in columns]
+        thead = f'<thead><tr>{"".join(headers)}</tr></thead>'
+
+        rows = []
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            cells = []
+            for col in columns:
+                val = conditional_escape(str(entry.get(col, "")))
+                cell_cls = f"dj-audit-log__td dj-audit-log__td--{col}"
+                if col == "action":
+                    cell_cls += f" dj-audit-log__action--{conditional_escape(str(entry.get('action', '')))}"
+                cells.append(f'<td class="{cell_cls}">{val}</td>')
+            rows.append(f'<tr class="dj-audit-log__row">{"".join(cells)}</tr>')
+
+        tbody = f'<tbody>{"".join(rows)}</tbody>' if rows else (
+            f'<tbody><tr><td colspan="{len(columns)}" class="dj-audit-log__empty">No entries</td></tr></tbody>'
+        )
+
+        return mark_safe(
+            f'<div class="{class_str}"{stream_attr}>'
+            f'<table class="dj-audit-log__table">{thead}{tbody}</table></div>'
+        )
+
+
+class ErrorBoundaryHandler:
+    def render(self, args, content, context):
+        kw = _parse_args(args, context)
+        fallback = kw.get("fallback", "Something went wrong")
+        retry_event = kw.get("retry_event", "")
+        custom_class = kw.get("class", "")
+
+        e_fallback = conditional_escape(str(fallback))
+        e_class = conditional_escape(str(custom_class))
+
+        classes = ["dj-error-boundary"]
+        if e_class:
+            classes.append(e_class)
+        class_str = " ".join(classes)
+
+        # In Rust engine, content is pre-rendered; if empty, show fallback
+        if not content or not content.strip():
+            classes.append("dj-error-boundary--error")
+            class_str = " ".join(classes)
+            retry_html = ""
+            if retry_event:
+                e_retry = conditional_escape(str(retry_event))
+                retry_html = f'<button class="dj-error-boundary__retry" dj-click="{e_retry}">Retry</button>'
+            return mark_safe(
+                f'<div class="{class_str}" role="alert">'
+                f'<div class="dj-error-boundary__fallback">'
+                f'<p class="dj-error-boundary__message">{e_fallback}</p>'
+                f'{retry_html}</div></div>'
+            )
+
+        return mark_safe(f'<div class="{class_str}">{content}</div>')
+
+
+INLINE_HANDLERS.extend([
+    ("time_picker", TimePickerHandler()),
+    ("countdown", CountdownHandler()),
+    ("scroll_spy", ScrollSpyHandler()),
+    ("meter", MeterHandler()),
+    ("export_dialog", ExportDialogHandler()),
+    ("import_wizard", ImportWizardHandler()),
+    ("audit_log", AuditLogHandler()),
+])
+
+BLOCK_HANDLERS.extend([
+    ("wizard", "endwizard", WizardHandler()),
+    ("bottom_sheet", "endbottom_sheet", BottomSheetHandler()),
+    ("infinite_scroll", "endinfinite_scroll", InfiniteScrollHandler()),
+    ("cookie_consent", "endcookie_consent", CookieConsentHandler()),
+    ("form_array", "endform_array", FormArrayHandler()),
+    ("page_alert", "endpage_alert", PageAlertHandler()),
+    ("dropdown_menu", "enddropdown_menu", DropdownMenuHandler()),
+    ("error_boundary", "enderror_boundary", ErrorBoundaryHandler()),
+])
