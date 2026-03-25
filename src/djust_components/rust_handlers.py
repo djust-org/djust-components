@@ -2752,3 +2752,124 @@ INLINE_HANDLERS.extend([
     ("rich_select", RichSelectHandler()),
     ("data_grid", DataGridHandler()),
 ])
+
+
+# ===========================================================================
+# WEBSOCKET-POWERED COMPONENT HANDLERS
+# ===========================================================================
+
+
+class StreamingTextHandler:
+    """Inline handler for {% streaming_text stream_event="stream_chunk" %}"""
+    def render(self, args, context):
+        kw = _parse_args(args, context)
+        stream_event = conditional_escape(str(kw.get("stream_event", "stream_chunk")))
+        text = conditional_escape(str(kw.get("text", "")))
+        markdown = kw.get("markdown", False)
+        auto_scroll = kw.get("auto_scroll", True)
+        cursor = kw.get("cursor", True)
+        custom_class = conditional_escape(str(kw.get("custom_class", "")))
+
+        cls = "dj-streaming-text"
+        if cursor:
+            cls += " dj-streaming-text--cursor"
+        if custom_class:
+            cls += f" {custom_class}"
+
+        attrs = [
+            f'class="{cls}"',
+            f'data-stream-event="{stream_event}"',
+        ]
+        if auto_scroll:
+            attrs.append('data-auto-scroll="true"')
+        if markdown:
+            attrs.append('data-markdown="true"')
+
+        attrs_str = " ".join(attrs)
+        return mark_safe(
+            f'<div {attrs_str}>'
+            f'<div class="dj-streaming-text__content">{text}</div>'
+            f'</div>'
+        )
+
+
+class ConnectionStatusHandler:
+    """Inline handler for {% connection_status %}"""
+    def render(self, args, context):
+        kw = _parse_args(args, context)
+        custom_class = conditional_escape(str(kw.get("custom_class", "")))
+        reconnecting_text = conditional_escape(str(kw.get("reconnecting_text", "Reconnecting...")))
+        connected_text = conditional_escape(str(kw.get("connected_text", "Reconnected")))
+
+        cls = "dj-connection-status"
+        if custom_class:
+            cls += f" {custom_class}"
+
+        return mark_safe(
+            f'<div class="{cls}" '
+            f'data-reconnecting-text="{reconnecting_text}" '
+            f'data-connected-text="{connected_text}" '
+            f'role="status" aria-live="polite" style="display:none">'
+            f'<span class="dj-connection-status__text">{reconnecting_text}</span>'
+            f'</div>'
+        )
+
+
+class LiveCounterHandler:
+    """Inline handler for {% live_counter value=42 label="online" %}"""
+    def render(self, args, context):
+        kw = _parse_args(args, context)
+        try:
+            value = int(kw.get("value", 0))
+        except (ValueError, TypeError):
+            value = 0
+        label = conditional_escape(str(kw.get("label", "")))
+        stream_event = conditional_escape(str(kw.get("stream_event", "counter_update")))
+        custom_class = conditional_escape(str(kw.get("custom_class", "")))
+        size = conditional_escape(str(kw.get("size", "md")))
+
+        cls = f"dj-live-counter dj-live-counter--{size}"
+        if custom_class:
+            cls += f" {custom_class}"
+
+        label_html = ""
+        if label:
+            label_html = f'<span class="dj-live-counter__label">{label}</span>'
+
+        return mark_safe(
+            f'<div class="{cls}" data-stream-event="{stream_event}">'
+            f'<span class="dj-live-counter__value" data-value="{value}">{value}</span>'
+            f'{label_html}'
+            f'</div>'
+        )
+
+
+class ServerToastContainerHandler:
+    """Inline handler for {% server_toast_container position="top-right" %}"""
+    def render(self, args, context):
+        kw = _parse_args(args, context)
+        position = conditional_escape(str(kw.get("position", "top-right")))
+        custom_class = conditional_escape(str(kw.get("custom_class", "")))
+        try:
+            max_toasts = int(kw.get("max_toasts", 5))
+        except (ValueError, TypeError):
+            max_toasts = 5
+
+        cls = f"dj-toast-container dj-toast-container--{position}"
+        if custom_class:
+            cls += f" {custom_class}"
+
+        return mark_safe(
+            f'<div class="{cls}" '
+            f'data-max-toasts="{max_toasts}" '
+            f'role="region" aria-live="polite" aria-label="Notifications">'
+            f'</div>'
+        )
+
+
+INLINE_HANDLERS.extend([
+    ("streaming_text", StreamingTextHandler()),
+    ("connection_status", ConnectionStatusHandler()),
+    ("live_counter", LiveCounterHandler()),
+    ("server_toast_container", ServerToastContainerHandler()),
+])

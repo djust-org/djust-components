@@ -73,7 +73,7 @@ context/
 
 # Local Django showcase app (not part of the published package)
 component_showcase/
-components/
+/components/
 manage.py
 
 # Pipeline logs
