@@ -104,6 +104,13 @@ from .signature_pad import SignaturePad
 from .resizable_panel import ResizablePanel
 from .image_lightbox import ImageLightbox
 from .dashboard_grid import DashboardGrid
+from .bar_chart import BarChart
+from .line_chart import LineChart
+from .pie_chart import PieChart
+from .sparkline import Sparkline
+from .heatmap import Heatmap
+from .treemap import Treemap
+from .calendar_heatmap import CalendarHeatmap
 
 __all__ = [
     "Alert",
@@ -178,4 +185,11 @@ __all__ = [
     "ResizablePanel",
     "ImageLightbox",
     "DashboardGrid",
+    "BarChart",
+    "LineChart",
+    "PieChart",
+    "Sparkline",
+    "Heatmap",
+    "Treemap",
+    "CalendarHeatmap",
 ]
