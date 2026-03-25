@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Utility Components**: 5 new utility components with Django template tags, Rust engine handlers, Python component classes, client-side JS, CSS, and tests (including XSS coverage):
+  - **Scroll to Top** (`{% scroll_to_top threshold="300px" %}`) — Floating button appearing after scroll threshold, smooth-scrolls to top on click; supports `threshold`, `label`, `custom_class`; client-side only (#125)
+  - **Code Snippet** (`{% code_snippet language="bash" code="pip install djust" %}`) — Code block with language badge and copy-to-clipboard button; supports `code`, `language`, `custom_class`; client-side JS for clipboard API (#139)
+  - **Responsive Image** (`{% responsive_image src=url alt="..." aspect_ratio="16/9" lazy=True %}`) — Picture element with `srcset`, `sizes`, native lazy loading, blur-up placeholder transition; supports `src`, `alt`, `aspect_ratio`, `lazy`, `srcset`, `sizes`, `placeholder`, `custom_class` (#140)
+  - **Relative Time** (`{% relative_time datetime=created_at auto_update=True %}`) — Displays datetime as "3 hours ago" with client-side auto-update interval; supports `datetime` (string or object), `auto_update`, `interval`, `custom_class` (#146)
+  - **Copyable Text** (`{% copyable_text %}your-api-key{% endcopyable_text %}`) — Inline click-to-copy with "Copied!" tooltip feedback; supports `copied_label`, `custom_class`; block tag with content (#153)
+- **Component Classes**: 5 new Python component classes — `ScrollToTop`, `CodeSnippet`, `ResponsiveImage`, `RelativeTime`, `CopyableText`
+- **Client-side JS**: 5 new JS modules — `scroll-to-top.js`, `code-snippet.js`, `responsive-image.js`, `relative-time.js`, `copyable-text.js`; all with MutationObserver for LiveView compatibility
+- **CSS**: Styles for scroll-to-top (fixed positioning, visibility transition), code snippet (header with language badge and copy button, monospace code block), responsive image (aspect-ratio container, blur-up placeholder transition), relative time (tabular-nums), copyable text (inline monospace with hover state and tooltip)
+
 - **WebSocket-Powered Components**: 4 new real-time components with Django template tags, Rust engine handlers, Python component classes, client-side JS, CSS, and tests (including XSS coverage):
   - **Streaming Text** (`{% streaming_text stream_event="stream_chunk" %}`) — Renders text arriving incrementally via WebSocket with typing cursor animation; supports `stream_event`, `text`, `markdown`, `auto_scroll`, `cursor`, `custom_class`; auto-scrolls on new content; client-side JS listener for `djust:<event>` events
   - **Connection Status Bar** (`{% connection_status %}`) — Slim fixed-top bar showing WebSocket state: hidden when connected, yellow "Reconnecting..." when disconnected, green "Reconnected" flash on recovery; hooks into djust client.js `djust:disconnected`/`djust:reconnected` lifecycle events; supports `reconnecting_text`, `connected_text`, `custom_class`

@@ -2867,9 +2867,191 @@ class ServerToastContainerHandler:
         )
 
 
+class ScrollToTopHandler:
+    """Inline handler for {% scroll_to_top threshold="300px" %}"""
+    def render(self, args, context):
+        kw = _parse_args(args, context)
+        threshold = conditional_escape(str(kw.get("threshold", "300px")))
+        label = conditional_escape(str(kw.get("label", "Back to top")))
+        custom_class = conditional_escape(str(kw.get("custom_class", "")))
+
+        cls = "dj-scroll-to-top"
+        if custom_class:
+            cls += f" {custom_class}"
+
+        return mark_safe(
+            f'<button class="{cls}" '
+            f'data-threshold="{threshold}" '
+            f'aria-label="{label}" '
+            f'title="{label}" '
+            f'style="display:none">'
+            f'<svg width="20" height="20" viewBox="0 0 20 20" fill="none" '
+            f'stroke="currentColor" stroke-width="2" stroke-linecap="round" '
+            f'stroke-linejoin="round">'
+            f'<path d="M10 16V4M10 4l-6 6M10 4l6 6"/>'
+            f'</svg>'
+            f'</button>'
+        )
+
+
+class CodeSnippetHandler:
+    """Inline handler for {% code_snippet language="bash" code="pip install djust" %}"""
+    def render(self, args, context):
+        kw = _parse_args(args, context)
+        code = conditional_escape(str(kw.get("code", "")))
+        language = conditional_escape(str(kw.get("language", "")))
+        custom_class = conditional_escape(str(kw.get("custom_class", "")))
+
+        cls = "dj-code-snippet"
+        if custom_class:
+            cls += f" {custom_class}"
+
+        lang_badge = ""
+        if language:
+            lang_badge = f'<span class="dj-code-snippet__lang">{language}</span>'
+
+        return mark_safe(
+            f'<div class="{cls}">'
+            f'<div class="dj-code-snippet__header">'
+            f'{lang_badge}'
+            f'<button class="dj-code-snippet__copy" aria-label="Copy code" '
+            f'type="button">Copy</button>'
+            f'</div>'
+            f'<pre class="dj-code-snippet__pre">'
+            f'<code class="dj-code-snippet__code">{code}</code>'
+            f'</pre>'
+            f'</div>'
+        )
+
+
+class ResponsiveImageHandler:
+    """Inline handler for {% responsive_image src=url alt="..." %}"""
+    def render(self, args, context):
+        kw = _parse_args(args, context)
+        src = conditional_escape(str(kw.get("src", "")))
+        alt = conditional_escape(str(kw.get("alt", "")))
+        aspect_ratio = conditional_escape(str(kw.get("aspect_ratio", "")))
+        lazy = kw.get("lazy", True)
+        srcset = conditional_escape(str(kw.get("srcset", "")))
+        sizes = conditional_escape(str(kw.get("sizes", "")))
+        placeholder = conditional_escape(str(kw.get("placeholder", "")))
+        custom_class = conditional_escape(str(kw.get("custom_class", "")))
+
+        if isinstance(lazy, str):
+            lazy = lazy.lower() not in ("false", "0", "")
+
+        cls = "dj-responsive-image"
+        if placeholder:
+            cls += " dj-responsive-image--blur-up"
+        if custom_class:
+            cls += f" {custom_class}"
+
+        style = ""
+        if aspect_ratio:
+            style = f' style="aspect-ratio:{aspect_ratio}"'
+
+        img_attrs = [f'src="{src}"', f'alt="{alt}"']
+        if lazy:
+            img_attrs.append('loading="lazy"')
+        if srcset:
+            img_attrs.append(f'srcset="{srcset}"')
+        if sizes:
+            img_attrs.append(f'sizes="{sizes}"')
+
+        img_tag = f'<img {" ".join(img_attrs)} class="dj-responsive-image__img">'
+
+        placeholder_html = ""
+        if placeholder:
+            placeholder_html = (
+                f'<img src="{placeholder}" alt="" '
+                f'class="dj-responsive-image__placeholder" aria-hidden="true">'
+            )
+
+        return mark_safe(
+            f'<div class="{cls}"{style}>'
+            f'{placeholder_html}'
+            f'{img_tag}'
+            f'</div>'
+        )
+
+
+class RelativeTimeHandler:
+    """Inline handler for {% relative_time datetime=created_at %}"""
+    def render(self, args, context):
+        kw = _parse_args(args, context)
+        dt = kw.get("datetime", "")
+        auto_update = kw.get("auto_update", True)
+        interval = kw.get("interval", 60)
+        custom_class = conditional_escape(str(kw.get("custom_class", "")))
+
+        if isinstance(auto_update, str):
+            auto_update = auto_update.lower() not in ("false", "0", "")
+
+        cls = "dj-relative-time"
+        if custom_class:
+            cls += f" {custom_class}"
+
+        iso_val = ""
+        if dt:
+            if hasattr(dt, "isoformat"):
+                iso_val = dt.isoformat()
+            else:
+                iso_val = str(dt)
+
+        e_iso = conditional_escape(iso_val)
+        auto_str = "true" if auto_update else "false"
+
+        try:
+            interval_val = int(interval)
+        except (ValueError, TypeError):
+            interval_val = 60
+
+        return mark_safe(
+            f'<time class="{cls}" '
+            f'datetime="{e_iso}" '
+            f'data-auto-update="{auto_str}" '
+            f'data-interval="{interval_val}">'
+            f'{e_iso}'
+            f'</time>'
+        )
+
+
+class CopyableTextHandler:
+    """Block handler for {% copyable_text %}...{% endcopyable_text %}"""
+    def render(self, args, content, context):
+        kw = _parse_args(args, context)
+        copied_label = conditional_escape(str(kw.get("copied_label", "Copied!")))
+        custom_class = conditional_escape(str(kw.get("custom_class", "")))
+
+        e_content = conditional_escape(content.strip())
+
+        cls = "dj-copyable-text"
+        if custom_class:
+            cls += f" {custom_class}"
+
+        return mark_safe(
+            f'<span class="{cls}" '
+            f'data-copy-text="{e_content}" '
+            f'data-copied-label="{copied_label}" '
+            f'role="button" tabindex="0" '
+            f'aria-label="Click to copy">'
+            f'<span class="dj-copyable-text__value">{e_content}</span>'
+            f'<span class="dj-copyable-text__tooltip" aria-hidden="true">{copied_label}</span>'
+            f'</span>'
+        )
+
+
 INLINE_HANDLERS.extend([
     ("streaming_text", StreamingTextHandler()),
     ("connection_status", ConnectionStatusHandler()),
     ("live_counter", LiveCounterHandler()),
     ("server_toast_container", ServerToastContainerHandler()),
+    ("scroll_to_top", ScrollToTopHandler()),
+    ("code_snippet", CodeSnippetHandler()),
+    ("responsive_image", ResponsiveImageHandler()),
+    ("relative_time", RelativeTimeHandler()),
+])
+
+BLOCK_HANDLERS.extend([
+    ("copyable_text", "endcopyable_text", CopyableTextHandler()),
 ])
