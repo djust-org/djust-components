@@ -37,10 +37,12 @@ from .alert import Alert
 from .badge import Badge
 from .button import Button
 from .card import Card
+from .data_grid import DataGrid
 from .markdown import Markdown
 from .notification_badge import NotificationBadge
 from .progress import Progress
 from .progress_circle import ProgressCircle
+from .rich_select import RichSelect
 from .segmented_progress import SegmentedProgress
 from .spinner import Spinner
 from .stat_card import StatCard
@@ -55,10 +57,12 @@ __all__ = [
     "Badge",
     "Button",
     "Card",
+    "DataGrid",
     "Markdown",
     "NotificationBadge",
     "Progress",
     "ProgressCircle",
+    "RichSelect",
     "SegmentedProgress",
     "Spinner",
     "StatCard",

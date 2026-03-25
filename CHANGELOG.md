@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Rich Select** (`{% rich_select name="assignee" options=opts %}`): Select dropdown where each option can include icons, images, descriptions, or badges alongside the label; selected value shows the rich display; supports `searchable` filter, `disabled` state, `label`, custom `event`, hidden input for form submission, ARIA roles (`combobox`, `listbox`, `option`); template tag, Rust handler, Python component class (`RichSelect`), CSS, and tests with XSS coverage
+- **Data Grid** (`{% data_grid columns=cols rows=rows %}`): Editable spreadsheet-like grid with cell-level editing, column resize, frozen left/right columns, keyboard navigation (arrow keys, Enter/F2 to edit, Tab to advance, Escape to cancel), striped/compact modes, Add Row and Delete Row actions; distinct from Data Table (grid is for editing, table is for display); template tag, Rust handler, Python component class (`DataGrid`), client-side JS (`data-grid.js`), CSS, and tests with XSS coverage
+
 - **Overlay/Feedback Components**: 2 new components with Django template tags, Rust engine handlers, CSS, and tests (including XSS coverage):
   - **Loading Overlay** (`{% loading_overlay active=is_loading %}...{% endloading_overlay %}`) — Semi-transparent overlay with centered spinner that blocks interaction; supports `active`, `text`, `spinner_size` (sm/md/lg), `custom_class`
   - **Announcement Bar** (`{% announcement_bar type="info" dismissible=True %}...{% endannouncement_bar %}`) — Full-width sticky top bar for site-wide announcements; supports `type` (info/success/warning/danger), `dismissible`, `dismiss_event`, `custom_class`; uses `dj-click` for dismissal
