@@ -97,8 +97,14 @@ def _render_head(mode, theme_css, title="djust-components Gallery"):
     <link rel="stylesheet" href="{static("djust_components/components.css")}">
     <link rel="stylesheet" href="{static("djust_components/components-classes.css")}">
     <style>
-        /* ── Reset & Base ── */
-        *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
+        /* ── Reset — scoped to gallery layout only, not component internals ── */
+        *, *::before, *::after {{ box-sizing: border-box; }}
+        body {{ margin: 0; }}
+        h1, h2, h3, p {{ margin: 0; }}
+        .gallery-header, .gallery-sidebar, .gallery-content,
+        .gallery-body, .category-section, .category-grid,
+        .gallery-toolbar, .toolbar-group, .gallery-breadcrumb,
+        .category-nav, .variant-section, .variant-label {{ margin: 0; padding: 0; }}
 
         body {{
             font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
