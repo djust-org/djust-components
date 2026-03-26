@@ -4,25 +4,6 @@ Verifies that Notification Center, Tree View, Gauge, Image Carousel,
 Virtual List, Kanban Board, Table of Contents, Split Pane, and Rich Text
 Editor render HTML containing the CSS classes defined in components.css.
 """
-import django
-from django.conf import settings
-
-if not settings.configured:
-    settings.configure(
-        INSTALLED_APPS=[
-            "django.contrib.contenttypes",
-            "djust_components",
-        ],
-        TEMPLATES=[{
-            "BACKEND": "django.template.backends.django.DjangoTemplates",
-            "DIRS": [],
-            "APP_DIRS": True,
-            "OPTIONS": {"context_processors": []},
-        }],
-        DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}},
-    )
-    django.setup()
-
 import pytest
 from djust_components.templatetags.djust_components import (
     notification_center,

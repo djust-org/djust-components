@@ -6,56 +6,6 @@ Covers:
   C. DataTableMixin for LiveViews
   D. CSS class definitions
 """
-import types
-import sys
-
-# Stub djust before Django setup (djust requires Rust build not available in test venv)
-_stub = types.ModuleType("djust")
-
-
-class _LV:
-    pass
-
-
-class _Comp:
-    pass
-
-
-_stub.LiveView = _LV
-_stub.Component = _Comp
-
-# Stub djust.decorators with event_handler
-_dec_stub = types.ModuleType("djust.decorators")
-
-
-def _event_handler(fn):
-    fn._is_event_handler = True
-    return fn
-
-
-_dec_stub.event_handler = _event_handler
-sys.modules.setdefault("djust", _stub)
-sys.modules.setdefault("djust.decorators", _dec_stub)
-
-import django
-from django.conf import settings
-
-if not settings.configured:
-    settings.configure(
-        INSTALLED_APPS=[
-            "django.contrib.contenttypes",
-            "djust_components",
-        ],
-        TEMPLATES=[{
-            "BACKEND": "django.template.backends.django.DjangoTemplates",
-            "DIRS": [],
-            "APP_DIRS": True,
-            "OPTIONS": {"context_processors": []},
-        }],
-        DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}},
-    )
-    django.setup()
-
 import pytest
 from djust_components.rust_handlers import DataTableHandler
 
