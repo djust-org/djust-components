@@ -211,19 +211,21 @@
 | **P3** | Collaborative Selection (#79) | v2.0 |
 | **P3** | Activity Feed (#80) | v2.0 |
 | **P3** | Voting / Reactions (#81) | v2.0 |
+| **P0** | CSS Class Name Standardization (#CSS-CLASS-NAMES) | v1.6 |
+| **P0** | Gallery CSS Reset Fix (#GALLERY-RESET) | v1.6 |
 | **P0** | Gallery Examples for All Tags (#GALLERY-EXAMPLES) | v2.1 |
 | **P0** | Shared Test Infrastructure (#TEST-INFRA) | v2.1 |
 | **P1** | Code Quality — Split Monolithic Files (#CODE-SPLIT) | v2.1 |
 | **P1** | ARIA Audit & Keyboard Navigation (#ARIA-AUDIT) | v2.1 |
 | **P1** | JS Test Infrastructure (#JS-TESTS) | v2.1 |
 | **P1** | Extract Shared Utilities (#SHARED-UTILS) | v2.1 |
-| **P2** | CSS Linting Rules (#CSS-LINT) | v2.1 |
-| **P2** | Visual Regression Tests (#VRT) | v2.1 |
+| ~~**P2**~~ | ~~CSS Linting Rules (#CSS-LINT)~~ ✅ PR #61 | v2.1 |
+| ~~**P2**~~ | ~~Visual Regression Tests (#VRT)~~ ✅ PR #62 | v2.1 |
 | **P2** | Security Hardening Sweep (#SEC-SWEEP) | v2.1 |
-| **P2** | Python Builtin Shadowing Cleanup (#BUILTIN-SHADOW) | v2.1 |
+| ~~**P2**~~ | ~~Python Builtin Shadowing Cleanup (#BUILTIN-SHADOW)~~ ✅ PR #61 | v2.1 |
 | **P2** | Replace eval() in Computed Columns (#EVAL-REPLACE) | v2.1 |
-| **P3** | Component Open-State Standardization (#OPEN-STATE) | v2.1 |
-| **P3** | Real Django Integration Tests (#DJANGO-REAL-TESTS) | v2.1 |
+| ~~**P3**~~ | ~~Component Open-State Standardization (#OPEN-STATE)~~ ✅ PR #63 | v2.1 |
+| ~~**P3**~~ | ~~Real Django Integration Tests (#DJANGO-REAL-TESTS)~~ ✅ PR #63 | v2.1 |
 
 ---
 
@@ -732,6 +734,16 @@ The mixin auto-generates `table_sort`, `table_filter`, `table_search`, `table_pa
 **Activity Feed** (#80) — `{% activity_feed events=events stream=True %}`. Real-time activity stream that auto-appends new events via WebSocket.
 
 **Voting / Reactions** (#81) — `{% reactions options=emojis counts=counts event="react" %}`. Slack-style emoji reactions with live count updates.
+
+---
+
+### Milestone: v1.6 — CSS Architecture & Gallery Quality
+
+**Goal**: Fix the three root causes blocking component gallery quality: CSS class name mismatches, destructive gallery reset, and design system token flow. These must land before per-category styling work can be effective.
+
+**CSS Class Name Standardization** (#CSS-CLASS-NAMES) — Template tags render BEM-prefixed classes (`dj-card__header`, `dj-accordion__trigger`, `dj-tabs__nav`) but `components.css` targets unprefixed names (`.card-header`, `.accordion-trigger`, `.tabs-nav`). Neither file matches the other. Fix by updating `components.css` selectors to match the rendered HTML. Audit all 188 components — for each, verify the CSS selector matches what the Rust handler / template tag actually outputs. This is the single biggest reason components appear unstyled. Estimated scope: ~150 selector renames across 2300 lines of CSS. The BEM aliases added in PR #66 are a temporary bridge — this task replaces them with proper selectors.
+
+**Gallery CSS Reset Fix** (#GALLERY-RESET) — The gallery view's inline `<style>` includes `*, *::before, *::after { padding: 0; margin: 0; }` which strips all component internal padding (card bodies, accordion triggers, tab buttons, etc.). This aggressive reset fights with component CSS regardless of `@layer` specificity. Fix by replacing with a scoped reset that only targets gallery layout elements (`.gallery-header`, `.gallery-sidebar`, `.gallery-content`) and leaves `.variant-preview` children untouched. Components inside preview cards should inherit their own padding from `components.css` / `components-classes.css` without interference.
 
 ---
 
