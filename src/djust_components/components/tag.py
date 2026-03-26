@@ -94,7 +94,7 @@ class Tag(Component):
             classes.append(f"dj-tag-{self.size}")
 
         if self.custom_class:
-            classes.append(self.custom_class)
+            classes.append(html.escape(self.custom_class))
 
         class_str = " ".join(classes)
         label_escaped = html.escape(self.label)

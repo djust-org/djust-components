@@ -58,7 +58,7 @@ class Wizard(Component):
     def _render_custom(self) -> str:
         classes = ["dj-wizard"]
         if self.custom_class:
-            classes.append(self.custom_class)
+            classes.append(html.escape(self.custom_class))
         class_str = " ".join(classes)
 
         e_event = html.escape(self.event)

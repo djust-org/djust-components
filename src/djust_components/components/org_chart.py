@@ -132,7 +132,7 @@ class OrgChart(Component):
         if self.direction == "horizontal":
             classes.append("dj-org--horizontal")
         if self.custom_class:
-            classes.append(self.custom_class)
+            classes.append(html.escape(self.custom_class))
         class_str = " ".join(classes)
 
         node_map, children_map, root_id = self._build_tree()

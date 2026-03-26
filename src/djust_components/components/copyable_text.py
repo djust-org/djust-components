@@ -50,7 +50,7 @@ class CopyableText(Component):
         """Render the copyable text HTML."""
         classes = ["dj-copyable-text"]
         if self.custom_class:
-            classes.append(self.custom_class)
+            classes.append(html.escape(self.custom_class))
         class_str = " ".join(classes)
 
         e_text = html.escape(self.text)

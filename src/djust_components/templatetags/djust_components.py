@@ -4652,16 +4652,22 @@ def do_live_counter(parser, token):
 # ---------------------------------------------------------------------------
 
 class ToastContainerNode(template.Node):
+    ALLOWED_POSITIONS = {
+        "top-left", "top-right", "top-center",
+        "bottom-left", "bottom-right", "bottom-center",
+    }
+
     def __init__(self, kwargs):
         self.kwargs = kwargs
 
     def render(self, context):
         kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
-        position = kw.get("position", "top-right")
+        position = str(kw.get("position", "top-right"))
+        if position not in self.ALLOWED_POSITIONS:
+            position = "top-right"
         custom_class = kw.get("custom_class", "")
         max_toasts = kw.get("max_toasts", 5)
 
-        e_position = conditional_escape(str(position))
         e_custom_class = conditional_escape(str(custom_class))
 
         try:
@@ -4669,7 +4675,7 @@ class ToastContainerNode(template.Node):
         except (ValueError, TypeError):
             max_toasts = 5
 
-        cls = f"dj-toast-container dj-toast-container--{e_position}"
+        cls = f"dj-toast-container dj-toast-container--{position}"
         if e_custom_class:
             cls += f" {e_custom_class}"
 

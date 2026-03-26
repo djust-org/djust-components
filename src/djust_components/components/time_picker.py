@@ -89,7 +89,7 @@ class TimePicker(Component):
         if self.disabled:
             classes.append("dj-time-picker--disabled")
         if self.custom_class:
-            classes.append(self.custom_class)
+            classes.append(html.escape(self.custom_class))
         class_str = " ".join(classes)
 
         hour, minute = self._parse_time(self.value)

@@ -70,7 +70,7 @@ class ResponsiveImage(Component):
         if self.placeholder:
             classes.append("dj-responsive-image--blur-up")
         if self.custom_class:
-            classes.append(self.custom_class)
+            classes.append(html.escape(self.custom_class))
         class_str = " ".join(classes)
 
         e_src = html.escape(self.src)

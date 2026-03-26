@@ -103,7 +103,7 @@ class Progress(Component):
             classes.append(f"dj-progress-{self.size}")
 
         if self.custom_class:
-            classes.append(self.custom_class)
+            classes.append(html.escape(self.custom_class))
 
         class_str = " ".join(classes)
         pct = self.percentage

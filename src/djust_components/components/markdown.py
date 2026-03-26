@@ -1,5 +1,7 @@
 """Markdown component — renders Markdown text as sanitized HTML."""
 
+import html
+
 from typing import Optional
 
 import markdown as md_lib
@@ -113,7 +115,7 @@ class Markdown(Component):
 
         classes = ["dj-prose"]
         if self.custom_class:
-            classes.append(self.custom_class)
+            classes.append(html.escape(self.custom_class))
         class_str = " ".join(classes)
 
         return f'<div class="{class_str}">{body}</div>'

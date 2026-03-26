@@ -64,7 +64,7 @@ class ProgressCircle(Component):
         ]
 
         if self.custom_class:
-            classes.append(self.custom_class)
+            classes.append(html.escape(self.custom_class))
 
         class_str = " ".join(classes)
 

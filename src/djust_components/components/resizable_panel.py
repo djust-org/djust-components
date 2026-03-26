@@ -65,7 +65,7 @@ class ResizablePanel(Component):
         if self.disabled:
             classes.append("dj-resizable-panel--disabled")
         if self.custom_class:
-            classes.append(self.custom_class)
+            classes.append(html.escape(self.custom_class))
         class_str = " ".join(classes)
 
         e_min = html.escape(self.min_size)

@@ -131,7 +131,7 @@ class JsonViewer(Component):
     def _render_custom(self) -> str:
         classes = ["dj-json-viewer"]
         if self.custom_class:
-            classes.append(self.custom_class)
+            classes.append(html.escape(self.custom_class))
         class_str = " ".join(classes)
 
         copy_html = ""

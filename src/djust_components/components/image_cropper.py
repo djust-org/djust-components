@@ -62,7 +62,7 @@ class ImageCropper(Component):
         if self.disabled:
             classes.append("dj-image-cropper--disabled")
         if self.custom_class:
-            classes.append(self.custom_class)
+            classes.append(html.escape(self.custom_class))
         class_str = " ".join(classes)
 
         e_src = html.escape(self.src)

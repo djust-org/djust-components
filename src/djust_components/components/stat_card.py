@@ -97,7 +97,7 @@ class StatCard(Component):
             classes.append(f"dj-stat-card-{self.variant}")
 
         if self.custom_class:
-            classes.append(self.custom_class)
+            classes.append(html.escape(self.custom_class))
 
         class_str = " ".join(classes)
 

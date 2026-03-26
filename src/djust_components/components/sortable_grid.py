@@ -62,7 +62,7 @@ class SortableGrid(Component):
         if self.disabled:
             classes.append("dj-sortable-grid--disabled")
         if self.custom_class:
-            classes.append(self.custom_class)
+            classes.append(html.escape(self.custom_class))
         class_str = " ".join(classes)
 
         e_event = html.escape(self.move_event)

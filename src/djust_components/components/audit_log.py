@@ -29,16 +29,25 @@ class AuditLog(Component):
         entries: List of entry dicts with timestamp, user, action, resource, detail
         stream_event: djust event for new entry streaming
         columns: List of column names to show (default: all)
+        allowed_actions: Set of action values permitted for CSS class injection
+            (default: create, read, update, delete, login, logout, export, import, approve, reject)
         custom_class: Additional CSS classes
     """
 
     DEFAULT_COLUMNS = ["timestamp", "user", "action", "resource", "detail"]
+    DEFAULT_ALLOWED_ACTIONS = frozenset({
+        "create", "read", "update", "delete",
+        "login", "logout",
+        "export", "import",
+        "approve", "reject",
+    })
 
     def __init__(
         self,
         entries: list = None,
         stream_event: str = "",
         columns: list = None,
+        allowed_actions: set = None,
         custom_class: str = "",
         **kwargs,
     ):
@@ -50,12 +59,16 @@ class AuditLog(Component):
         self.entries = entries or []
         self.stream_event = stream_event
         self.columns = columns or self.DEFAULT_COLUMNS
+        self.allowed_actions = (
+            allowed_actions if allowed_actions is not None
+            else self.DEFAULT_ALLOWED_ACTIONS
+        )
         self.custom_class = custom_class
 
     def _render_custom(self) -> str:
         classes = ["dj-audit-log"]
         if self.custom_class:
-            classes.append(self.custom_class)
+            classes.append(html.escape(self.custom_class))
         class_str = " ".join(classes)
 
         stream_attr = ""
@@ -87,8 +100,9 @@ class AuditLog(Component):
                 val = html.escape(str(entry.get(col, "")))
                 cell_cls = f"dj-audit-log__td dj-audit-log__td--{col}"
                 if col == "action":
-                    action_val = entry.get("action", "")
-                    cell_cls += f" dj-audit-log__action--{html.escape(str(action_val))}"
+                    action_val = str(entry.get("action", ""))
+                    if action_val in self.allowed_actions:
+                        cell_cls += f" dj-audit-log__action--{action_val}"
                 cells.append(f'<td class="{cell_cls}">{val}</td>')
             rows.append(f'<tr class="dj-audit-log__row">{"".join(cells)}</tr>')
 

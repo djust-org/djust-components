@@ -53,7 +53,7 @@ class ScrollToTop(Component):
         """Render the scroll-to-top button HTML."""
         classes = ["dj-scroll-to-top"]
         if self.custom_class:
-            classes.append(self.custom_class)
+            classes.append(html.escape(self.custom_class))
         class_str = " ".join(classes)
 
         e_threshold = html.escape(self.threshold)

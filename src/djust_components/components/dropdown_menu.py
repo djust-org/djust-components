@@ -63,7 +63,7 @@ class DropdownMenu(Component):
         if self.open:
             classes.append("dj-dropdown-menu--open")
         if self.custom_class:
-            classes.append(self.custom_class)
+            classes.append(html.escape(self.custom_class))
         class_str = " ".join(classes)
 
         e_label = html.escape(self.label)

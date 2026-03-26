@@ -110,7 +110,7 @@ class Terminal(Component):
         if self.wrap:
             classes.append("dj-terminal--wrap")
         if self.custom_class:
-            classes.append(self.custom_class)
+            classes.append(html.escape(self.custom_class))
         class_str = " ".join(classes)
 
         title_html = ""
