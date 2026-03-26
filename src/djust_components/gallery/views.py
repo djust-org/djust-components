@@ -1,11 +1,19 @@
-"""Django views for the component gallery."""
+"""Django views for the component gallery.
 
-from django.http import HttpResponse
+Provides three views:
+- ``gallery_index_view`` — landing page with category cards
+- ``gallery_category_view`` — per-category page with rendered components
+- ``gallery_view`` — legacy monolithic page with all components
+"""
+
+from django.http import HttpResponse, Http404
 from django.template import Template, Context
 from django.templatetags.static import static
 
 from .registry import get_gallery_data
 
+
+# ── Theme helpers ──
 
 def _get_theme_css(preset="default", design_system="material", mode="light"):
     """Generate theme CSS from djust-theming, or return empty string if unavailable."""
@@ -34,33 +42,73 @@ def _get_theme_options():
         return ["default"], ["material"]
 
 
-GALLERY_TEMPLATE = """\
-<!DOCTYPE html>
-<html lang="en" data-theme="{{ html_mode }}">
+def _resolve_theme(request):
+    """Read theme cookies, validate against allowlists, generate CSS.
+
+    Returns (mode, theme_css, ds_options, preset_options).
+    """
+    presets, systems = _get_theme_options()
+
+    design_system = request.COOKIES.get("gallery_ds", "material")
+    if design_system not in systems:
+        design_system = "material"
+
+    preset = request.COOKIES.get("gallery_preset", "default")
+    if preset not in presets:
+        preset = "default"
+
+    mode = request.COOKIES.get("gallery_mode", "light")
+    if mode not in ("light", "dark"):
+        mode = "light"
+
+    theme_css = _get_theme_css(preset=preset, design_system=design_system, mode=mode)
+
+    ds_options = "".join(
+        f'<option value="{s}"{" selected" if s == design_system else ""}>'
+        f'{s.replace("_", " ").title()}</option>'
+        for s in systems
+    )
+    preset_options = "".join(
+        f'<option value="{p}"{" selected" if p == preset else ""}>'
+        f'{p.replace("_", " ").title()}</option>'
+        for p in presets
+    )
+
+    return mode, theme_css, ds_options, preset_options
+
+
+# ── Shared rendering functions ──
+
+def _render_head(mode, theme_css, title="djust-components Gallery"):
+    """Return the <head> block with theme CSS, component CSS, and gallery styles."""
+    theming_base_link = ""
+    try:
+        theming_base_link = f'<link rel="stylesheet" href="{static("djust_theming/css/base.css")}">'
+    except Exception:
+        pass
+
+    return f"""\
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>djust-components Gallery</title>
-    <style data-djust-theme>{{ theme_css }}</style>
-    {{ theming_base_css_link }}
-    <link rel="stylesheet" href="{{ component_css_url }}">
-    <link rel="stylesheet" href="{{ component_classes_css_url }}">
+    <title>{title}</title>
+    <style data-djust-theme>{theme_css}</style>
+    {theming_base_link}
+    <link rel="stylesheet" href="{static("djust_components/components.css")}">
+    <link rel="stylesheet" href="{static("djust_components/components-classes.css")}">
     <style>
         /* ── Reset & Base ── */
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
 
-        /* No :root color tokens here — they come from djust-theming's
-           <style data-djust-theme> and base.css loaded above. */
-
-        body {
+        body {{
             font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
             background: var(--color-bg);
             color: var(--color-text);
             line-height: 1.6;
-        }
+        }}
 
         /* ── Layout ── */
-        .gallery-header {
+        .gallery-header {{
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -70,27 +118,32 @@ GALLERY_TEMPLATE = """\
             top: 0;
             background: var(--color-bg);
             z-index: 100;
-        }
+        }}
 
-        .gallery-header h1 {
+        .gallery-header h1 {{
             font-size: 1.25rem;
             font-weight: 600;
-        }
+        }}
 
-        .gallery-header h1 span {
+        .gallery-header h1 span {{
             color: var(--color-text-secondary);
             font-weight: 400;
             font-size: 0.875rem;
             margin-left: 8px;
-        }
+        }}
 
-        .gallery-toolbar {
+        .gallery-header h1 a {{
+            color: inherit;
+            text-decoration: none;
+        }}
+
+        .gallery-toolbar {{
             display: flex;
             align-items: center;
             gap: 8px;
-        }
+        }}
 
-        .gallery-toolbar button {
+        .gallery-toolbar button {{
             padding: 6px 12px;
             border: 1px solid var(--color-border);
             background: var(--color-bg-subtle);
@@ -98,25 +151,25 @@ GALLERY_TEMPLATE = """\
             border-radius: var(--radius-md, 8px);
             cursor: pointer;
             font-size: 0.8rem;
-        }
+        }}
 
-        .gallery-toolbar button:hover {
+        .gallery-toolbar button:hover {{
             border-color: var(--color-primary);
-        }
+        }}
 
-        .gallery-toolbar button.active {
+        .gallery-toolbar button.active {{
             background: var(--color-primary);
             color: hsl(var(--primary-foreground));
             border-color: var(--color-primary);
-        }
+        }}
 
-        .gallery-body {
+        .gallery-body {{
             display: flex;
             min-height: calc(100vh - 57px);
-        }
+        }}
 
         /* ── Sidebar ── */
-        .gallery-sidebar {
+        .gallery-sidebar {{
             width: 220px;
             border-right: 1px solid var(--color-border);
             padding: 16px 0;
@@ -125,57 +178,62 @@ GALLERY_TEMPLATE = """\
             height: calc(100vh - 57px);
             overflow-y: auto;
             flex-shrink: 0;
-        }
+        }}
 
-        .gallery-sidebar h3 {
+        .gallery-sidebar h3 {{
             font-size: 0.7rem;
             text-transform: uppercase;
             letter-spacing: 0.05em;
             color: var(--color-text-secondary);
             padding: 8px 16px 4px;
             margin-top: 8px;
-        }
+        }}
 
-        .gallery-sidebar a {
+        .gallery-sidebar a {{
             display: block;
             padding: 4px 16px;
             color: var(--color-text);
             text-decoration: none;
             font-size: 0.85rem;
-        }
+        }}
 
-        .gallery-sidebar a:hover {
+        .gallery-sidebar a:hover {{
             background: var(--color-bg-subtle);
-        }
+        }}
+
+        .gallery-sidebar a.active {{
+            color: var(--color-primary);
+            font-weight: 600;
+        }}
 
         /* ── Content ── */
-        .gallery-content {
+        .gallery-content {{
             flex: 1;
             padding: 24px;
             max-width: 960px;
-        }
+        }}
 
-        .category-section {
+        .category-section {{
             margin-bottom: 48px;
-        }
+        }}
 
-        .category-section h2 {
+        .category-section h2 {{
             font-size: 1.1rem;
             font-weight: 600;
             margin-bottom: 16px;
             padding-bottom: 8px;
             border-bottom: 1px solid var(--color-border);
-        }
+        }}
 
         /* ── Component Card ── */
-        .component-card {
+        .component-card {{
             border: 1px solid var(--color-border);
             border-radius: var(--radius-md, 8px);
             margin-bottom: 24px;
             overflow: hidden;
-        }
+        }}
 
-        .component-card-header {
+        .component-card-header {{
             padding: 12px 16px;
             background: var(--color-bg-subtle);
             border-bottom: 1px solid var(--color-border);
@@ -184,50 +242,47 @@ GALLERY_TEMPLATE = """\
             display: flex;
             align-items: center;
             gap: 8px;
-        }
+        }}
 
-        .component-card-header .tag-badge {
+        .component-card-header .tag-badge {{
             font-size: 0.65rem;
             padding: 2px 6px;
             border-radius: var(--radius-sm, 4px);
             background: var(--color-primary);
             color: hsl(var(--primary-foreground));
             font-weight: 500;
-        }
+        }}
 
-        .variant-section {
+        .variant-section {{
             padding: 16px;
             border-bottom: 1px solid var(--color-border);
-        }
+        }}
 
-        .variant-section:last-child {
+        .variant-section:last-child {{
             border-bottom: none;
-        }
+        }}
 
-        .variant-label {
+        .variant-label {{
             font-size: 0.75rem;
             color: var(--color-text-secondary);
             margin-bottom: 8px;
             font-weight: 500;
-        }
+        }}
 
-        .variant-preview {
+        .variant-preview {{
             padding: 16px;
             background: var(--color-bg);
             border: 1px solid var(--color-border);
             border-radius: var(--radius-md, 8px);
             overflow: hidden;
-            /* Contain fixed-position overlays (modals, lightbox, sheets, etc.) */
             position: relative;
-            transform: translateZ(0);  /* creates new containing block for position:fixed children */
+            transform: translateZ(0);
             min-height: 60px;
             max-height: 500px;
             overflow-y: auto;
             z-index: 0;
-        }
+        }}
 
-        /* Tame overlays: transform containment makes position:fixed behave as absolute.
-           Also cap z-index so overlays don't escape their card. */
         .variant-preview .modal-overlay,
         .variant-preview .sheet-overlay,
         .variant-preview .sheet,
@@ -247,21 +302,19 @@ GALLERY_TEMPLATE = """\
         .variant-preview .dj-lightbox,
         .variant-preview .dj-tour__overlay,
         .variant-preview .dj-tour__popover,
-        .variant-preview .palette {
+        .variant-preview .palette {{
             position: absolute !important;
-        }
+        }}
 
-        /* ── Responsive Preview Controls ── */
-        .preview-container {
+        .preview-container {{
             transition: max-width 0.3s ease;
-        }
+        }}
 
-        .preview-container.mobile { max-width: 375px; }
-        .preview-container.tablet { max-width: 768px; }
-        .preview-container.desktop { max-width: none; }
+        .preview-container.mobile {{ max-width: 375px; }}
+        .preview-container.tablet {{ max-width: 768px; }}
+        .preview-container.desktop {{ max-width: none; }}
 
-        /* ── Theme Toggle ── */
-        .theme-toggle {
+        .theme-toggle {{
             font-size: 1.1rem;
             background: none;
             border: 1px solid var(--color-border);
@@ -269,9 +322,9 @@ GALLERY_TEMPLATE = """\
             padding: 6px 10px;
             cursor: pointer;
             color: var(--color-text);
-        }
+        }}
 
-        .gallery-toolbar select {
+        .gallery-toolbar select {{
             padding: 6px 8px;
             border: 1px solid var(--color-border);
             background: var(--color-bg-subtle);
@@ -279,50 +332,108 @@ GALLERY_TEMPLATE = """\
             border-radius: var(--radius-md, 8px);
             font-size: 0.8rem;
             cursor: pointer;
-        }
+        }}
 
-        .gallery-toolbar label {
+        .gallery-toolbar label {{
             font-size: 0.7rem;
             color: var(--color-text-secondary);
             text-transform: uppercase;
             letter-spacing: 0.04em;
-        }
+        }}
 
-        .toolbar-group {
+        .toolbar-group {{
             display: flex;
             align-items: center;
             gap: 4px;
-        }
+        }}
+
+        /* ── Index Page ── */
+        .category-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 16px;
+        }}
+
+        .category-card {{
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md, 8px);
+            padding: 20px;
+            text-decoration: none;
+            color: var(--color-text);
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }}
+
+        .category-card:hover {{
+            border-color: var(--color-primary);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }}
+
+        .category-card h3 {{
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }}
+
+        .category-card .count {{
+            font-size: 0.85rem;
+            color: var(--color-text-secondary);
+        }}
+
+        /* ── Breadcrumb ── */
+        .gallery-breadcrumb {{
+            font-size: 0.8rem;
+            color: var(--color-text-secondary);
+            margin-bottom: 16px;
+        }}
+
+        .gallery-breadcrumb a {{
+            color: var(--color-primary);
+            text-decoration: none;
+        }}
+
+        /* ── Prev/Next ── */
+        .category-nav {{
+            display: flex;
+            justify-content: space-between;
+            margin-top: 32px;
+            padding-top: 16px;
+            border-top: 1px solid var(--color-border);
+        }}
+
+        .category-nav a {{
+            color: var(--color-primary);
+            text-decoration: none;
+            font-size: 0.9rem;
+        }}
     </style>
-</head>
-<body>
+</head>"""
+
+
+def _render_header(ds_options, preset_options):
+    """Return the sticky header HTML with theme/preview toolbar."""
+    return f"""\
     <header class="gallery-header">
-        <h1>djust-components<span>Gallery</span></h1>
+        <h1><a href="./">djust-components</a><span>Gallery</span></h1>
         <div class="gallery-toolbar">
             <div class="toolbar-group">
                 <label>Design</label>
-                <select id="design-system" onchange="changeTheme()">{{ design_system_options }}</select>
+                <select id="design-system" onchange="changeTheme()">{ds_options}</select>
             </div>
             <div class="toolbar-group">
                 <label>Preset</label>
-                <select id="preset" onchange="changeTheme()">{{ preset_options }}</select>
+                <select id="preset" onchange="changeTheme()">{preset_options}</select>
             </div>
             <button onclick="setPreview('mobile', event)">Mobile</button>
             <button onclick="setPreview('tablet', event)">Tablet</button>
             <button class="active" onclick="setPreview('desktop', event)">Desktop</button>
-            <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode">🌙</button>
+            <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode">&#127769;</button>
         </div>
-    </header>
+    </header>"""
 
-    <div class="gallery-body">
-        <nav class="gallery-sidebar">
-            {{ sidebar_html }}
-        </nav>
-        <main class="gallery-content preview-container desktop">
-            {{ content_html }}
-        </main>
-    </div>
 
+def _render_scripts():
+    """Return the JS block for theme toggle, responsive preview, and dj-click shim."""
+    return """\
     <script>
         function setCookie(name, value) {
             document.cookie = name + '=' + value + ';path=/;max-age=31536000;SameSite=Lax';
@@ -342,10 +453,9 @@ GALLERY_TEMPLATE = """\
             window.location = window.location.pathname;
         }
 
-        // Set dark mode icon based on current mode
         (function() {
             const mode = document.documentElement.getAttribute('data-theme');
-            document.getElementById('theme-toggle').textContent = mode === 'dark' ? '☀️' : '🌙';
+            document.getElementById('theme-toggle').textContent = mode === 'dark' ? '\\u2600\\uFE0F' : '\\uD83C\\uDF19';
         })();
 
         function setPreview(mode, e) {
@@ -356,15 +466,10 @@ GALLERY_TEMPLATE = """\
             if (e && e.target) e.target.classList.add('active');
         }
 
-        /* ── Gallery interactivity shim ──
-           Handles dj-click / dj-change events client-side so components
-           work in the static gallery without a LiveView WebSocket. */
-        /* Use capture phase so we fire before inline onclick="stopPropagation()" */
+        /* dj-click interactivity shim (capture phase) */
         document.addEventListener('click', function(e) {
             const el = e.target.closest('[dj-click]');
             if (!el) return;
-
-            /* Skip if element also has an inline onclick — it already handles itself */
             if (el.hasAttribute('onclick')) return;
 
             const action = el.getAttribute('dj-click');
@@ -372,7 +477,6 @@ GALLERY_TEMPLATE = """\
             const preview = el.closest('.variant-preview');
             if (!preview) return;
 
-            // ── Accordion ──
             if (action === 'accordion_toggle') {
                 const item = el.closest('.dj-accordion-item');
                 if (item) {
@@ -382,7 +486,6 @@ GALLERY_TEMPLATE = """\
                 }
             }
 
-            // ── Tabs ──
             if (action === 'set_tab') {
                 const tabs = el.closest('.dj-tabs');
                 if (tabs) {
@@ -393,19 +496,16 @@ GALLERY_TEMPLATE = """\
                 }
             }
 
-            // ── Dropdown / Dropdown Menu ──
             if (action === 'toggle_dropdown' || action === 'dropdown_toggle') {
                 const dd = el.closest('.dj-dropdown, .dj-dropdown-menu');
                 if (dd) dd.classList.toggle('dj-dropdown--open');
             }
 
-            // ── Modal close ──
             if (action === 'close_modal') {
                 const backdrop = preview.querySelector('.dj-modal-backdrop, .modal-overlay');
                 if (backdrop) backdrop.style.display = 'none';
             }
 
-            // ── Sheet close ──
             if (action === 'close_sheet') {
                 const overlay = preview.querySelector('.sheet-overlay, .dj-sheet-overlay');
                 const sheet = preview.querySelector('.sheet');
@@ -413,20 +513,17 @@ GALLERY_TEMPLATE = """\
                 if (sheet) sheet.style.transform = 'translateX(100%)';
             }
 
-            // ── Generic toggle (split button, context menu, notification popover, etc.) ──
             if (action.startsWith('toggle_')) {
                 const wrapper = el.closest('[class*="split-button"], [class*="context-menu"], [class*="notification-popover"], [class*="popconfirm"]');
                 if (wrapper) wrapper.classList.toggle('is-open');
             }
 
-            // ── Dismiss / close actions ──
             if (action.startsWith('dismiss_') || action === 'close') {
                 const target = el.closest('[class*="toast"], [class*="alert"], [class*="banner"], [class*="announcement"]');
                 if (target) target.style.display = 'none';
             }
-        }, true); /* ← capture phase */
+        }, true);
 
-        // ── Accordion: add CSS for open/closed state ──
         (function() {
             const style = document.createElement('style');
             style.textContent = `
@@ -440,129 +537,203 @@ GALLERY_TEMPLATE = """\
             `;
             document.head.appendChild(style);
         })();
-    </script>
+    </script>"""
+
+
+def _render_component_cards(components):
+    """Render component cards with variant previews. Returns HTML string."""
+    parts = []
+    for comp in components:
+        anchor = comp["name"].lower().replace(" ", "-")
+        comp_type = "tag" if comp["type"] == "tag" else "class"
+        parts.append(f'<div class="component-card" id="{anchor}">')
+        parts.append(
+            f'<div class="component-card-header">'
+            f'{comp["label"]}'
+            f'<span class="tag-badge">{comp_type}</span>'
+            f'</div>'
+        )
+
+        for variant in comp["variants"]:
+            rendered = ""
+            if comp["type"] == "tag":
+                try:
+                    tpl_str = variant["template"]
+                    t = Template("{% load djust_components %}" + tpl_str)
+                    rendered = t.render(Context(variant.get("context", {})))
+                except Exception as exc:
+                    rendered = f'<div style="color:red;">Render error: {exc}</div>'
+            elif comp["type"] == "class":
+                try:
+                    rendered = variant["render"]()
+                except Exception as exc:
+                    rendered = f'<div style="color:red;">Render error: {exc}</div>'
+
+            parts.append(f'<div class="variant-section">')
+            parts.append(f'<div class="variant-label">{variant["name"]}</div>')
+            parts.append(f'<div class="variant-preview">{rendered}</div>')
+            parts.append('</div>')
+
+        parts.append('</div>')
+    return "\n".join(parts)
+
+
+def _render_sidebar(categories, current_slug=None):
+    """Build sidebar HTML. Shows all categories; expands component links for current."""
+    from .examples import CATEGORIES, CATEGORY_ORDER
+
+    parts = []
+    for slug in CATEGORY_ORDER:
+        cat_label = CATEGORIES.get(slug, slug.title())
+        comps = categories.get(cat_label, [])
+        count = len(comps)
+
+        if current_slug:
+            active = ' class="active"' if slug == current_slug else ""
+            parts.append(f'<h3><a href="../{slug}/"{active}>{cat_label} ({count})</a></h3>')
+            if slug == current_slug:
+                for comp in comps:
+                    anchor = comp["name"].lower().replace(" ", "-")
+                    parts.append(f'<a href="#{anchor}">{comp["label"]}</a>')
+        else:
+            parts.append(f'<h3><a href="{slug}/">{cat_label} ({count})</a></h3>')
+
+    return "\n".join(parts)
+
+
+def _assemble_page(mode, head, header, sidebar, content, scripts):
+    """Wrap sections into a full HTML document."""
+    return f"""\
+<!DOCTYPE html>
+<html lang="en" data-theme="{mode}">
+{head}
+<body>
+{header}
+    <div class="gallery-body">
+        <nav class="gallery-sidebar">
+            {sidebar}
+        </nav>
+        <main class="gallery-content preview-container desktop">
+            {content}
+        </main>
+    </div>
+{scripts}
 </body>
-</html>
-"""
+</html>"""
 
 
-def gallery_view(request):
-    """Render the full component gallery page.
+# ── Views ──
 
-    Builds a self-contained HTML page with:
-    - Sidebar navigation grouped by component category
-    - Each component rendered with all its example variants
-    - Light/dark mode toggle (persisted to localStorage)
-    - Responsive preview controls (mobile/tablet/desktop)
-
-    Template tag examples are rendered through the Django template engine.
-    Component class examples are rendered by calling their ``_render_custom()`` method.
-
-    Args:
-        request: Django HttpRequest.
-
-    Returns:
-        HttpResponse with the complete gallery HTML page.
-    """
-    # Read theme parameters from cookies, validated against allowlists
-    presets, systems = _get_theme_options()
-
-    design_system = request.COOKIES.get("gallery_ds", "material")
-    if design_system not in systems:
-        design_system = "material"
-
-    preset = request.COOKIES.get("gallery_preset", "default")
-    if preset not in presets:
-        preset = "default"
-
-    mode = request.COOKIES.get("gallery_mode", "light")
-    if mode not in ("light", "dark"):
-        mode = "light"
-
-    # Generate theme CSS
-    theme_css = _get_theme_css(preset=preset, design_system=design_system, mode=mode)
-
-    # Build <option> tags for dropdowns
-    ds_options = "".join(
-        f'<option value="{s}"{" selected" if s == design_system else ""}>{s.replace("_", " ").title()}</option>'
-        for s in systems
-    )
-    preset_options = "".join(
-        f'<option value="{p}"{" selected" if p == preset else ""}>{p.replace("_", " ").title()}</option>'
-        for p in presets
-    )
-
+def gallery_index_view(request):
+    """Render the gallery landing page with category cards."""
+    mode, theme_css, ds_options, preset_options = _resolve_theme(request)
     data = get_gallery_data()
     categories = data["categories"]
 
-    # Build sidebar HTML
+    head = _render_head(mode, theme_css)
+    header = _render_header(ds_options, preset_options)
+    sidebar = _render_sidebar(categories)
+    scripts = _render_scripts()
+
+    # Build category card grid
+    from .examples import CATEGORIES, CATEGORY_ORDER
+    cards = []
+    for slug in CATEGORY_ORDER:
+        cat_label = CATEGORIES.get(slug, slug.title())
+        comps = categories.get(cat_label, [])
+        count = len(comps)
+        cards.append(
+            f'<a class="category-card" href="{slug}/">'
+            f'<h3>{cat_label}</h3>'
+            f'<span class="count">{count} component{"s" if count != 1 else ""}</span>'
+            f'</a>'
+        )
+    content = f'<h2>Categories</h2><div class="category-grid">{"".join(cards)}</div>'
+
+    html = _assemble_page(mode, head, header, sidebar, content, scripts)
+    return HttpResponse(html)
+
+
+def gallery_category_view(request, category_slug):
+    """Render a single category's components."""
+    from .examples import CATEGORIES, CATEGORY_ORDER
+
+    if category_slug not in CATEGORIES:
+        raise Http404(f"Unknown category: {category_slug}")
+
+    mode, theme_css, ds_options, preset_options = _resolve_theme(request)
+    data = get_gallery_data()
+    categories = data["categories"]
+
+    cat_label = CATEGORIES[category_slug]
+    components = categories.get(cat_label, [])
+
+    head = _render_head(mode, theme_css, title=f"{cat_label} — djust-components Gallery")
+    header = _render_header(ds_options, preset_options)
+    sidebar = _render_sidebar(categories, current_slug=category_slug)
+    scripts = _render_scripts()
+
+    # Breadcrumb
+    breadcrumb = (
+        f'<div class="gallery-breadcrumb">'
+        f'<a href="../">Gallery</a> &rsaquo; {cat_label} ({len(components)} components)'
+        f'</div>'
+    )
+
+    # Component cards
+    cards_html = _render_component_cards(components)
+
+    # Prev/next navigation
+    idx = CATEGORY_ORDER.index(category_slug)
+    prev_link = ""
+    next_link = ""
+    if idx > 0:
+        prev_slug = CATEGORY_ORDER[idx - 1]
+        prev_label = CATEGORIES.get(prev_slug, prev_slug.title())
+        prev_link = f'<a href="../{prev_slug}/">&larr; {prev_label}</a>'
+    if idx < len(CATEGORY_ORDER) - 1:
+        next_slug = CATEGORY_ORDER[idx + 1]
+        next_label = CATEGORIES.get(next_slug, next_slug.title())
+        next_link = f'<a href="../{next_slug}/">{next_label} &rarr;</a>'
+    nav = f'<div class="category-nav">{prev_link}<span></span>{next_link}</div>'
+
+    content = f'{breadcrumb}\n<section class="category-section">\n<h2>{cat_label}</h2>\n{cards_html}\n</section>\n{nav}'
+
+    html = _assemble_page(mode, head, header, sidebar, content, scripts)
+    return HttpResponse(html)
+
+
+def gallery_view(request):
+    """Render all components on a single page (legacy monolithic view).
+
+    Kept for backward compatibility — use ``gallery_index_view`` and
+    ``gallery_category_view`` for the per-category experience.
+    """
+    mode, theme_css, ds_options, preset_options = _resolve_theme(request)
+    data = get_gallery_data()
+    categories = data["categories"]
+
+    head = _render_head(mode, theme_css)
+    header = _render_header(ds_options, preset_options)
+    scripts = _render_scripts()
+
+    # Build sidebar with all component links
     sidebar_parts = []
     for cat_label, components in sorted(categories.items()):
         sidebar_parts.append(f'<h3>{cat_label}</h3>')
         for comp in components:
             anchor = comp["name"].lower().replace(" ", "-")
             sidebar_parts.append(f'<a href="#{anchor}">{comp["label"]}</a>')
-    sidebar_html = "\n".join(sidebar_parts)
+    sidebar = "\n".join(sidebar_parts)
 
-    # Build content HTML
+    # Build content with all categories
     content_parts = []
     for cat_label, components in sorted(categories.items()):
         content_parts.append(f'<section class="category-section" id="cat-{cat_label.lower()}">')
         content_parts.append(f'<h2>{cat_label}</h2>')
-
-        for comp in components:
-            anchor = comp["name"].lower().replace(" ", "-")
-            comp_type = "tag" if comp["type"] == "tag" else "class"
-            content_parts.append(f'<div class="component-card" id="{anchor}">')
-            content_parts.append(
-                f'<div class="component-card-header">'
-                f'{comp["label"]}'
-                f'<span class="tag-badge">{comp_type}</span>'
-                f'</div>'
-            )
-
-            for variant in comp["variants"]:
-                rendered = ""
-                if comp["type"] == "tag":
-                    try:
-                        tpl_str = variant["template"]
-                        t = Template("{% load djust_components %}" + tpl_str)
-                        rendered = t.render(Context(variant.get("context", {})))
-                    except Exception as exc:
-                        rendered = f'<div style="color:red;">Render error: {exc}</div>'
-                elif comp["type"] == "class":
-                    try:
-                        rendered = variant["render"]()
-                    except Exception as exc:
-                        rendered = f'<div style="color:red;">Render error: {exc}</div>'
-
-                content_parts.append(f'<div class="variant-section">')
-                content_parts.append(f'<div class="variant-label">{variant["name"]}</div>')
-                content_parts.append(f'<div class="variant-preview">{rendered}</div>')
-                content_parts.append('</div>')
-
-            content_parts.append('</div>')
+        content_parts.append(_render_component_cards(components))
         content_parts.append('</section>')
+    content = "\n".join(content_parts)
 
-    content_html = "\n".join(content_parts)
-
-    # Render the full page (using simple string substitution, not Django template,
-    # to avoid conflicts with the {{ }} in the gallery template itself)
-    # Resolve static URLs and theme CSS
-    theming_base_link = ""
-    try:
-        theming_base_link = f'<link rel="stylesheet" href="{static("djust_theming/css/base.css")}">'
-    except Exception:
-        pass
-
-    html = GALLERY_TEMPLATE.replace("{{ html_mode }}", mode)
-    html = html.replace("{{ theme_css }}", theme_css)
-    html = html.replace("{{ theming_base_css_link }}", theming_base_link)
-    html = html.replace("{{ component_css_url }}", static("djust_components/components.css"))
-    html = html.replace("{{ component_classes_css_url }}", static("djust_components/components-classes.css"))
-    html = html.replace("{{ design_system_options }}", ds_options)
-    html = html.replace("{{ preset_options }}", preset_options)
-    html = html.replace("{{ sidebar_html }}", sidebar_html)
-    html = html.replace("{{ content_html }}", content_html)
-
+    html = _assemble_page(mode, head, header, sidebar, content, scripts)
     return HttpResponse(html)
