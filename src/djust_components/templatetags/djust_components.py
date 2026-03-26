@@ -294,7 +294,7 @@ class DropdownNode(template.Node):
         variant = kw.get("variant", "default")
 
         content = self.nodelist.render(context)
-        open_cls = "dj-dropdown--open" if is_open else ""
+        open_attr = ' data-open' if is_open else ""
         variant_cls = f"dj-dropdown--{conditional_escape(variant)}"
 
         menu_html = ""
@@ -302,7 +302,7 @@ class DropdownNode(template.Node):
             menu_html = f'<div class="dj-dropdown__menu">{content}</div>'
 
         return mark_safe(
-            f'<div class="dj-dropdown {open_cls} {variant_cls}" id="{conditional_escape(dropdown_id)}">'
+            f'<div class="dj-dropdown {variant_cls}" id="{conditional_escape(dropdown_id)}"{open_attr}>'
             f'<button class="dj-dropdown__trigger" dj-click="{conditional_escape(toggle_event)}">{conditional_escape(label)}</button>'
             f'{menu_html}</div>'
         )
@@ -1817,10 +1817,10 @@ class PopoverNode(template.Node):
 
         js = (
             "(function(el){var p=el.parentElement;"
-            "p.classList.toggle('popover-open');"
+            "if(p.hasAttribute('data-open')){p.removeAttribute('data-open');}else{p.setAttribute('data-open','');"
             "document.addEventListener('click',function h(e){"
-            "if(!p.contains(e.target)){p.classList.remove('popover-open');"
-            "document.removeEventListener('click',h);}},true);})(this)"
+            "if(!p.contains(e.target)){p.removeAttribute('data-open');"
+            "document.removeEventListener('click',h);}},true);};})(this)"
         )
         return mark_safe(
             f'<div class="popover-wrapper" id="{e_uid}">'
@@ -5972,8 +5972,8 @@ class NotificationPopoverNode(template.Node):
             display = "99+" if unread_count > 99 else str(unread_count)
             badge_html = f'<span class="dj-notif-popover__badge">{display}</span>'
 
-        open_cls = "dj-notif-popover--open" if is_open else ""
-        cls = f"dj-notif-popover {open_cls}"
+        open_attr = ' data-open' if is_open else ""
+        cls = "dj-notif-popover"
         if e_class:
             cls += f" {e_class}"
 
@@ -6032,7 +6032,7 @@ class NotificationPopoverNode(template.Node):
                 f'</div>'
             )
 
-        return mark_safe(f'<div class="{cls}">{bell_html}{panel_html}</div>')
+        return mark_safe(f'<div class="{cls}"{open_attr}>{bell_html}{panel_html}</div>')
 
 
 @register.tag("notification_popover")
@@ -8061,11 +8061,10 @@ class DropdownMenuNode(template.Node):
         e_class = conditional_escape(str(custom_class))
 
         classes = ["dj-dropdown-menu"]
-        if is_open:
-            classes.append("dj-dropdown-menu--open")
         if e_class:
             classes.append(e_class)
         class_str = " ".join(classes)
+        dm_open_attr = ' data-open' if is_open else ""
 
         trigger = (
             f'<button class="dj-dropdown-menu__trigger" '
@@ -8076,6 +8075,7 @@ class DropdownMenuNode(template.Node):
 
         if not is_open:
             return mark_safe(f'<div class="{class_str}">{trigger}</div>')
+        # When open, dm_open_attr is set above
 
         if not isinstance(items, list):
             items = []
@@ -8121,7 +8121,7 @@ class DropdownMenuNode(template.Node):
             f'role="menu">{"".join(menu_items)}</div>'
         )
 
-        return mark_safe(f'<div class="{class_str}">{trigger}{menu}</div>')
+        return mark_safe(f'<div class="{class_str}"{dm_open_attr}>{trigger}{menu}</div>')
 
 
 class MenuItemNode(template.Node):

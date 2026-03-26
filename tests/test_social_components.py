@@ -200,7 +200,7 @@ class TestNotificationPopover:
             '{% notification_popover notifications=notifs open=is_open %}',
             {"notifs": notifs, "is_open": True},
         )
-        assert "dj-notif-popover--open" in html
+        assert 'data-open' in html
         assert "dj-notif-popover__panel" in html
         assert "Deploy" in html
         assert "v2 deployed" in html
