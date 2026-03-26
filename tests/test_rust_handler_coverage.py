@@ -6,25 +6,6 @@ Covers 4 batches:
 3. Complex component state — nested content, dynamic state, edge conditions
 4. Edge cases — empty data, missing params, XSS payloads
 """
-import django
-from django.conf import settings
-
-if not settings.configured:
-    settings.configure(
-        INSTALLED_APPS=[
-            "django.contrib.contenttypes",
-            "djust_components",
-        ],
-        TEMPLATES=[{
-            "BACKEND": "django.template.backends.django.DjangoTemplates",
-            "DIRS": [],
-            "APP_DIRS": True,
-            "OPTIONS": {"context_processors": []},
-        }],
-        DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}},
-    )
-    django.setup()
-
 import pytest
 from django.utils.safestring import SafeData
 

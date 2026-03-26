@@ -1,23 +1,4 @@
 """Tests for social/user-facing components: Avatar Group, Hover Card, Notification Popover."""
-import django
-from django.conf import settings
-
-if not settings.configured:
-    settings.configure(
-        INSTALLED_APPS=[
-            "django.contrib.contenttypes",
-            "djust_components",
-        ],
-        TEMPLATES=[{
-            "BACKEND": "django.template.backends.django.DjangoTemplates",
-            "DIRS": [],
-            "APP_DIRS": True,
-            "OPTIONS": {"context_processors": []},
-        }],
-        DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}},
-    )
-    django.setup()
-
 from django.template import Template, Context
 import pytest
 

@@ -1,76 +1,18 @@
 """Tests for WebSocket-powered components: Streaming Text, Connection Status,
 Live Counter, Toast Container, and ServerEventToastMixin."""
 
-import sys
-import types
-
-# ---------------------------------------------------------------------------
-# Minimal djust stub — must happen before any djust_components import.
-# ---------------------------------------------------------------------------
-_djust_stub = types.ModuleType("djust")
-
-
-class _ComponentBase:
-    """Minimal stand-in for djust.Component used during unit tests."""
-    def __init__(self, **kwargs):
-        pass
+from django.template import Template, Context
+import pytest
 
 
 class _LiveViewBase:
-    """Minimal stand-in for djust.LiveView used during unit tests."""
+    """Specialised stub with push_event tracking for ServerEventToastMixin tests."""
+
     def __init__(self):
         self._pushed_events = []
 
     def push_event(self, event_name, payload):
         self._pushed_events.append((event_name, payload))
-
-    def get_context_data(self, **kwargs):
-        return {}
-
-
-_djust_stub.Component = _ComponentBase
-_djust_stub.LiveView = _LiveViewBase
-sys.modules.setdefault("djust", _djust_stub)
-
-# Build a fake 'djust.decorators' submodule
-_decorators_stub = types.ModuleType("djust.decorators")
-
-
-def _event_handler(fn=None, **kwargs):
-    if fn is not None:
-        return fn
-    def _decorator(fn):
-        return fn
-    return _decorator
-
-
-_decorators_stub.event_handler = _event_handler
-sys.modules.setdefault("djust.decorators", _decorators_stub)
-
-# ---------------------------------------------------------------------------
-# Django minimal setup
-# ---------------------------------------------------------------------------
-import django  # noqa: E402
-from django.conf import settings  # noqa: E402
-
-if not settings.configured:
-    settings.configure(
-        INSTALLED_APPS=[
-            "django.contrib.contenttypes",
-            "djust_components",
-        ],
-        TEMPLATES=[{
-            "BACKEND": "django.template.backends.django.DjangoTemplates",
-            "DIRS": [],
-            "APP_DIRS": True,
-            "OPTIONS": {"context_processors": []},
-        }],
-        DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}},
-    )
-    django.setup()
-
-from django.template import Template, Context  # noqa: E402
-import pytest  # noqa: E402
 
 
 def render(template_str, ctx=None):

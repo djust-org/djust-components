@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Shared test infrastructure** (`tests/conftest.py`): Extracted duplicated boilerplate from all 38 test files into a single conftest — djust module stubs, `djust.decorators` stub, and Django `settings.configure()` now run once via pytest's conftest mechanism. (#TEST-INFRA)
+- **Dynamic gallery discovery test**: `test_discover_component_classes` now asserts against `components.__all__` instead of a hardcoded set, so it no longer breaks when new component classes are added.
+- Fixed pre-existing test bug: component class tests (`test_expandable_text_class`, `test_truncated_list_class`, etc.) now pass because the shared stub includes `Component.render()`.
+
 ### Added
 - **v2.0 Final Batch — Remaining Components**: 12 new components with Django template tags, Rust engine handlers, Python component classes, CSS, and tests (including XSS coverage):
   - **Map Picker** (`{% map_picker lat=lat lng=lng pick_event="set_location" %}`) — Click-to-pick location on a Leaflet/OSM map with marker. Uses `dj-hook="MapPicker"`. Supports `lat`, `lng`, `pick_event`, `zoom`, `height`, `class`. Also available as Python class `MapPicker(lat=..., lng=..., pick_event=...)`. (#76b)

@@ -7,70 +7,12 @@ We therefore mock the ``djust`` module before importing
 """
 import json
 import sys
-import types
 import unittest.mock as mock
-
-# ---------------------------------------------------------------------------
-# Minimal djust stub — must happen before any djust_components import.
-# ---------------------------------------------------------------------------
-
-# Build a fake 'djust' package with a LiveView base class.
-_djust_stub = types.ModuleType("djust")
-
-
-class _LiveViewBase:
-    """Minimal stand-in for djust.LiveView used during unit tests."""
-
-    def get_context_data(self, **kwargs):
-        return {}
-
-
-_djust_stub.LiveView = _LiveViewBase
-sys.modules.setdefault("djust", _djust_stub)
-
-# Build a fake 'djust.decorators' submodule — event_handler is a pass-through.
-_decorators_stub = types.ModuleType("djust.decorators")
-
-
-def _event_handler(fn=None, **kwargs):
-    """No-op stand-in for @event_handler; returns the function unchanged."""
-    if fn is not None:
-        return fn
-    def _decorator(fn):
-        return fn
-    return _decorator
-
-
-_decorators_stub.event_handler = _event_handler
-sys.modules.setdefault("djust.decorators", _decorators_stub)
-
-# ---------------------------------------------------------------------------
-# Django minimal setup (needed for RequestFactory).
-# ---------------------------------------------------------------------------
-import django  # noqa: E402
-from django.conf import settings  # noqa: E402
-
-if not settings.configured:
-    settings.configure(
-        INSTALLED_APPS=[
-            "django.contrib.contenttypes",
-            "djust_components",
-        ],
-        TEMPLATES=[{
-            "BACKEND": "django.template.backends.django.DjangoTemplates",
-            "DIRS": [],
-            "APP_DIRS": True,
-            "OPTIONS": {"context_processors": []},
-        }],
-        DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}},
-    )
-    django.setup()
-
-import pytest  # noqa: E402
-from django.test import RequestFactory  # noqa: E402
+import pytest
+from django.test import RequestFactory
 
 # Now safe to import — djust stub is already in sys.modules.
-from djust_components.ttyd import TtydTerminalView  # noqa: E402
+from djust_components.ttyd import TtydTerminalView
 
 
 # ---------------------------------------------------------------------------

@@ -1,23 +1,4 @@
 """Tests for text display + loading pattern components."""
-import django
-from django.conf import settings
-
-if not settings.configured:
-    settings.configure(
-        INSTALLED_APPS=[
-            "django.contrib.contenttypes",
-            "djust_components",
-        ],
-        TEMPLATES=[{
-            "BACKEND": "django.template.backends.django.DjangoTemplates",
-            "DIRS": [],
-            "APP_DIRS": True,
-            "OPTIONS": {"context_processors": []},
-        }],
-        DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}},
-    )
-    django.setup()
-
 from django.template import Template, Context
 import pytest
 
@@ -608,25 +589,7 @@ class TestXSSEscaping:
 class TestComponentClasses:
     """Test the Python component classes (programmatic API)."""
 
-    def _stub_djust(self):
-        """Ensure djust Component is stubbed for import."""
-        import types
-        import sys
-        if "djust" not in sys.modules or not hasattr(sys.modules["djust"], "Component"):
-            _stub = types.ModuleType("djust")
-
-            class _Comp:
-                def __init__(self, **kwargs):
-                    pass
-
-                def render(self):
-                    return self._render_custom()
-
-            _stub.Component = _Comp
-            sys.modules["djust"] = _stub
-
     def test_expandable_text_class(self):
-        self._stub_djust()
         from djust_components.components.expandable_text import ExpandableText
         comp = ExpandableText(text="Hello world", max_lines=2)
         html = comp.render()
@@ -635,14 +598,14 @@ class TestComponentClasses:
         assert "Hello world" in html
 
     def test_expandable_text_class_expanded(self):
-        self._stub_djust()
+
         from djust_components.components.expandable_text import ExpandableText
         comp = ExpandableText(text="Full", expanded=True)
         html = comp.render()
         assert "dj-expandable-text--expanded" in html
 
     def test_truncated_list_class(self):
-        self._stub_djust()
+
         from djust_components.components.truncated_list import TruncatedList
         comp = TruncatedList(items=["A", "B", "C", "D"], max=2)
         html = comp.render()
@@ -651,7 +614,7 @@ class TestComponentClasses:
         assert "+2 more" in html
 
     def test_markdown_textarea_class(self):
-        self._stub_djust()
+
         from djust_components.components.markdown_textarea import MarkdownTextarea
         comp = MarkdownTextarea(name="body")
         html = comp.render()
@@ -659,14 +622,14 @@ class TestComponentClasses:
         assert 'name="body"' in html
 
     def test_skeleton_factory_class(self):
-        self._stub_djust()
+
         from djust_components.components.skeleton_factory import SkeletonFactory
         comp = SkeletonFactory(component="data_table", columns=3, rows=2)
         html = comp.render()
         assert "dj-skeleton--data-table" in html
 
     def test_content_loader_class(self):
-        self._stub_djust()
+
         from djust_components.components.content_loader import ContentLoader
         comp = ContentLoader(loading_event="load", loaded=False)
         html = comp.render()
@@ -674,7 +637,7 @@ class TestComponentClasses:
         assert "dj-content-loader__placeholder" in html
 
     def test_content_loader_class_loaded(self):
-        self._stub_djust()
+
         from djust_components.components.content_loader import ContentLoader
         comp = ContentLoader(loading_event="load", loaded=True, content="<p>Data</p>")
         html = comp.render()
@@ -682,7 +645,7 @@ class TestComponentClasses:
         assert "dj-content-loader__content" in html
 
     def test_content_loader_class_error(self):
-        self._stub_djust()
+
         from djust_components.components.content_loader import ContentLoader
         comp = ContentLoader(loading_event="x", error="Failed!", error_event="retry")
         html = comp.render()

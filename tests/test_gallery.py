@@ -1,73 +1,4 @@
 """Tests for the component gallery — discovery, rendering, views, and management command."""
-import types
-import sys
-
-# Stub djust before any djust_components imports
-_stub = types.ModuleType("djust")
-
-
-class _LV:
-    pass
-
-
-class _Comp:
-    """Stub Component base class."""
-
-    def __init__(self, *args, **kwargs):
-        pass
-
-    def _render_custom(self):
-        return "<div>stub</div>"
-
-    def __str__(self):
-        return self._render_custom()
-
-    def __html__(self):
-        return self._render_custom()
-
-
-_stub.LiveView = _LV
-_stub.Component = _Comp
-sys.modules.setdefault("djust", _stub)
-
-# Stub djust.decorators
-_dec_stub = types.ModuleType("djust.decorators")
-
-
-def _event_handler(fn):
-    return fn
-
-
-_dec_stub.event_handler = _event_handler
-sys.modules.setdefault("djust.decorators", _dec_stub)
-
-
-import django
-from django.conf import settings
-
-if not settings.configured:
-    settings.configure(
-        INSTALLED_APPS=[
-            "django.contrib.contenttypes",
-            "django.contrib.staticfiles",
-            "djust_components",
-        ],
-        TEMPLATES=[
-            {
-                "BACKEND": "django.template.backends.django.DjangoTemplates",
-                "DIRS": [],
-                "APP_DIRS": True,
-                "OPTIONS": {"context_processors": []},
-            }
-        ],
-        DATABASES={
-            "default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}
-        },
-        STATIC_URL="/static/",
-    )
-    django.setup()
-
-
 import pytest
 from django.template import Template, Context
 from django.test import RequestFactory
@@ -94,12 +25,27 @@ class TestDiscovery:
         assert "alert" in tags
 
     def test_discover_component_classes(self):
-        """All component classes are discovered."""
+        """Discovered classes match __all__ from components package."""
+        from djust_components.gallery.registry import discover_component_classes
+        from djust_components.components import __all__ as exported_names
+
+        classes = discover_component_classes()
+        # Dynamic: discovered set must exactly match the package's __all__
+        assert set(classes.keys()) == set(exported_names), (
+            f"Mismatch between discovered classes and __all__.\n"
+            f"  In __all__ but not discovered: {set(exported_names) - set(classes.keys())}\n"
+            f"  Discovered but not in __all__: {set(classes.keys()) - set(exported_names)}"
+        )
+        # Sanity: should have a reasonable number of components
+        assert len(classes) >= 50, f"Only {len(classes)} classes discovered — expected 50+"
+
+    def test_discover_component_classes_includes_known_core(self):
+        """Smoke-check that well-known classes are always present."""
         from djust_components.gallery.registry import discover_component_classes
 
         classes = discover_component_classes()
-        expected = {"ActivityFeed", "AgentStep", "Alert", "AnimatedNumber", "ApprovalGate", "AuditLog", "AvatarGroup", "Badge", "BarChart", "BottomSheet", "BreadcrumbDropdown", "Button", "CalendarHeatmap", "CalendarView", "Card", "ChatBubble", "CodeSnippet", "CollabSelection", "ComparisonTable", "ConnectionStatus", "ContentLoader", "ConversationThread", "CookieConsent", "Countdown", "CopyableText", "CronInput", "CurrencyInput", "CursorsOverlay", "DashboardGrid", "DataCardGrid", "DataGrid", "DependentSelect", "DiffViewer", "DropdownMenu", "ErrorBoundary", "ErrorPage", "ExpandableText", "ExportDialog", "FeedbackWidget", "FieldError", "FileTree", "FormArray", "FormErrors", "GanttChart", "Heatmap", "HoverCard", "ImageCropper", "ImageLightbox", "ImageUploadPreview", "ImportWizard", "InfiniteScroll", "JsonViewer", "LineChart", "LiveCounter", "LiveIndicator", "LogViewer", "MapPicker", "Markdown", "MarkdownEditor", "MarkdownTextarea", "MasonryGrid", "MentionsInput", "Meter", "ModelSelector", "MultimodalInput", "NotificationBadge", "NotificationPopover", "OrgChart", "PageAlert", "PieChart", "PivotTable", "PresenceAvatars", "Progress", "ProgressCircle", "PromptEditor", "QRCode", "Reactions", "RelativeTime", "ResizablePanel", "ResponsiveImage", "Ribbon", "RichSelect", "ScrollSpy", "ScrollToTop", "SegmentedProgress", "ServerEventToastMixin", "SignaturePad", "SkeletonFactory", "SortableGrid", "SortableList", "SourceCitation", "Sparkline", "Spinner", "StatCard", "StatusDot", "StatusIndicator", "StreamingText", "Switch", "Tag", "Terminal", "ThinkingIndicator", "TimePicker", "Toast", "TokenCounter", "Tour", "Treemap", "TruncatedList", "VoiceInput", "Wizard"}
-        assert set(classes.keys()) == expected
+        for name in ("Badge", "Button", "Card", "Alert", "Toast", "Progress"):
+            assert name in classes, f"Core class {name!r} missing from discovery"
 
     def test_all_examples_have_matching_tag_or_class(self):
         """Every key in EXAMPLES matches a registered tag or component class."""
