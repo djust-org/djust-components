@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Visual regression test infrastructure** (#VRT): Added GitHub Actions workflow (`.github/workflows/vrt.yml`) that captures Playwright screenshots of the component gallery at 3 breakpoints (mobile/tablet/desktop) x 2 color modes (light/dark) and diffs against committed baselines. Includes local capture script (`scripts/capture-vrt-baselines.sh`) and strategy documentation (`docs/VISUAL_REGRESSION.md`). Workflow triggers only on PRs that modify CSS or template files.
+
 ### Security
 - **custom_class XSS escaping** (#SEC-SWEEP): Added `html.escape()` to `custom_class` in `_render_custom()` across 63 component classes that were missing it. Previously only ~40 components escaped this user-controlled value before injecting it into CSS class attributes. 100 new tests cover the fix.
 - **Spinner label escaping** (#SEC-SWEEP): Escape `label` with `html.escape()` in both the `<span>` content and `aria-label` attribute of the Spinner component. Previously unescaped, enabling script injection via label text.
