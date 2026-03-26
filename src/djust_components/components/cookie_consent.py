@@ -67,7 +67,7 @@ class CookieConsent(Component):
     def _render_custom(self) -> str:
         classes = ["dj-cookie-consent", f"dj-cookie-consent--{self.position}"]
         if self.custom_class:
-            classes.append(self.custom_class)
+            classes.append(html.escape(self.custom_class))
         class_str = " ".join(classes)
 
         e_msg = html.escape(self.message)

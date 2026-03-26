@@ -1,5 +1,7 @@
 """Spinner component for loading state indicators."""
 
+import html
+
 from typing import Optional
 
 from djust import Component
@@ -73,12 +75,13 @@ class Spinner(Component):
             classes.append(f"dj-spinner-{self.variant}")
 
         if self.custom_class:
-            classes.append(self.custom_class)
+            classes.append(html.escape(self.custom_class))
 
         class_str = " ".join(classes)
 
         sr_label = ""
+        e_label = html.escape(self.label) if self.label else ""
         if self.label:
-            sr_label = f'<span class="dj-sr-only">{self.label}</span>'
+            sr_label = f'<span class="dj-sr-only">{e_label}</span>'
 
-        return f'<span class="{class_str}" role="status" aria-label="{self.label or ""}">{sr_label}</span>'
+        return f'<span class="{class_str}" role="status" aria-label="{e_label}">{sr_label}</span>'

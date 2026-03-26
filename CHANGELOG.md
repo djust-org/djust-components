@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- **custom_class XSS escaping** (#SEC-SWEEP): Added `html.escape()` to `custom_class` in `_render_custom()` across 63 component classes that were missing it. Previously only ~40 components escaped this user-controlled value before injecting it into CSS class attributes. 100 new tests cover the fix.
+- **Spinner label escaping** (#SEC-SWEEP): Escape `label` with `html.escape()` in both the `<span>` content and `aria-label` attribute of the Spinner component. Previously unescaped, enabling script injection via label text.
+- **Toast type allowlist** (#SEC-SWEEP): Toast component and ToastContainerHandler now validate `type` against `{"info", "success", "warning", "error"}`, falling back to `"info"` for unknown values. Prevents CSS class injection via arbitrary type strings.
+- **Toast/ServerEventToast container position allowlist** (#SEC-SWEEP): `ToastContainerNode` (template tag) and `ServerToastContainerHandler` (Rust handler) now validate `position` against six allowed values (`top-left`, `top-right`, `top-center`, `bottom-left`, `bottom-right`, `bottom-center`), falling back to `"top-right"`. Prevents CSS class injection via position parameter.
+- **AuditLog action allowlist** (#SEC-SWEEP): Action values are now validated against a configurable `allowed_actions` set (default: create, read, update, delete, login, logout, export, import, approve, reject) before being used in CSS class names. Unknown actions are silently omitted from class attributes. Cell content remains HTML-escaped as before. Pass `allowed_actions={"custom", "values"}` to extend.
+- **Replace eval() with AST parser** (#EVAL-REPLACE): `DataTableMixin._eval_expression()` now uses a safe recursive-descent arithmetic parser instead of `eval()`. The parser only permits numeric literals, column-name identifiers, `+ - * / %`, unary minus, and parentheses. Function calls, attribute access, and arbitrary Python expressions are rejected. The `eval()` call with its character allowlist and empty `__builtins__` has been removed entirely.
+
+### Note: Intentionally unescaped block content
+The following template tags accept inner block content (between open/close tags) that is passed through unescaped by design, since the content comes from the template author, not from user input:
+- `{% modal %}...{% endmodal %}` -- modal body content
+- `{% tabs %}...{% endtabs %}` -- tab panel content
+- `{% accordion %}...{% endaccordion %}` -- panel content
+- `{% dropdown %}...{% enddropdown %}` -- dropdown menu content
+- `{% tooltip %}...{% endtooltip %}` -- tooltip body content
+- `{% card %}...{% endcard %}` -- card body content
+- `{% sidebar %}...{% endsidebar %}` -- sidebar navigation content
+Template authors are responsible for escaping any user-controlled values within these blocks using Django's standard `{{ var }}` auto-escaping.
+
 ### Added
 - **Gallery examples for all template tags**: Added curated gallery examples for ~130 previously orphan template tags in `gallery/examples.py`. Every registered tag now has at least one example with realistic default data, grouped by category (layout, form, overlay, feedback, data, navigation, indicator, typography, misc). Updated the orphan-tags test to exclude child-only tags (tags rendered by their parent, e.g. `sidebar_item`, `nav_item`, `filter_select`) from the orphan check. The gallery `test_no_orphan_tags` warning is now fully eliminated. (#GALLERY-EXAMPLES)
 

@@ -67,7 +67,7 @@ class FormArray(Component):
     def _render_custom(self) -> str:
         classes = ["dj-form-array"]
         if self.custom_class:
-            classes.append(self.custom_class)
+            classes.append(html.escape(self.custom_class))
         class_str = " ".join(classes)
 
         e_name = html.escape(self.name)

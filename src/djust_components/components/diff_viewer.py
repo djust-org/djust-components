@@ -89,7 +89,7 @@ class DiffViewer(Component):
         else:
             classes.append("dj-diff--split")
         if self.custom_class:
-            classes.append(self.custom_class)
+            classes.append(html.escape(self.custom_class))
         class_str = " ".join(classes)
 
         old_lines = self.old.split("\n") if self.old else []

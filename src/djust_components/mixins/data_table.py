@@ -31,10 +31,156 @@ import csv
 import io
 import json
 import math
+import re
 
 from djust_components.utils import format_cell, interpolate_color_gradient
 
 __all__ = ["DataTableMixin"]
+
+
+# ---------------------------------------------------------------------------
+# Safe arithmetic expression evaluator (replaces eval())
+# ---------------------------------------------------------------------------
+# Tokeniser and recursive-descent parser that only allows:
+#   - numeric literals (int and float)
+#   - column-name identifiers (Python identifiers)
+#   - binary operators: + - * / %
+#   - unary minus
+#   - parenthesised sub-expressions
+
+_TOKEN_RE = re.compile(
+    r"""
+    \s*(?:
+        (?P<NUMBER>[0-9]+(?:\.[0-9]*)?)   # numeric literal
+      | (?P<IDENT>[A-Za-z_][A-Za-z0-9_]*) # identifier (column name)
+      | (?P<OP>[+\-*/%()]))               # operator or paren
+    """,
+    re.VERBOSE,
+)
+
+
+def _tokenize(expression):
+    """Yield (type, value) tokens from *expression*.
+
+    Raises ValueError on illegal characters.
+    """
+    pos = 0
+    for m in _TOKEN_RE.finditer(expression):
+        if m.start() != pos:
+            # Gap between last match end and this match start → illegal chars
+            gap = expression[pos:m.start()].strip()
+            if gap:
+                raise ValueError(f"Illegal characters in expression: {gap!r}")
+        if m.group("NUMBER") is not None:
+            yield ("NUMBER", float(m.group("NUMBER")))
+        elif m.group("IDENT") is not None:
+            yield ("IDENT", m.group("IDENT"))
+        elif m.group("OP") is not None:
+            yield ("OP", m.group("OP"))
+        pos = m.end()
+    # Check for trailing illegal chars
+    trailing = expression[pos:].strip()
+    if trailing:
+        raise ValueError(f"Illegal trailing characters: {trailing!r}")
+    yield ("EOF", None)
+
+
+class _Parser:
+    """Recursive-descent arithmetic parser.
+
+    Grammar::
+
+        expr   → term (('+' | '-') term)*
+        term   → unary (('*' | '/' | '%') unary)*
+        unary  → '-' unary | atom
+        atom   → NUMBER | IDENT | '(' expr ')'
+    """
+
+    def __init__(self, tokens, namespace):
+        self.tokens = list(tokens)
+        self.namespace = namespace
+        self.pos = 0
+
+    def _peek(self):
+        return self.tokens[self.pos]
+
+    def _advance(self):
+        tok = self.tokens[self.pos]
+        self.pos += 1
+        return tok
+
+    def parse(self):
+        result = self._expr()
+        if self._peek()[0] != "EOF":
+            raise ValueError("Unexpected token after expression")
+        return result
+
+    def _expr(self):
+        left = self._term()
+        while self._peek() == ("OP", "+") or self._peek() == ("OP", "-"):
+            op = self._advance()[1]
+            right = self._term()
+            if op == "+":
+                left = left + right
+            else:
+                left = left - right
+        return left
+
+    def _term(self):
+        left = self._unary()
+        while (
+            self._peek() == ("OP", "*")
+            or self._peek() == ("OP", "/")
+            or self._peek() == ("OP", "%")
+        ):
+            op = self._advance()[1]
+            right = self._unary()
+            if op == "*":
+                left = left * right
+            elif op == "/":
+                if right == 0:
+                    raise ValueError("Division by zero")
+                left = left / right
+            else:  # %
+                if right == 0:
+                    raise ValueError("Modulo by zero")
+                left = left % right
+        return left
+
+    def _unary(self):
+        if self._peek() == ("OP", "-"):
+            self._advance()
+            return -self._unary()
+        return self._atom()
+
+    def _atom(self):
+        tok_type, tok_val = self._peek()
+        if tok_type == "NUMBER":
+            self._advance()
+            return tok_val
+        if tok_type == "IDENT":
+            self._advance()
+            if tok_val not in self.namespace:
+                raise ValueError(f"Unknown column: {tok_val!r}")
+            return self.namespace[tok_val]
+        if tok_type == "OP" and tok_val == "(":
+            self._advance()  # consume '('
+            result = self._expr()
+            if self._peek() != ("OP", ")"):
+                raise ValueError("Expected closing parenthesis")
+            self._advance()  # consume ')'
+            return result
+        raise ValueError(f"Unexpected token: {tok_type}={tok_val!r}")
+
+
+def _safe_eval_arithmetic(expression, namespace):
+    """Evaluate *expression* using only arithmetic ops and *namespace* lookups.
+
+    This replaces ``eval()`` with a safe recursive-descent parser.
+    """
+    tokens = _tokenize(expression)
+    parser = _Parser(tokens, namespace)
+    return parser.parse()
 
 
 class DataTableMixin:
@@ -546,7 +692,11 @@ class DataTableMixin:
     def _eval_expression(self, expression, row):
         """Safely evaluate a computed column expression against a row.
 
-        Supports basic arithmetic (+, -, *, /) with column references.
+        Uses an AST-based parser that only permits arithmetic operations
+        (+, -, *, /, %, parentheses) and column references. No eval().
+
+        Supports: column references, numeric literals, +, -, *, /, %,
+        unary minus, and parenthesised sub-expressions.
         """
         # Build namespace of numeric row values
         namespace = {}
@@ -556,11 +706,7 @@ class DataTableMixin:
             except (ValueError, TypeError):
                 namespace[k] = 0
         try:
-            # Only allow safe identifiers and arithmetic
-            allowed = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_+-*/.(). ")
-            if not all(c in allowed for c in expression):
-                return ""
-            result = eval(expression, {"__builtins__": {}}, namespace)  # noqa: S307
+            result = _safe_eval_arithmetic(expression, namespace)
             if isinstance(result, float) and result == int(result):
                 return int(result)
             return round(result, 2) if isinstance(result, float) else result

@@ -54,7 +54,7 @@ class CodeSnippet(Component):
         """Render the code snippet HTML."""
         classes = ["dj-code-snippet"]
         if self.custom_class:
-            classes.append(self.custom_class)
+            classes.append(html.escape(self.custom_class))
         class_str = " ".join(classes)
 
         e_code = html.escape(self.code)

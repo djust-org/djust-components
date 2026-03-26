@@ -56,7 +56,7 @@ class Meter(Component):
     def _render_custom(self) -> str:
         classes = ["dj-meter"]
         if self.custom_class:
-            classes.append(self.custom_class)
+            classes.append(html.escape(self.custom_class))
         class_str = " ".join(classes)
 
         label_html = ""

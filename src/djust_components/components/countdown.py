@@ -56,7 +56,7 @@ class Countdown(Component):
     def _render_custom(self) -> str:
         classes = ["dj-countdown"]
         if self.custom_class:
-            classes.append(self.custom_class)
+            classes.append(html.escape(self.custom_class))
         class_str = " ".join(classes)
 
         e_target = html.escape(self.target)

@@ -285,6 +285,8 @@ class TimelineItemHandler:
 
 
 class ToastContainerHandler:
+    ALLOWED_TYPES = {"info", "success", "warning", "error"}
+
     def render(self, args, context):
         toasts = context.get("toasts", [])
         dismiss_event = "dismiss_toast"
@@ -294,7 +296,9 @@ class ToastContainerHandler:
         for t in toasts:
             if not isinstance(t, dict):
                 continue
-            t_type = conditional_escape(t.get("type", "info"))
+            t_type = t.get("type", "info")
+            if t_type not in self.ALLOWED_TYPES:
+                t_type = "info"
             t_id = conditional_escape(str(t.get("id", "")))
             t_msg = conditional_escape(t.get("message", ""))
             items.append(
@@ -3275,9 +3279,17 @@ class LiveCounterHandler:
 
 class ServerToastContainerHandler:
     """Inline handler for {% server_toast_container position="top-right" %}"""
+
+    ALLOWED_POSITIONS = {
+        "top-left", "top-right", "top-center",
+        "bottom-left", "bottom-right", "bottom-center",
+    }
+
     def render(self, args, context):
         kw = _parse_args(args, context)
-        position = conditional_escape(str(kw.get("position", "top-right")))
+        position = str(kw.get("position", "top-right"))
+        if position not in self.ALLOWED_POSITIONS:
+            position = "top-right"
         custom_class = conditional_escape(str(kw.get("custom_class", "")))
         try:
             max_toasts = int(kw.get("max_toasts", 5))

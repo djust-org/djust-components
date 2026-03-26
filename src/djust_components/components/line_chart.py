@@ -68,7 +68,7 @@ class LineChart(Component):
     def _render_custom(self) -> str:
         classes = ["dj-line-chart"]
         if self.custom_class:
-            classes.append(self.custom_class)
+            classes.append(html.escape(self.custom_class))
         class_str = " ".join(classes)
 
         if not self.series:

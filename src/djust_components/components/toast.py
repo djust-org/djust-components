@@ -56,6 +56,8 @@ class Toast(Component):
         custom_class: Additional CSS classes
     """
 
+    ALLOWED_TYPES = {"info", "success", "warning", "error"}
+
     def __init__(
         self,
         message: str,
@@ -104,10 +106,11 @@ class Toast(Component):
 
     def _render_custom(self) -> str:
         """Render the toast HTML."""
-        classes = ["dj-toast", f"dj-toast-{self.type}"]
+        safe_type = self.type if self.type in self.ALLOWED_TYPES else "info"
+        classes = ["dj-toast", f"dj-toast-{safe_type}"]
 
         if self.custom_class:
-            classes.append(self.custom_class)
+            classes.append(html.escape(self.custom_class))
 
         class_str = " ".join(classes)
 
