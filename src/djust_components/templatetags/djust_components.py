@@ -763,7 +763,7 @@ class AlertNode(template.Node):
 
     def render(self, context):
         kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
-        alert_type = kw.get("type", "info")
+        alert_type = kw.get("variant", kw.get("type", "info"))
         title = kw.get("title", "")
         dismissible = kw.get("dismissible", False)
         if isinstance(dismissible, str):
@@ -1981,7 +1981,7 @@ class SheetNode(template.Node):
 
     def render(self, context):
         kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
-        open_ = kw.get("open", False)
+        open_ = kw.get("is_open", kw.get("open", False))
         if isinstance(open_, str):
             open_ = open_.lower() not in ("false", "0", "")
         side = kw.get("side", "right")
@@ -2338,7 +2338,7 @@ class CommandPaletteNode(template.Node):
 
     def render(self, context):
         kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
-        open_ = kw.get("open", False)
+        open_ = kw.get("is_open", kw.get("open", False))
         if isinstance(open_, str):
             open_ = open_.lower() not in ("false", "0", "")
         search_event = kw.get("search_event", "palette_search")
@@ -2463,20 +2463,26 @@ def context_menu_item(label="", event="", icon="", danger=False, divider=False):
 def date_picker(year=None, month=None, selected="", prev_event="date_prev_month",
                 next_event="date_next_month", select_event="date_select",
                 name="date", label="", required=False, error="", helper="",
-                range=False, range_start="", range_end=""):
+                is_range=False, range_start="", range_end="", **kwargs):
     """Render a server-driven calendar date picker.
 
     The server owns year/month navigation state. On each prev/next click,
     the view re-renders the calendar for the new month.
 
     Args:
-        range: when True, enables date range selection mode.
+        is_range: when True, enables date range selection mode.
         range_start: start date of the range (YYYY-MM-DD).
         range_end: end date of the range (YYYY-MM-DD).
-    """
 
-    if isinstance(range, str):
-        range = range.lower() not in ("false", "0", "")
+    Deprecated aliases (still accepted):
+        range → is_range
+    """
+    # Backward-compat: accept deprecated 'range' kwarg
+    if "range" in kwargs:
+        is_range = kwargs.pop("range")
+
+    if isinstance(is_range, str):
+        is_range = is_range.lower() not in ("false", "0", "")
 
     try:
         today = datetime.date.today()
@@ -2520,7 +2526,7 @@ def date_picker(year=None, month=None, selected="", prev_event="date_prev_month"
                 cls = "dp-day"
                 if date_str == today_str:
                     cls += " dp-day-today"
-                if range:
+                if is_range:
                     if range_start and date_str == range_start:
                         cls += " dp-day-range-start"
                     if range_end and date_str == range_end:
@@ -2540,7 +2546,7 @@ def date_picker(year=None, month=None, selected="", prev_event="date_prev_month"
     error_html = f'<span class="form-error-message">{e_error}</span>' if error else ""
     helper_html = f'<span class="form-helper">{e_helper}</span>' if helper else ""
 
-    if range:
+    if is_range:
         if range_start and range_end:
             selected_html = (
                 f'<div class="dp-selected-value">'
@@ -3549,8 +3555,8 @@ def fab(icon="+", event="", position="bottom-right", label="",
 
 @register.simple_tag
 def split_button(label="", event="", options=None, variant="primary",
-                 size="md", disabled=False, loading=False, open=False,
-                 toggle_event="toggle_split_menu"):
+                 size="md", disabled=False, loading=False, is_open=False,
+                 toggle_event="toggle_split_menu", **kwargs):
     """Render a split button with primary action and dropdown secondary actions.
 
     Args:
@@ -3561,17 +3567,24 @@ def split_button(label="", event="", options=None, variant="primary",
         size: sm, md, lg
         disabled: disables all buttons
         loading: shows spinner on primary, disables all
-        open: whether the dropdown menu is open
+        is_open: whether the dropdown menu is open
         toggle_event: dj-click event for toggle button
+
+    Deprecated aliases (still accepted):
+        open → is_open
     """
+    # Backward-compat: accept deprecated 'open' kwarg
+    if "open" in kwargs:
+        is_open = kwargs.pop("open")
+
     if options is None:
         options = []
     if isinstance(disabled, str):
         disabled = disabled.lower() not in ("false", "0", "")
     if isinstance(loading, str):
         loading = loading.lower() not in ("false", "0", "")
-    if isinstance(open, str):
-        open = open.lower() not in ("false", "0", "")
+    if isinstance(is_open, str):
+        is_open = is_open.lower() not in ("false", "0", "")
 
     e_label = conditional_escape(label)
     e_event = conditional_escape(event)
@@ -3600,7 +3613,7 @@ def split_button(label="", event="", options=None, variant="primary",
             f'{opt_label}</button>'
         )
 
-    open_data = "true" if open else "false"
+    open_data = "true" if is_open else "false"
     toggle_disabled = " disabled" if disabled or loading else ""
     toggle_click = "" if disabled or loading else f' dj-click="{e_toggle}"'
 
@@ -3687,7 +3700,7 @@ class CalloutNode(template.Node):
 
     def render(self, context):
         kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
-        callout_type = kw.get("type", "default")
+        callout_type = kw.get("variant", kw.get("type", "default"))
         title = kw.get("title", "")
         icon = kw.get("icon", "")
         custom_class = kw.get("custom_class", "")
@@ -4163,7 +4176,7 @@ class AnnouncementBarNode(template.Node):
 
     def render(self, context):
         kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
-        bar_type = kw.get("type", "info")
+        bar_type = kw.get("variant", kw.get("type", "info"))
         dismissible = kw.get("dismissible", False)
         dismiss_event = kw.get("dismiss_event", "dismiss_announcement")
         custom_class = kw.get("custom_class", "")
@@ -7978,7 +7991,7 @@ class PageAlertNode(template.Node):
 
     def render(self, context):
         kw = {k: _resolve(v, context) for k, v in self.kwargs.items()}
-        alert_type = kw.get("type", "info")
+        alert_type = kw.get("variant", kw.get("type", "info"))
         dismissible = kw.get("dismissible", False)
         dismiss_event = kw.get("dismiss_event", "dismiss_alert")
         icon = kw.get("icon", "")

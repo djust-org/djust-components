@@ -19,15 +19,15 @@ from ._registry import (
 # --- Slider / Range ---
 
 @register.simple_tag
-def slider(name="", label="", min=0, max=100, step=1, value=None,
+def slider(name="", label="", min_val=0, max_val=100, step=1, value=None,
            value_end=None, event="", disabled=False, show_ticks=False,
-           show_value=True, custom_class=""):
+           show_value=True, custom_class="", **kwargs):
     """Render a horizontal slider with optional range mode.
 
     Args:
         name: Input name attribute.
         label: Optional label text.
-        min/max/step: Range bounds and step increment.
+        min_val/max_val/step: Range bounds and step increment.
         value: Current value (or start value in range mode).
         value_end: End value — when set, enables dual-handle range mode.
         event: dj-input event name (defaults to name).
@@ -35,7 +35,16 @@ def slider(name="", label="", min=0, max=100, step=1, value=None,
         show_value: Show current value output (default True).
         disabled: Disable the input.
         custom_class: Extra CSS class.
+
+    Deprecated aliases (still accepted):
+        min → min_val, max → max_val
     """
+    # Backward-compat: accept deprecated 'min'/'max' kwargs
+    if "min" in kwargs:
+        min_val = kwargs.pop("min")
+    if "max" in kwargs:
+        max_val = kwargs.pop("max")
+
     if isinstance(disabled, str):
         disabled = disabled.lower() not in ("false", "0", "")
     if isinstance(show_ticks, str):
@@ -43,8 +52,8 @@ def slider(name="", label="", min=0, max=100, step=1, value=None,
     if isinstance(show_value, str):
         show_value = show_value.lower() not in ("false", "0", "")
 
-    min_val = int(min)
-    max_val = int(max)
+    min_val = int(min_val)
+    max_val = int(max_val)
     step_val = int(step)
     if value is None:
         value = min_val
@@ -85,7 +94,7 @@ def slider(name="", label="", min=0, max=100, step=1, value=None,
 
     ticks_html = ""
     if show_ticks:
-        tick_count = builtins_max(1, (max_val - min_val) // step_val)
+        tick_count = max(1, (max_val - min_val) // step_val)
         tick_items = "".join(
             '<span class="dj-slider__tick"></span>'
             for _ in range(tick_count + 1)
@@ -119,9 +128,6 @@ def slider(name="", label="", min=0, max=100, step=1, value=None,
     )
 
 
-# Need a reference to the builtin max since 'max' is shadowed as a parameter
-import builtins as _builtins
-builtins_max = _builtins.max
 
 
 # --- Search Input ---
@@ -235,7 +241,7 @@ def password_input(name="", label="", value="", placeholder="", event="",
     dj_event = conditional_escape(event or name)
     e_error = conditional_escape(error)
     e_class = conditional_escape(custom_class)
-    strength_val = builtins_max(0, builtins_min(4, int(strength)))
+    strength_val = max(0, min(4, int(strength)))
 
     required_attr = " required" if required else ""
     disabled_attr = " disabled" if disabled else ""
@@ -297,8 +303,6 @@ def password_input(name="", label="", value="", placeholder="", event="",
         f'</div>'
     )
 
-
-builtins_min = _builtins.min
 
 
 # --- Autocomplete ---
@@ -439,7 +443,7 @@ class ConfirmDialogNode(template.Node):
         confirm_event = kw.get("confirm_event", "confirm")
         cancel_event = kw.get("cancel_event", "cancel")
         title = kw.get("title", "Confirm")
-        is_open = kw.get("open", False)
+        is_open = kw.get("is_open", kw.get("open", False))
         variant = kw.get("variant", "default")  # default or danger
         confirm_label = kw.get("confirm_label", "Confirm")
         cancel_label = kw.get("cancel_label", "Cancel")
@@ -689,9 +693,9 @@ def dependent_select(name="", parent="", source_event="", label="",
 
 @register.simple_tag
 def currency_input(name="", currency="USD", value="", label="",
-                   min=None, max=None, step="0.01", placeholder="0.00",
+                   min_val=None, max_val=None, step="0.01", placeholder="0.00",
                    event="", disabled=False, required=False,
-                   error="", custom_class=""):
+                   error="", custom_class="", **kwargs):
     """Numeric input with currency symbol prefix and formatting hints.
 
     Args:
@@ -699,8 +703,8 @@ def currency_input(name="", currency="USD", value="", label="",
         currency: Currency code (e.g. USD, EUR, GBP). Determines prefix symbol.
         value: Current numeric value.
         label: Optional label text.
-        min: Minimum value.
-        max: Maximum value.
+        min_val: Minimum value.
+        max_val: Maximum value.
         step: Step increment (default 0.01 for cents).
         placeholder: Placeholder text.
         event: dj-input event name (defaults to name).
@@ -708,7 +712,15 @@ def currency_input(name="", currency="USD", value="", label="",
         required: Mark field as required.
         error: Error message to display.
         custom_class: Extra CSS class.
+
+    Deprecated aliases (still accepted):
+        min → min_val, max → max_val
     """
+    # Backward-compat: accept deprecated 'min'/'max' kwargs
+    if "min" in kwargs:
+        min_val = kwargs.pop("min")
+    if "max" in kwargs:
+        max_val = kwargs.pop("max")
     if isinstance(disabled, str):
         disabled = disabled.lower() not in ("false", "0", "")
     if isinstance(required, str):
@@ -729,8 +741,8 @@ def currency_input(name="", currency="USD", value="", label="",
 
     disabled_attr = " disabled" if disabled else ""
     required_attr = " required" if required else ""
-    min_attr = f' min="{conditional_escape(str(min))}"' if min is not None else ""
-    max_attr = f' max="{conditional_escape(str(max))}"' if max is not None else ""
+    min_attr = f' min="{conditional_escape(str(min_val))}"' if min_val is not None else ""
+    max_attr = f' max="{conditional_escape(str(max_val))}"' if max_val is not None else ""
 
     cls = "dj-currency-input"
     if error:

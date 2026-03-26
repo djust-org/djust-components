@@ -207,7 +207,7 @@ class AlertHandler:
 
     def render(self, args, content, context):
         kw = _parse_args(args, context)
-        alert_type = kw.get("type", "info")
+        alert_type = kw.get("variant", kw.get("type", "info"))
         if alert_type == "danger":
             alert_type = "error"
         title = conditional_escape(kw.get("title", ""))
@@ -2268,7 +2268,7 @@ class SheetHandler:
     """Block handler for {% sheet side="right" open=show_sheet %}...{% endsheet %}"""
     def render(self, args, content, context):
         kwargs = _parse_args(args, context)
-        open_ = kwargs.get("open", False)
+        open_ = kwargs.get("is_open", kwargs.get("open", False))
         if isinstance(open_, str):
             open_ = open_.lower() not in ("false", "0", "")
         side = kwargs.get("side", "right")
@@ -2302,7 +2302,7 @@ class CommandPaletteHandler:
     """Block handler for {% command_palette open=show_palette %}...{% endcommand_palette %}"""
     def render(self, args, content, context):
         kwargs = _parse_args(args, context)
-        open_ = kwargs.get("open", False)
+        open_ = kwargs.get("is_open", kwargs.get("open", False))
         if isinstance(open_, str):
             open_ = open_.lower() not in ("false", "0", "")
         search_event = kwargs.get("search_event", "palette_search")
@@ -2391,7 +2391,7 @@ class DatePickerHandler:
             select_event=kwargs.get("select_event", "date_select"),
             name=kwargs.get("name", "date"),
             label=kwargs.get("label", ""),
-            range=kwargs.get("range", False),
+            is_range=kwargs.get("is_range", kwargs.get("range", False)),
             range_start=kwargs.get("range_start", ""),
             range_end=kwargs.get("range_end", ""),
         ))
@@ -2820,7 +2820,7 @@ class SplitButtonHandler:
         size = kw.get("size", "md")
         disabled = kw.get("disabled", False)
         loading = kw.get("loading", False)
-        is_open = kw.get("open", False)
+        is_open = kw.get("is_open", kw.get("open", False))
         toggle_event = conditional_escape(kw.get("toggle_event", "toggle_split_menu"))
 
         variant_cls = f" split-btn-{conditional_escape(variant)}"
@@ -3102,7 +3102,7 @@ class AnnouncementBarHandler:
     """Block handler for {% announcement_bar type=... %}...{% endannouncement_bar %}"""
     def render(self, args, content, context):
         kw = _parse_args(args, context)
-        bar_type = kw.get("type", "info")
+        bar_type = kw.get("variant", kw.get("type", "info"))
         dismissible = kw.get("dismissible", False)
         dismiss_event = kw.get("dismiss_event", "dismiss_announcement")
         custom_class = kw.get("custom_class", "")
@@ -3663,8 +3663,8 @@ class SliderHandler:
         kw = _parse_args(args, context)
         name = conditional_escape(kw.get("name", ""))
         label = conditional_escape(kw.get("label", ""))
-        min_val = int(kw.get("min", 0))
-        max_val = int(kw.get("max", 100))
+        min_val = int(kw.get("min_val", kw.get("min", 0)))
+        max_val = int(kw.get("max_val", kw.get("max", 100)))
         step = int(kw.get("step", 1))
         value = kw.get("value", min_val)
         value_end = kw.get("value_end", None)
@@ -3988,7 +3988,7 @@ class ConfirmDialogHandler:
     """Inline handler for {% confirm_dialog message="Delete?" confirm_event="delete" %}"""
     def render(self, args, context):
         kw = _parse_args(args, context)
-        is_open = kw.get("open", False)
+        is_open = kw.get("is_open", kw.get("open", False))
         if not is_open:
             return ""
 
@@ -4201,8 +4201,8 @@ class CurrencyInputHandler:
 
         disabled_attr = " disabled" if disabled else ""
         required_attr = " required" if required else ""
-        min_val = kw.get("min", None)
-        max_val = kw.get("max", None)
+        min_val = kw.get("min_val", kw.get("min", None))
+        max_val = kw.get("max_val", kw.get("max", None))
         min_attr = f' min="{conditional_escape(str(min_val))}"' if min_val is not None else ""
         max_attr = f' max="{conditional_escape(str(max_val))}"' if max_val is not None else ""
 
@@ -6586,7 +6586,7 @@ class ScrollSpyHandler:
 class PageAlertHandler:
     def render(self, args, content, context):
         kw = _parse_args(args, context)
-        alert_type = kw.get("type", "info")
+        alert_type = kw.get("variant", kw.get("type", "info"))
         dismissible = kw.get("dismissible", False)
         dismiss_event = kw.get("dismiss_event", "dismiss_alert")
         icon = kw.get("icon", "")
