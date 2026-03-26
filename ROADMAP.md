@@ -211,8 +211,16 @@
 | **P3** | Collaborative Selection (#79) | v2.0 |
 | **P3** | Activity Feed (#80) | v2.0 |
 | **P3** | Voting / Reactions (#81) | v2.0 |
-| **P0** | CSS Class Name Standardization (#CSS-CLASS-NAMES) | v2.2 |
-| **P0** | Gallery CSS Reset Fix (#GALLERY-RESET) | v2.2 |
+| ~~**P0**~~ | ~~Gallery CSS Reset Fix (#GALLERY-RESET)~~ ✅ PR #66 | v2.2 |
+| **P0** | CSS Class Names — Layout (#CSS-NAMES-LAYOUT) | v2.2 |
+| **P0** | CSS Class Names — Form (#CSS-NAMES-FORM) | v2.2 |
+| **P0** | CSS Class Names — Data (#CSS-NAMES-DATA) | v2.2 |
+| **P1** | CSS Class Names — Overlay (#CSS-NAMES-OVERLAY) | v2.2 |
+| **P1** | CSS Class Names — Feedback (#CSS-NAMES-FEEDBACK) | v2.2 |
+| **P1** | CSS Class Names — Navigation (#CSS-NAMES-NAV) | v2.2 |
+| **P1** | CSS Class Names — Indicator (#CSS-NAMES-INDICATOR) | v2.2 |
+| **P2** | CSS Class Names — Typography (#CSS-NAMES-TYPOGRAPHY) | v2.2 |
+| **P2** | CSS Class Names — Misc (#CSS-NAMES-MISC) | v2.2 |
 | **P0** | Gallery Examples for All Tags (#GALLERY-EXAMPLES) | v2.1 |
 | **P0** | Shared Test Infrastructure (#TEST-INFRA) | v2.1 |
 | **P1** | Code Quality — Split Monolithic Files (#CODE-SPLIT) | v2.1 |
@@ -741,9 +749,25 @@ The mixin auto-generates `table_sort`, `table_filter`, `table_search`, `table_pa
 
 **Goal**: Fix the three root causes blocking component gallery quality: CSS class name mismatches, destructive gallery reset, and design system token flow. These must land before per-category styling work can be effective.
 
-**CSS Class Name Standardization** (#CSS-CLASS-NAMES) — Template tags render BEM-prefixed classes (`dj-card__header`, `dj-accordion__trigger`, `dj-tabs__nav`) but `components.css` targets unprefixed names (`.card-header`, `.accordion-trigger`, `.tabs-nav`). Neither file matches the other. Fix by updating `components.css` selectors to match the rendered HTML. Audit all 188 components — for each, verify the CSS selector matches what the Rust handler / template tag actually outputs. This is the single biggest reason components appear unstyled. Estimated scope: ~150 selector renames across 2300 lines of CSS. The BEM aliases added in PR #66 are a temporary bridge — this task replaces them with proper selectors.
+~~**Gallery CSS Reset Fix** (#GALLERY-RESET)~~ ✅ PR #66 — Replaced destructive `* { padding: 0 }` with scoped gallery-only reset.
 
-**Gallery CSS Reset Fix** (#GALLERY-RESET) — The gallery view's inline `<style>` includes `*, *::before, *::after { padding: 0; margin: 0; }` which strips all component internal padding (card bodies, accordion triggers, tab buttons, etc.). This aggressive reset fights with component CSS regardless of `@layer` specificity. Fix by replacing with a scoped reset that only targets gallery layout elements (`.gallery-header`, `.gallery-sidebar`, `.gallery-content`) and leaves `.variant-preview` children untouched. Components inside preview cards should inherit their own padding from `components.css` / `components-classes.css` without interference.
+**CSS Class Names — Layout** (#CSS-NAMES-LAYOUT) — Fix CSS selectors for 15 layout components: Card, Accordion, Tabs, Collapsible, Sheet/Drawer, Split Pane, App Shell, Sidebar, Aspect Ratio, Dashboard Grid, Masonry Grid, Resizable Panel, Scroll Area, Sticky Header, Card (Class). For each: render the component, inspect the actual HTML class names, update `components.css` selectors to match. Remove temporary BEM aliases added in PR #65. Verify in gallery with Playwright screenshots (light + dark mode).
+
+**CSS Class Names — Form** (#CSS-NAMES-FORM) — Fix CSS selectors for 43 form components: Button, Input, Select, Textarea, Checkbox, Radio, Switch, Color Picker, Combobox, Date Picker, File Dropzone, Form Group, Autocomplete, Currency Input, etc. Same approach as Layout.
+
+**CSS Class Names — Data** (#CSS-NAMES-DATA) — Fix CSS selectors for 32 data components: Data Table, Pagination, Virtual List, Kanban Board, Tree View, Calendar, Charts, etc.
+
+**CSS Class Names — Overlay** (#CSS-NAMES-OVERLAY) — Fix CSS selectors for 15 overlay components: Modal, Dropdown, Tooltip, Popover, Sheet, Command Palette, etc.
+
+**CSS Class Names — Feedback** (#CSS-NAMES-FEEDBACK) — Fix CSS selectors for 17 feedback components: Alert, Toast, Progress, Spinner, Skeleton, etc.
+
+**CSS Class Names — Navigation** (#CSS-NAMES-NAV) — Fix CSS selectors for 10 navigation components: Breadcrumb, Nav Menu, Stepper, Timeline, Toolbar, Wizard, etc.
+
+**CSS Class Names — Indicator** (#CSS-NAMES-INDICATOR) — Fix CSS selectors for 22 indicator components: Badge, Avatar, Gauge, Rating, Status Indicator, etc.
+
+**CSS Class Names — Typography** (#CSS-NAMES-TYPOGRAPHY) — Fix CSS selectors for 7 typography components: Code Block, Expandable Text, Kbd, Streaming Text, Markdown, etc.
+
+**CSS Class Names — Misc** (#CSS-NAMES-MISC) — Fix CSS selectors for 27 misc components: Carousel, Chat Bubble, Copy Button, FAB, Filter Bar, Theme Toggle, Tour, etc.
 
 ---
 
