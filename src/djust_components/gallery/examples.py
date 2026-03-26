@@ -600,8 +600,8 @@ EXAMPLES = {
                 "name": "Default",
                 "template": '{% carousel images=images %}',
                 "context": {"images": [
-                    {"src": "https://via.placeholder.com/600x300/3B82F6/fff?text=Slide+1", "alt": "Slide 1"},
-                    {"src": "https://via.placeholder.com/600x300/10B981/fff?text=Slide+2", "alt": "Slide 2"},
+                    {"src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='300'%3E%3Crect fill='%233B82F6' width='600' height='300'/%3E%3Ctext x='50%25' y='50%25' fill='white' text-anchor='middle' dy='.35em' font-size='24'%3ESlide 1%3C/text%3E%3C/svg%3E", "alt": "Slide 1"},
+                    {"src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='300'%3E%3Crect fill='%2310B981' width='600' height='300'/%3E%3Ctext x='50%25' y='50%25' fill='white' text-anchor='middle' dy='.35em' font-size='24'%3ESlide 2%3C/text%3E%3C/svg%3E", "alt": "Slide 2"},
                 ]},
             },
         ],
@@ -676,8 +676,8 @@ EXAMPLES = {
         "label": "Aspect Ratio",
         "category": "layout",
         "variants": [
-            {"name": "16/9", "template": '{% aspect_ratio ratio="16/9" %}<img src="https://via.placeholder.com/320x180" alt="Widescreen">{% endaspect_ratio %}'},
-            {"name": "1/1", "template": '{% aspect_ratio ratio="1/1" %}<img src="https://via.placeholder.com/200x200" alt="Square">{% endaspect_ratio %}'},
+            {"name": "16/9", "template": '{% aspect_ratio ratio="16/9" %}<img src="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27320%27 height=%27180%27%3E%3Crect fill=%27%236B7280%27 width=%27320%27 height=%27180%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 fill=%27white%27 text-anchor=%27middle%27 dy=%27.35em%27 font-size=%2716%27%3E320x180%3C/text%3E%3C/svg%3E" alt="Widescreen">{% endaspect_ratio %}'},
+            {"name": "1/1", "template": '{% aspect_ratio ratio="1/1" %}<img src="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27200%27 height=%27200%27%3E%3Crect fill=%27%236B7280%27 width=%27200%27 height=%27200%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 fill=%27white%27 text-anchor=%27middle%27 dy=%27.35em%27 font-size=%2716%27%3E200x200%3C/text%3E%3C/svg%3E" alt="Square">{% endaspect_ratio %}'},
         ],
     },
     "dashboard_grid": {
@@ -858,7 +858,7 @@ EXAMPLES = {
         "label": "Image Cropper",
         "category": "form",
         "variants": [
-            {"name": "Default", "template": '{% image_cropper src="https://via.placeholder.com/400x300" crop_event="save_crop" aspect_ratio="16/9" %}'},
+            {"name": "Default", "template": '{% image_cropper src="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27400%27 height=%27300%27%3E%3Crect fill=%27%236B7280%27 width=%27400%27 height=%27300%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 fill=%27white%27 text-anchor=%27middle%27 dy=%27.35em%27 font-size=%2718%27%3E400x300%3C/text%3E%3C/svg%3E" crop_event="save_crop" aspect_ratio="16/9" %}'},
         ],
     },
     "image_upload_preview": {
@@ -1107,8 +1107,8 @@ EXAMPLES = {
                 "name": "Open",
                 "template": '{% lightbox images=images open=True active=0 %}',
                 "context": {"images": [
-                    {"src": "https://via.placeholder.com/800x600", "alt": "Photo 1", "caption": "First photo"},
-                    {"src": "https://via.placeholder.com/800x600", "alt": "Photo 2", "caption": "Second photo"},
+                    {"src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='600'%3E%3Crect fill='%234B5563' width='800' height='600'/%3E%3Ctext x='50%25' y='50%25' fill='white' text-anchor='middle' dy='.35em' font-size='24'%3E800x600%3C/text%3E%3C/svg%3E", "alt": "Photo 1", "caption": "First photo"},
+                    {"src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='600'%3E%3Crect fill='%234B5563' width='800' height='600'/%3E%3Ctext x='50%25' y='50%25' fill='white' text-anchor='middle' dy='.35em' font-size='24'%3E800x600%3C/text%3E%3C/svg%3E", "alt": "Photo 2", "caption": "Second photo"},
                 ]},
             },
         ],
@@ -2136,7 +2136,7 @@ EXAMPLES = {
         "label": "Responsive Image",
         "category": "misc",
         "variants": [
-            {"name": "Default", "template": '{% responsive_image src="https://via.placeholder.com/800x400" alt="Hero image" aspect_ratio="2/1" %}'},
+            {"name": "Default", "template": '{% responsive_image src="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27800%27 height=%27400%27%3E%3Crect fill=%27%234B5563%27 width=%27800%27 height=%27400%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 fill=%27white%27 text-anchor=%27middle%27 dy=%27.35em%27 font-size=%2724%27%3E800x400%3C/text%3E%3C/svg%3E" alt="Hero image" aspect_ratio="2/1" %}'},
         ],
     },
     "scroll_to_top": {
