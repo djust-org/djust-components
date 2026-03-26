@@ -233,6 +233,155 @@ class TestGalleryView:
         assert "component-card" in content
 
 
+# ─── Index View Tests ───
+
+
+class TestGalleryIndexView:
+    """Tests for the gallery index (landing) view."""
+
+    def test_index_view_200(self):
+        from djust_components.gallery.views import gallery_index_view
+
+        factory = RequestFactory()
+        request = factory.get("/")
+        response = gallery_index_view(request)
+        assert response.status_code == 200
+
+    def test_index_contains_all_category_links(self):
+        from djust_components.gallery.views import gallery_index_view
+        from djust_components.gallery.examples import CATEGORIES
+
+        factory = RequestFactory()
+        request = factory.get("/")
+        response = gallery_index_view(request)
+        content = response.content.decode()
+
+        for slug, label in CATEGORIES.items():
+            assert f'href="{slug}/"' in content, f"Missing link for category '{label}'"
+            assert label in content, f"Category label '{label}' not in index"
+
+    def test_index_shows_component_counts(self):
+        from djust_components.gallery.views import gallery_index_view
+
+        factory = RequestFactory()
+        request = factory.get("/")
+        response = gallery_index_view(request)
+        content = response.content.decode()
+        assert "components" in content
+
+    def test_index_has_theme_toolbar(self):
+        from djust_components.gallery.views import gallery_index_view
+
+        factory = RequestFactory()
+        request = factory.get("/")
+        response = gallery_index_view(request)
+        content = response.content.decode()
+        assert "design-system" in content
+        assert "preset" in content
+        assert "theme-toggle" in content
+
+
+# ─── Category View Tests ───
+
+
+class TestGalleryCategoryView:
+    """Tests for the per-category gallery view."""
+
+    def test_all_categories_return_200(self):
+        from djust_components.gallery.views import gallery_category_view
+        from djust_components.gallery.examples import CATEGORY_ORDER
+
+        factory = RequestFactory()
+        for slug in CATEGORY_ORDER:
+            request = factory.get(f"/{slug}/")
+            response = gallery_category_view(request, slug)
+            assert response.status_code == 200, f"Category '{slug}' returned {response.status_code}"
+
+    def test_invalid_category_returns_404(self):
+        from djust_components.gallery.views import gallery_category_view
+
+        factory = RequestFactory()
+        request = factory.get("/nonexistent/")
+        try:
+            gallery_category_view(request, "nonexistent")
+            assert False, "Expected Http404"
+        except Exception as exc:
+            assert "404" in type(exc).__name__ or "Unknown category" in str(exc)
+
+    def test_category_contains_only_own_components(self):
+        from djust_components.gallery.views import gallery_category_view
+        from djust_components.gallery.examples import EXAMPLES, CLASS_EXAMPLES
+
+        factory = RequestFactory()
+        request = factory.get("/form/")
+        response = gallery_category_view(request, "form")
+        content = response.content.decode()
+
+        # Should contain form components
+        assert "component-card" in content
+
+        # Should NOT contain layout-only components
+        assert 'id="accordion"' not in content or "accordion" in [
+            k for k, v in EXAMPLES.items() if v.get("category") == "form"
+        ]
+
+    def test_category_has_breadcrumb(self):
+        from djust_components.gallery.views import gallery_category_view
+
+        factory = RequestFactory()
+        request = factory.get("/data/")
+        response = gallery_category_view(request, "data")
+        content = response.content.decode()
+        assert "gallery-breadcrumb" in content
+        assert "Data" in content
+
+    def test_category_has_prev_next(self):
+        from djust_components.gallery.views import gallery_category_view
+
+        factory = RequestFactory()
+        # "data" is index 2 in CATEGORY_ORDER — should have both prev and next
+        request = factory.get("/data/")
+        response = gallery_category_view(request, "data")
+        content = response.content.decode()
+        assert "category-nav" in content
+
+    def test_category_sidebar_highlights_current(self):
+        from djust_components.gallery.views import gallery_category_view
+
+        factory = RequestFactory()
+        request = factory.get("/form/")
+        response = gallery_category_view(request, "form")
+        content = response.content.decode()
+        assert 'class="active"' in content
+
+    def test_first_category_has_no_prev(self):
+        from djust_components.gallery.views import gallery_category_view
+        from djust_components.gallery.examples import CATEGORY_ORDER
+
+        factory = RequestFactory()
+        first = CATEGORY_ORDER[0]
+        request = factory.get(f"/{first}/")
+        response = gallery_category_view(request, first)
+        content = response.content.decode()
+        # Should have next but not prev (no leftarrow link)
+        assert "&rarr;" in content
+        # The first category's prev link should be empty
+        nav_section = content[content.index("category-nav"):]
+        assert "&larr;" not in nav_section.split("</div>")[0]
+
+    def test_last_category_has_no_next(self):
+        from djust_components.gallery.views import gallery_category_view
+        from djust_components.gallery.examples import CATEGORY_ORDER
+
+        factory = RequestFactory()
+        last = CATEGORY_ORDER[-1]
+        request = factory.get(f"/{last}/")
+        response = gallery_category_view(request, last)
+        content = response.content.decode()
+        nav_section = content[content.index("category-nav"):]
+        assert "&rarr;" not in nav_section.split("</div>")[0]
+
+
 # ─── Edge Case Tests ───
 
 

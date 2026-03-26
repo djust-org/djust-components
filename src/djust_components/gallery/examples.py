@@ -20,6 +20,9 @@ CATEGORIES = {
     "misc": "Misc",
 }
 
+# Stable ordering for prev/next navigation in category pages
+CATEGORY_ORDER = ["layout", "form", "data", "navigation", "overlay", "feedback", "indicator", "typography", "misc"]
+
 # ─── Template Tag Examples ───
 # Each key must match a registered template tag name.
 # 'variants' is a list of dicts: {"name": str, "template": str, "context": dict (optional)}

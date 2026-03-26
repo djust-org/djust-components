@@ -75,14 +75,14 @@ class Command(BaseCommand):
         from django.core.servers.basehttp import run
         from django.urls import path
 
-        from djust_components.gallery.views import gallery_view
+        from django.urls import include
 
         # Dynamically set ROOT_URLCONF to our gallery URLs
         import types
 
         urlpatterns_module = types.ModuleType("_gallery_urls")
         urlpatterns_module.urlpatterns = [
-            path("", gallery_view, name="gallery"),
+            path("", include("djust_components.gallery.urls")),
         ]
 
         import sys
