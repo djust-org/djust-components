@@ -211,8 +211,8 @@
 | **P3** | Collaborative Selection (#79) | v2.0 |
 | **P3** | Activity Feed (#80) | v2.0 |
 | **P3** | Voting / Reactions (#81) | v2.0 |
-| **P0** | CSS Class Name Standardization (#CSS-CLASS-NAMES) | v1.6 |
-| **P0** | Gallery CSS Reset Fix (#GALLERY-RESET) | v1.6 |
+| **P0** | CSS Class Name Standardization (#CSS-CLASS-NAMES) | v2.2 |
+| **P0** | Gallery CSS Reset Fix (#GALLERY-RESET) | v2.2 |
 | **P0** | Gallery Examples for All Tags (#GALLERY-EXAMPLES) | v2.1 |
 | **P0** | Shared Test Infrastructure (#TEST-INFRA) | v2.1 |
 | **P1** | Code Quality — Split Monolithic Files (#CODE-SPLIT) | v2.1 |
@@ -737,7 +737,7 @@ The mixin auto-generates `table_sort`, `table_filter`, `table_search`, `table_pa
 
 ---
 
-### Milestone: v1.6 — CSS Architecture & Gallery Quality
+### Milestone: v2.2 — CSS Architecture & Gallery Quality
 
 **Goal**: Fix the three root causes blocking component gallery quality: CSS class name mismatches, destructive gallery reset, and design system token flow. These must land before per-category styling work can be effective.
 
