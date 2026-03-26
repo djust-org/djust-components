@@ -1,0 +1,149 @@
+name: Visual Regression Tests
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'src/djust_components/templates/**'
+      - 'src/djust_components/static/**/*.css'
+      - 'src/djust_components/gallery/**'
+      - 'baselines/**'
+
+jobs:
+  vrt:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-vrt-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-vrt-
+
+      - name: Install Python dependencies
+        run: pip install -e .
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Playwright
+        run: |
+          npm install -D @playwright/test
+          npx playwright install --with-deps chromium
+
+      - name: Start component gallery
+        run: |
+          python manage.py component_gallery --port 8765 &
+          echo "Waiting for gallery to start..."
+          for i in $(seq 1 30); do
+            if curl -s http://localhost:8765 > /dev/null 2>&1; then
+              echo "Gallery is ready"
+              break
+            fi
+            sleep 1
+          done
+
+      - name: Capture screenshots
+        run: |
+          mkdir -p screenshots
+
+          for mode in light dark; do
+            for bp_name in mobile tablet desktop; do
+              case $bp_name in
+                mobile)  width=375;  height=812 ;;
+                tablet)  width=768;  height=1024 ;;
+                desktop) width=1280; height=720 ;;
+              esac
+
+              color_flag=""
+              if [ "$mode" = "dark" ]; then
+                color_flag="--color-scheme=dark"
+              fi
+
+              npx playwright screenshot \
+                --viewport-size="${width},${height}" \
+                $color_flag \
+                --full-page \
+                --wait-for-timeout=2000 \
+                http://localhost:8765 \
+                "screenshots/gallery-${mode}-${bp_name}.png"
+
+              echo "Captured gallery-${mode}-${bp_name}.png (${width}x${height})"
+            done
+          done
+
+      - name: Compare against baselines
+        id: compare
+        continue-on-error: true
+        run: |
+          if [ ! -d baselines ] || [ -z "$(ls -A baselines/*.png 2>/dev/null)" ]; then
+            echo "No baselines found -- skipping comparison."
+            echo "has_baselines=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "has_baselines=true" >> "$GITHUB_OUTPUT"
+          mkdir -p diffs
+          failed=0
+
+          for baseline in baselines/*.png; do
+            name=$(basename "$baseline")
+            screenshot="screenshots/${name}"
+
+            if [ ! -f "$screenshot" ]; then
+              echo "MISSING: $name not captured"
+              failed=1
+              continue
+            fi
+
+            # Use ImageMagick compare (pre-installed on ubuntu-latest)
+            compare -metric AE "$baseline" "$screenshot" "diffs/diff-${name}" 2>metric.txt || true
+            pixels=$(cat metric.txt)
+            echo "$name: ${pixels} pixels differ"
+
+            if [ "$pixels" != "0" ]; then
+              failed=1
+            fi
+          done
+
+          if [ "$failed" -eq 1 ]; then
+            echo "Visual regression detected!"
+            exit 1
+          fi
+
+          echo "All baselines match."
+
+      - name: Upload current screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vrt-screenshots
+          path: screenshots/
+          retention-days: 14
+
+      - name: Upload diff images
+        if: steps.compare.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: vrt-diffs
+          path: diffs/
+          retention-days: 14
+
+      - name: Fail on regression
+        if: steps.compare.outcome == 'failure'
+        run: |
+          echo "::error::Visual regression detected. Download the vrt-diffs artifact to review changes."
+          echo "To update baselines: bash scripts/capture-vrt-baselines.sh && git add baselines/"
+          exit 1
