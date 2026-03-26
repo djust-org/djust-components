@@ -720,7 +720,7 @@
 .dj-citation { position: relative; display: inline; }
 .dj-citation__marker { cursor: help; color: var(--dj-citation-color, #3b82f6); font-weight: 600; font-size: 0.75em; }
 .dj-citation__popover { display: none; position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); margin-bottom: 0.5rem; padding: 0.5rem 0.75rem; min-width: 12rem; max-width: 20rem; border-radius: var(--dj-citation-radius, 0.375rem); background: var(--dj-citation-popover-bg, #1f2937); color: var(--dj-citation-popover-color, #f9fafb); font-size: 0.75rem; line-height: 1.4; box-shadow: var(--dj-citation-popover-shadow, 0 4px 12px rgba(0,0,0,0.15)); z-index: 50; white-space: normal; }
-.dj-citation:hover .dj-citation__popover { display: flex; flex-direction: column; gap: 0.25rem; }
+.dj-citation:hover .dj-citation__popover, .dj-citation:focus-within .dj-citation__popover { display: flex; flex-direction: column; gap: 0.25rem; }
 .dj-citation__title { font-weight: 600; }
 .dj-citation__url { color: var(--dj-citation-color, #3b82f6); text-decoration: underline; word-break: break-all; }
 .dj-citation__relevance { opacity: 0.7; }

@@ -669,6 +669,7 @@ button.rating-star:hover ~ .rating-star { color: hsl(var(--muted-foreground) / 0
 .popover-wrapper { position: relative; display: inline-block; }
 .popover { position: absolute; z-index: 50; min-width: 12rem; max-width: 20rem; padding: var(--space-3) var(--space-4); background: hsl(var(--card) / 0.95); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid hsl(var(--border)); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); opacity: 0; visibility: hidden; transform: scale(0.95); transition: opacity var(--duration-normal) ease, visibility var(--duration-normal) ease, transform var(--duration-normal) ease; pointer-events: none; }
 .popover-open .popover { opacity: 1; visibility: visible; transform: scale(1); pointer-events: auto; }
+.popover-wrapper:focus-within .popover { opacity: 1; visibility: visible; transform: scale(1); pointer-events: auto; }
 .popover-title { font-size: var(--text-sm); font-weight: var(--font-semibold); color: hsl(var(--foreground)); margin: 0 0 var(--space-2); }
 .popover-content { font-size: var(--text-sm); color: hsl(var(--muted-foreground)); line-height: var(--leading-relaxed); }
 .popover-bottom { top: 100%; left: 50%; transform: translateX(-50%) scale(0.95); margin-top: var(--space-2); }
@@ -2335,5 +2336,23 @@ button.rating-star:hover ~ .rating-star { color: hsl(var(--muted-foreground) / 0
 /* --- QR Code --- */
 .dj-qr-code { display: inline-block; }
 .dj-qr-code__svg { display: block; }
+
+/* --- ARIA / Keyboard Navigation (:focus-visible) --- */
+.split-btn-primary:focus-visible, .split-btn-toggle:focus-visible, .split-btn-option:focus-visible { outline: none; box-shadow: 0 0 0 3px hsl(var(--ring, 222 47% 51%) / 0.4); }
+.ctx-item:focus-visible { outline: none; background: hsl(var(--accent)); color: hsl(var(--foreground)); box-shadow: 0 0 0 2px hsl(var(--ring, 222 47% 51%) / 0.4); }
+.popover-trigger:focus-visible { outline: none; box-shadow: 0 0 0 3px hsl(var(--ring, 222 47% 51%) / 0.4); }
+.dj-dropdown-menu__trigger:focus-visible { outline: none; box-shadow: 0 0 0 3px hsl(var(--ring, 222 47% 51%) / 0.4); }
+.dj-dropdown-menu__item:focus-visible { outline: none; background: hsl(var(--accent, 210 40% 96%)); box-shadow: 0 0 0 2px hsl(var(--ring, 222 47% 51%) / 0.4); }
+.dj-toolbar__overflow-trigger:focus-visible { outline: none; box-shadow: 0 0 0 3px hsl(var(--ring, 222 47% 51%) / 0.4); }
+.dj-popconfirm-trigger:focus-visible { outline: none; box-shadow: 0 0 0 3px hsl(var(--ring, 222 47% 51%) / 0.4); }
+.dj-popconfirm__btn:focus-visible { outline: none; box-shadow: 0 0 0 3px hsl(var(--ring, 222 47% 51%) / 0.4); }
+.dj-confirm-dialog__btn:focus-visible { outline: none; box-shadow: 0 0 0 3px hsl(var(--ring, 222 47% 51%) / 0.4); }
+.dj-confirm-dialog__close:focus-visible { outline: none; box-shadow: 0 0 0 3px hsl(var(--ring, 222 47% 51%) / 0.4); }
+.dj-announcement-bar__close:focus-visible { outline: none; box-shadow: 0 0 0 3px hsl(var(--ring, 222 47% 51%) / 0.4); }
+.dj-hover-card__trigger:focus-visible { outline: 2px solid hsl(var(--ring, 222 47% 51%)); outline-offset: 2px; }
+.dj-citation:focus-visible { outline: 2px solid hsl(var(--ring, 222 47% 51%)); outline-offset: 1px; border-radius: 2px; }
+.dj-scroll-area:focus-visible { outline: 2px solid hsl(var(--ring, 222 47% 51%)); outline-offset: -2px; }
+.dj-status-indicator:focus-visible { outline: 2px solid hsl(var(--ring, 222 47% 51%)); outline-offset: 2px; border-radius: 9999px; }
+.dj-inline-edit__display:focus-visible { outline: 2px solid hsl(var(--ring, 222 47% 51%)); outline-offset: 1px; }
 
 } /* end @layer djust-components */
