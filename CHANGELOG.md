@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Gallery examples for all template tags**: Added curated gallery examples for ~130 previously orphan template tags in `gallery/examples.py`. Every registered tag now has at least one example with realistic default data, grouped by category (layout, form, overlay, feedback, data, navigation, indicator, typography, misc). Updated the orphan-tags test to exclude child-only tags (tags rendered by their parent, e.g. `sidebar_item`, `nav_item`, `filter_select`) from the orphan check. The gallery `test_no_orphan_tags` warning is now fully eliminated. (#GALLERY-EXAMPLES)
+
 ### Changed
 - **Shared test infrastructure** (`tests/conftest.py`): Extracted duplicated boilerplate from all 38 test files into a single conftest — djust module stubs, `djust.decorators` stub, and Django `settings.configure()` now run once via pytest's conftest mechanism. (#TEST-INFRA)
 - **Dynamic gallery discovery test**: `test_discover_component_classes` now asserts against `components.__all__` instead of a hardcoded set, so it no longer breaks when new component classes are added.

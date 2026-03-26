@@ -73,9 +73,27 @@ class TestDiscovery:
         from djust_components.gallery.examples import EXAMPLES
 
         tags = discover_template_tags()
-        # Some child tags (tab, accordion_item, timeline_item) are nested only
-        child_tags = {"tab", "accordion_item", "timeline_item", "context_menu_item",
-                      "palette_item"}
+        # Child tags are rendered by their parent — they don't need standalone examples
+        child_tags = {
+            "tab", "accordion_item", "timeline_item", "context_menu_item",
+            "palette_item",
+            # app_shell children
+            "app_content", "app_header", "app_sidebar",
+            # sidebar children
+            "sidebar_item", "sidebar_section",
+            # nav_menu children
+            "nav_item",
+            # filter_bar children
+            "filter_date_range", "filter_search", "filter_select",
+            # toolbar children
+            "toolbar_overflow", "toolbar_separator",
+            # page_header children
+            "page_header_actions",
+            # dropdown_menu children
+            "menu_divider", "menu_item",
+            # input_group children
+            "input_addon",
+        }
         orphans = set(tags.keys()) - set(EXAMPLES.keys()) - child_tags
         if orphans:
             import warnings
