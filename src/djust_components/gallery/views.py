@@ -42,7 +42,7 @@ GALLERY_TEMPLATE = """\
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>djust-components Gallery</title>
     <style data-djust-theme>{{ theme_css }}</style>
-    <link rel="stylesheet" href="{{ theming_base_css_url }}">
+    {{ theming_base_css_link }}
     <link rel="stylesheet" href="{{ component_css_url }}">
     <link rel="stylesheet" href="{{ component_classes_css_url }}">
     <style>
@@ -426,14 +426,6 @@ GALLERY_TEMPLATE = """\
             }
         }, true); /* ← capture phase */
 
-        // ── Switch / checkbox dj-change shim ──
-        document.addEventListener('change', function(e) {
-            const el = e.target.closest('[dj-change]');
-            if (!el) return;
-            // Switches are just checkboxes — the CSS handles the visual toggle
-            // No extra JS needed since the checkbox state changes natively
-        });
-
         // ── Accordion: add CSS for open/closed state ──
         (function() {
             const style = document.createElement('style');
@@ -472,22 +464,31 @@ def gallery_view(request):
     Returns:
         HttpResponse with the complete gallery HTML page.
     """
-    # Read theme parameters from cookies (persisted by client JS)
+    # Read theme parameters from cookies, validated against allowlists
+    presets, systems = _get_theme_options()
+
     design_system = request.COOKIES.get("gallery_ds", "material")
+    if design_system not in systems:
+        design_system = "material"
+
     preset = request.COOKIES.get("gallery_preset", "default")
+    if preset not in presets:
+        preset = "default"
+
     mode = request.COOKIES.get("gallery_mode", "light")
+    if mode not in ("light", "dark"):
+        mode = "light"
 
     # Generate theme CSS
     theme_css = _get_theme_css(preset=preset, design_system=design_system, mode=mode)
-    presets, systems = _get_theme_options()
 
     # Build <option> tags for dropdowns
     ds_options = "".join(
-        f'<option value="{s}"{"selected" if s == design_system else ""}>{s.replace("_", " ").title()}</option>'
+        f'<option value="{s}"{" selected" if s == design_system else ""}>{s.replace("_", " ").title()}</option>'
         for s in systems
     )
     preset_options = "".join(
-        f'<option value="{p}"{"selected" if p == preset else ""}>{p.replace("_", " ").title()}</option>'
+        f'<option value="{p}"{" selected" if p == preset else ""}>{p.replace("_", " ").title()}</option>'
         for p in presets
     )
 
@@ -548,15 +549,15 @@ def gallery_view(request):
     # Render the full page (using simple string substitution, not Django template,
     # to avoid conflicts with the {{ }} in the gallery template itself)
     # Resolve static URLs and theme CSS
-    theming_base_url = ""
+    theming_base_link = ""
     try:
-        theming_base_url = static("djust_theming/css/base.css")
+        theming_base_link = f'<link rel="stylesheet" href="{static("djust_theming/css/base.css")}">'
     except Exception:
         pass
 
     html = GALLERY_TEMPLATE.replace("{{ html_mode }}", mode)
     html = html.replace("{{ theme_css }}", theme_css)
-    html = html.replace("{{ theming_base_css_url }}", theming_base_url)
+    html = html.replace("{{ theming_base_css_link }}", theming_base_link)
     html = html.replace("{{ component_css_url }}", static("djust_components/components.css"))
     html = html.replace("{{ component_classes_css_url }}", static("djust_components/components-classes.css"))
     html = html.replace("{{ design_system_options }}", ds_options)
