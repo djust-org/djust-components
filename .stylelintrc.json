@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json.schemastore.org/stylelintrc.json",
+  "plugins": [
+    "stylelint-declaration-strict-value",
+    "stylelint-use-logical-spec"
+  ],
+  "rules": {
+    "liberty/use-logical-spec": [
+      true,
+      {
+        "severity": "warning"
+      }
+    ],
+    "scale-unlimited/declaration-strict-value": [
+      [
+        "/color/",
+        "background-color",
+        "border-color",
+        "outline-color",
+        "fill",
+        "stroke",
+        "transition-duration",
+        "animation-duration",
+        "transition-delay",
+        "animation-delay"
+      ],
+      {
+        "ignoreValues": [
+          "transparent",
+          "currentColor",
+          "inherit",
+          "initial",
+          "unset",
+          "none",
+          "0s",
+          "0ms"
+        ],
+        "disableFix": true,
+        "message": "Use a CSS custom property instead of a hardcoded value for '${property}'. Colors: hsl(var(--*)). Durations: var(--duration-*)."
+      }
+    ]
+  }
+}
