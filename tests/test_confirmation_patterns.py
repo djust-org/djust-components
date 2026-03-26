@@ -272,7 +272,7 @@ class TestPopconfirm:
             '{% popconfirm message="Sure?" confirm_event="ok" %}'
             'Trigger{% endpopconfirm %}'
         )
-        assert "dj-popconfirm-open" in html  # toggle class referenced
+        assert "data-open" in html  # toggle attribute referenced
         assert "onclick=" in html  # click handler present
 
     def test_message_from_context(self):

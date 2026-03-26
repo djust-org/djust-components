@@ -538,18 +538,18 @@ class PopconfirmNode(template.Node):
         js_toggle = (
             "(function(el){"
             "var w=el.closest('.dj-popconfirm-wrapper');"
-            "w.classList.toggle('dj-popconfirm-open');"
+            "if(w.hasAttribute('data-open')){w.removeAttribute('data-open');}else{w.setAttribute('data-open','');"
             "document.addEventListener('click',function h(e){"
             "if(!w.contains(e.target)){"
-            "w.classList.remove('dj-popconfirm-open');"
+            "w.removeAttribute('data-open');"
             "document.removeEventListener('click',h);"
             "}},true);"
-            "})(this)"
+            "}})(this)"
         )
 
         js_close = (
             "(function(el){"
-            "el.closest('.dj-popconfirm-wrapper').classList.remove('dj-popconfirm-open');"
+            "el.closest('.dj-popconfirm-wrapper').removeAttribute('data-open');"
             "})(this)"
         )
 

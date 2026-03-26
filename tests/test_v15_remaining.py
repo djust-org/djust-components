@@ -414,7 +414,7 @@ class TestDropdownMenu:
                 ],
             },
         )
-        assert "dj-dropdown-menu--open" in html
+        assert "data-open" in html
         assert "Edit" in html
         assert "Delete" in html
         assert 'role="menu"' in html
