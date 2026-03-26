@@ -10,6 +10,7 @@ Block handlers implement:  render(self, args, content, context) -> str
 """
 
 import json as _json
+import uuid as _uuid
 
 from django.utils.html import conditional_escape
 from django.utils.safestring import mark_safe
@@ -2223,9 +2224,9 @@ class PopoverHandler:
             f'<button class="popover-trigger btn btn-outline btn-sm" '
             f"onclick=\"(function(el){{var p=el.parentElement;p.classList.toggle('popover-open');"
             f"document.addEventListener('click',function h(e){{if(!p.contains(e.target)){{p.classList.remove('popover-open');document.removeEventListener('click',h);}}}},true);"
-            f'}})(this)">'
+            f'}})(this)" aria-expanded="false">'
             f'{e_trigger}</button>'
-            f'<div class="popover popover-{e_placement}">'
+            f'<div class="popover popover-{e_placement}" role="tooltip">'
             f'{title_html}'
             f'<div class="popover-content">{content}</div>'
             f'</div>'
@@ -2339,7 +2340,7 @@ class ContextMenuHandler:
             f"document.addEventListener('click',function h(){{delete m.dataset.open;document.removeEventListener('click',h);}},{{once:true}});"
             f'}})(event,this)">'
             f'<div class="ctx-trigger">{e_label}</div>'
-            f'<div class="ctx-menu">{content}</div>'
+            f'<div class="ctx-menu" role="menu">{content}</div>'
             f'</div>'
         )
 
@@ -2838,7 +2839,7 @@ class SplitButtonHandler:
             opt_click = f' dj-click="{opt_event}"' if opt_event and not disabled else ""
             opt_disabled = " disabled" if disabled else ""
             option_items.append(
-                f'<button class="split-btn-option"{opt_click}{opt_disabled}>'
+                f'<button class="split-btn-option" role="menuitem"{opt_click}{opt_disabled}>'
                 f'{opt_label}</button>'
             )
 
@@ -2849,7 +2850,7 @@ class SplitButtonHandler:
         menu_html = ""
         if option_items:
             menu_html = (
-                f'<div class="split-btn-menu" data-open="{open_data}">'
+                f'<div class="split-btn-menu" role="menu" data-open="{open_data}">'
                 f'{"".join(option_items)}'
                 f'</div>'
             )
@@ -2860,7 +2861,8 @@ class SplitButtonHandler:
             f'{spinner_html}'
             f'<span class="split-btn-label">{label}</span>'
             f'</button>'
-            f'<button class="split-btn-toggle"{toggle_click}{toggle_disabled}>'
+            f'<button class="split-btn-toggle"{toggle_click}{toggle_disabled} '
+            f'aria-expanded="{open_data}" aria-haspopup="true">'
             f'<span class="split-btn-caret">&#9662;</span>'
             f'</button>'
             f'{menu_html}'
@@ -3041,7 +3043,7 @@ class StatusIndicatorHandler:
         dot_html = '<span class="dj-status-indicator__dot"></span>'
         label_html = f'<span class="dj-status-indicator__label">{e_label}</span>' if label else ""
 
-        return mark_safe(f'<span class="{cls}">{dot_html}{label_html}</span>')
+        return mark_safe(f'<span class="{cls}" role="status">{dot_html}{label_html}</span>')
 
 
 # Register status/progress indicator inline handlers
@@ -3117,7 +3119,7 @@ class AnnouncementBarHandler:
             )
 
         return mark_safe(
-            f'<div class="{cls}" role="banner">'
+            f'<div class="{cls}" role="banner" aria-live="polite">'
             f'<div class="dj-announcement-bar__content">{content}</div>'
             f'{close_html}'
             f'</div>'
@@ -3977,6 +3979,11 @@ class ConfirmDialogHandler:
         is_open = kw.get("open", False)
         if not is_open:
             return ""
+
+        uid = _uuid.uuid4().hex[:8]
+        title_id = f"dj-confirm-title-{uid}"
+        msg_id = f"dj-confirm-msg-{uid}"
+
         message = conditional_escape(kw.get("message", "Are you sure?"))
         confirm_event = conditional_escape(kw.get("confirm_event", "confirm"))
         cancel_event = conditional_escape(kw.get("cancel_event", "cancel"))
@@ -3992,14 +3999,14 @@ class ConfirmDialogHandler:
         return mark_safe(
             f'<div class="dj-confirm-dialog-backdrop" dj-click="{cancel_event}">'
             f'<div class="dj-confirm-dialog{variant_cls}{extra_cls}" '
-            f'role="alertdialog" aria-modal="true" aria-labelledby="dj-confirm-title" '
-            f'aria-describedby="dj-confirm-msg" onclick="event.stopPropagation()">'
+            f'role="alertdialog" aria-modal="true" aria-labelledby="{title_id}" '
+            f'aria-describedby="{msg_id}" onclick="event.stopPropagation()">'
             f'<div class="dj-confirm-dialog__header">'
-            f'<h3 class="dj-confirm-dialog__title" id="dj-confirm-title">{title}</h3>'
+            f'<h3 class="dj-confirm-dialog__title" id="{title_id}">{title}</h3>'
             f'<button class="dj-confirm-dialog__close" dj-click="{cancel_event}" '
             f'aria-label="Close">&times;</button>'
             f'</div>'
-            f'<div class="dj-confirm-dialog__body" id="dj-confirm-msg">'
+            f'<div class="dj-confirm-dialog__body" id="{msg_id}">'
             f'<p class="dj-confirm-dialog__message">{message}</p>'
             f'</div>'
             f'<div class="dj-confirm-dialog__footer">'
@@ -4049,7 +4056,8 @@ class PopconfirmHandler:
 
         return mark_safe(
             f'<div class="dj-popconfirm-wrapper{variant_cls}{extra_cls}">'
-            f'<div class="dj-popconfirm-trigger" onclick="{js_toggle}">'
+            f'<div class="dj-popconfirm-trigger" onclick="{js_toggle}" '
+            f'aria-expanded="false" aria-haspopup="true">'
             f'{content}'
             f'</div>'
             f'<div class="dj-popconfirm dj-popconfirm-{placement}" role="tooltip">'
@@ -4608,7 +4616,8 @@ class ToolbarOverflowHandler:
     def render(self, args, content, context):
         return mark_safe(
             f'<div class="dj-toolbar__overflow">'
-            f'<button class="dj-toolbar__overflow-trigger" aria-label="More actions">'
+            f'<button class="dj-toolbar__overflow-trigger" aria-label="More actions" '
+            f'aria-expanded="false" aria-haspopup="true">'
             f'<span class="dj-toolbar__overflow-icon">&#8942;</span></button>'
             f'<div class="dj-toolbar__overflow-menu">{content}</div></div>'
         )
@@ -4861,7 +4870,7 @@ class HoverCardHandler:
         return mark_safe(
             f'<span class="{cls}" data-delay-in="{delay_in}" '
             f'data-delay-out="{delay_out}">'
-            f'<span class="dj-hover-card__trigger">{trigger}</span>'
+            f'<span class="dj-hover-card__trigger" tabindex="0">{trigger}</span>'
             f'<div class="dj-hover-card__content">{content}</div>'
             f'</span>'
         )
@@ -5380,7 +5389,7 @@ class SourceCitationHandler:
         popover_html = "".join(popover_parts)
 
         return mark_safe(
-            f'<span class="{cls}">'
+            f'<span class="{cls}" tabindex="0">'
             f'<sup class="dj-citation__marker">[{idx}]</sup>'
             f'<span class="dj-citation__popover">{popover_html}</span>'
             f'</span>'

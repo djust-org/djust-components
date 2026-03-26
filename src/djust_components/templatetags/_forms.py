@@ -448,6 +448,10 @@ class ConfirmDialogNode(template.Node):
         if not is_open:
             return ""
 
+        uid = uuid.uuid4().hex[:8]
+        title_id = f"dj-confirm-title-{uid}"
+        msg_id = f"dj-confirm-msg-{uid}"
+
         e_confirm_event = conditional_escape(confirm_event)
         e_cancel_event = conditional_escape(cancel_event)
         e_title = conditional_escape(title)
@@ -463,14 +467,14 @@ class ConfirmDialogNode(template.Node):
         return mark_safe(
             f'<div class="dj-confirm-dialog-backdrop" dj-click="{e_cancel_event}">'
             f'<div class="dj-confirm-dialog{variant_cls}{extra_cls}" '
-            f'role="alertdialog" aria-modal="true" aria-labelledby="dj-confirm-title" '
-            f'aria-describedby="dj-confirm-msg" onclick="event.stopPropagation()">'
+            f'role="alertdialog" aria-modal="true" aria-labelledby="{title_id}" '
+            f'aria-describedby="{msg_id}" onclick="event.stopPropagation()">'
             f'<div class="dj-confirm-dialog__header">'
-            f'<h3 class="dj-confirm-dialog__title" id="dj-confirm-title">{e_title}</h3>'
+            f'<h3 class="dj-confirm-dialog__title" id="{title_id}">{e_title}</h3>'
             f'<button class="dj-confirm-dialog__close" dj-click="{e_cancel_event}" '
             f'aria-label="Close">&times;</button>'
             f'</div>'
-            f'<div class="dj-confirm-dialog__body" id="dj-confirm-msg">'
+            f'<div class="dj-confirm-dialog__body" id="{msg_id}">'
             f'<p class="dj-confirm-dialog__message">{e_message}</p>'
             f'</div>'
             f'<div class="dj-confirm-dialog__footer">'
@@ -547,7 +551,8 @@ class PopconfirmNode(template.Node):
 
         return mark_safe(
             f'<div class="dj-popconfirm-wrapper{variant_cls}{extra_cls}" id="{e_uid}">'
-            f'<div class="dj-popconfirm-trigger" onclick="{js_toggle}">'
+            f'<div class="dj-popconfirm-trigger" onclick="{js_toggle}" '
+            f'aria-expanded="false" aria-haspopup="true">'
             f'{content}'
             f'</div>'
             f'<div class="dj-popconfirm dj-popconfirm-{e_placement}" role="tooltip">'
