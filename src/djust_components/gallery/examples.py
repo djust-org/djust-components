@@ -634,6 +634,1560 @@ EXAMPLES = {
             {"name": "Default", "template": '{% rich_text_editor name="content" value="<p>Hello world</p>" %}'},
         ],
     },
+
+    # ══════════════════════════════════════════════════════════════════════
+    # Gallery examples for remaining template tags
+    # ══════════════════════════════════════════════════════════════════════
+
+    # ── Layout (additional) ──
+
+    "app_shell": {
+        "label": "App Shell",
+        "category": "layout",
+        "variants": [
+            {
+                "name": "Default",
+                "template": (
+                    '{% app_shell %}'
+                    '{% app_header %}<div>My App</div>{% endapp_header %}'
+                    '{% app_sidebar %}<nav>Sidebar</nav>{% endapp_sidebar %}'
+                    '{% app_content %}<main>Main content</main>{% endapp_content %}'
+                    '{% endapp_shell %}'
+                ),
+            },
+        ],
+    },
+    "sidebar": {
+        "label": "Sidebar",
+        "category": "layout",
+        "variants": [
+            {
+                "name": "Default",
+                "template": (
+                    '{% sidebar id="main-sidebar" title="Navigation" %}'
+                    '{% sidebar_item label="Dashboard" icon="home" href="/" active=True %}{% endsidebar_item %}'
+                    '{% sidebar_item label="Settings" icon="cog" href="/settings/" %}{% endsidebar_item %}'
+                    '{% endsidebar %}'
+                ),
+            },
+        ],
+    },
+    "aspect_ratio": {
+        "label": "Aspect Ratio",
+        "category": "layout",
+        "variants": [
+            {"name": "16/9", "template": '{% aspect_ratio ratio="16/9" %}<img src="https://via.placeholder.com/320x180" alt="Widescreen">{% endaspect_ratio %}'},
+            {"name": "1/1", "template": '{% aspect_ratio ratio="1/1" %}<img src="https://via.placeholder.com/200x200" alt="Square">{% endaspect_ratio %}'},
+        ],
+    },
+    "dashboard_grid": {
+        "label": "Dashboard Grid",
+        "category": "layout",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% dashboard_grid panels=panels columns=3 %}{% enddashboard_grid %}',
+                "context": {"panels": [
+                    {"id": "p1", "title": "Revenue", "content": "$12,340", "col": 1, "row": 1, "width": 1, "height": 1},
+                    {"id": "p2", "title": "Users", "content": "1,023", "col": 2, "row": 1, "width": 1, "height": 1},
+                ]},
+            },
+        ],
+    },
+    "masonry_grid": {
+        "label": "Masonry Grid",
+        "category": "layout",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% masonry_grid items=items columns=3 %}',
+                "context": {"items": [
+                    {"height": 120, "content": "<p>Card 1</p>"},
+                    {"height": 180, "content": "<p>Card 2</p>"},
+                    {"height": 100, "content": "<p>Card 3</p>"},
+                ]},
+            },
+        ],
+    },
+    "resizable_panel": {
+        "label": "Resizable Panel",
+        "category": "layout",
+        "variants": [
+            {
+                "name": "Default",
+                "template": (
+                    '{% resizable_panel direction="horizontal" initial_size="50%" %}'
+                    '<p>Resizable content</p>'
+                    '{% endresizable_panel %}'
+                ),
+            },
+        ],
+    },
+    "scroll_area": {
+        "label": "Scroll Area",
+        "category": "layout",
+        "variants": [
+            {
+                "name": "Default",
+                "template": (
+                    '{% scroll_area max_height="200px" %}'
+                    '<p>Scrollable content line 1</p>'
+                    '<p>Scrollable content line 2</p>'
+                    '<p>Scrollable content line 3</p>'
+                    '<p>Scrollable content line 4</p>'
+                    '<p>Scrollable content line 5</p>'
+                    '{% endscroll_area %}'
+                ),
+            },
+        ],
+    },
+    "sticky_header": {
+        "label": "Sticky Header",
+        "category": "layout",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% sticky_header %}<h2>Sticky Section</h2>{% endsticky_header %}',
+            },
+        ],
+    },
+
+    # ── Form (additional) ──
+
+    "autocomplete": {
+        "label": "Autocomplete",
+        "category": "form",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% autocomplete name="city" label="City" placeholder="Type a city..." source_event="search_city" %}',
+            },
+        ],
+    },
+    "currency_input": {
+        "label": "Currency Input",
+        "category": "form",
+        "variants": [
+            {"name": "USD", "template": '{% currency_input name="price" label="Price" currency="USD" value="49.99" %}'},
+            {"name": "EUR", "template": '{% currency_input name="amount" label="Amount" currency="EUR" placeholder="0.00" %}'},
+        ],
+    },
+    "cron_input": {
+        "label": "Cron Input",
+        "category": "form",
+        "variants": [
+            {"name": "Default", "template": '{% cron_input name="schedule" value="0 9 * * 1" %}'},
+        ],
+    },
+    "dependent_select": {
+        "label": "Dependent Select",
+        "category": "form",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% dependent_select name="city" parent="country" source_event="load_cities" label="City" %}',
+            },
+        ],
+    },
+    "dj_form": {
+        "label": "Form",
+        "category": "form",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% dj_form submit_label="Save" submit_event="save" %}',
+            },
+        ],
+    },
+    "dj_label": {
+        "label": "Label",
+        "category": "form",
+        "variants": [
+            {"name": "Default", "template": '{% dj_label for="email" %}Email Address{% enddj_label %}'},
+            {"name": "Required", "template": '{% dj_label for="name" required=True %}Full Name{% enddj_label %}'},
+        ],
+    },
+    "field_error": {
+        "label": "Field Error",
+        "category": "form",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% field_error field=field %}',
+                "context": {"field": type("Field", (), {"errors": ["This field is required."]})()},
+            },
+        ],
+    },
+    "fieldset": {
+        "label": "Fieldset",
+        "category": "form",
+        "variants": [
+            {
+                "name": "Default",
+                "template": (
+                    '{% fieldset legend="Account Details" %}'
+                    '{% dj_input name="username" label="Username" %}'
+                    '{% endfieldset %}'
+                ),
+            },
+        ],
+    },
+    "form_array": {
+        "label": "Form Array",
+        "category": "form",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% form_array name="emails" rows=rows %}{% endform_array %}',
+                "context": {"rows": [{"value": "alice@example.com"}, {"value": ""}]},
+            },
+        ],
+    },
+    "form_errors": {
+        "label": "Form Errors",
+        "category": "form",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% form_errors form=form %}',
+                "context": {"form": type("Form", (), {"non_field_errors": lambda self: ["Please correct the errors below."]})()},
+            },
+        ],
+    },
+    "image_cropper": {
+        "label": "Image Cropper",
+        "category": "form",
+        "variants": [
+            {"name": "Default", "template": '{% image_cropper src="https://via.placeholder.com/400x300" crop_event="save_crop" aspect_ratio="16/9" %}'},
+        ],
+    },
+    "image_upload_preview": {
+        "label": "Image Upload Preview",
+        "category": "form",
+        "variants": [
+            {"name": "Default", "template": '{% image_upload_preview name="photos" max=3 %}'},
+        ],
+    },
+    "inline_edit": {
+        "label": "Inline Edit",
+        "category": "form",
+        "variants": [
+            {"name": "Default", "template": '{% inline_edit value="Click to edit" event="save_field" field="title" %}'},
+        ],
+    },
+    "input_group": {
+        "label": "Input Group",
+        "category": "form",
+        "variants": [
+            {
+                "name": "Default",
+                "template": (
+                    '{% input_group %}'
+                    '{% input_addon position="prefix" %}https://{% endinput_addon %}'
+                    '{% dj_input name="domain" placeholder="example.com" %}'
+                    '{% endinput_group %}'
+                ),
+            },
+        ],
+    },
+    "markdown_editor": {
+        "label": "Markdown Editor",
+        "category": "form",
+        "variants": [
+            {"name": "Default", "template": '{% markdown_editor name="body" placeholder="Write markdown..." %}'},
+        ],
+    },
+    "markdown_textarea": {
+        "label": "Markdown Textarea",
+        "category": "form",
+        "variants": [
+            {"name": "Default", "template": '{% markdown_textarea name="notes" placeholder="Write markdown here..." rows=4 %}'},
+        ],
+    },
+    "mentions_input": {
+        "label": "Mentions Input",
+        "category": "form",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% mentions_input name="comment" users=users placeholder="Type @ to mention..." %}',
+                "context": {"users": [
+                    {"id": "1", "name": "Alice", "avatar": ""},
+                    {"id": "2", "name": "Bob", "avatar": ""},
+                ]},
+            },
+        ],
+    },
+    "multi_select": {
+        "label": "Multi Select",
+        "category": "form",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% multi_select name="tags" label="Tags" options=options %}',
+                "context": {"options": [
+                    {"value": "python", "label": "Python"},
+                    {"value": "django", "label": "Django"},
+                    {"value": "rust", "label": "Rust"},
+                ]},
+            },
+        ],
+    },
+    "number_stepper": {
+        "label": "Number Stepper",
+        "category": "form",
+        "variants": [
+            {"name": "Default", "template": '{% number_stepper name="qty" value=1 min_val=0 max_val=10 label="Quantity" %}'},
+        ],
+    },
+    "otp_input": {
+        "label": "OTP Input",
+        "category": "form",
+        "variants": [
+            {"name": "6-digit", "template": '{% otp_input name="code" digits=6 label="Verification Code" %}'},
+        ],
+    },
+    "password_input": {
+        "label": "Password Input",
+        "category": "form",
+        "variants": [
+            {"name": "Default", "template": '{% password_input name="password" label="Password" placeholder="Enter password" %}'},
+            {"name": "With Strength", "template": '{% password_input name="password" label="Password" show_strength=True %}'},
+        ],
+    },
+    "prompt_editor": {
+        "label": "Prompt Editor",
+        "category": "form",
+        "variants": [
+            {"name": "Default", "template": '{% prompt_editor template="Hello {name}, welcome to {service}!" event="save_prompt" %}'},
+        ],
+    },
+    "rich_select": {
+        "label": "Rich Select",
+        "category": "form",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% rich_select name="framework" label="Framework" options=options searchable=True %}',
+                "context": {"options": [
+                    {"value": "django", "label": "Django"},
+                    {"value": "flask", "label": "Flask"},
+                    {"value": "fastapi", "label": "FastAPI"},
+                ]},
+            },
+        ],
+    },
+    "search_input": {
+        "label": "Search Input",
+        "category": "form",
+        "variants": [
+            {"name": "Default", "template": '{% search_input name="q" placeholder="Search..." event="search" %}'},
+        ],
+    },
+    "signature_pad": {
+        "label": "Signature Pad",
+        "category": "form",
+        "variants": [
+            {"name": "Default", "template": '{% signature_pad name="sig" save_event="save_signature" %}'},
+        ],
+    },
+    "slider": {
+        "label": "Slider",
+        "category": "form",
+        "variants": [
+            {"name": "Default", "template": '{% slider name="volume" label="Volume" min=0 max=100 value=50 %}'},
+            {"name": "Range", "template": '{% slider name="price" label="Price Range" min=0 max=1000 value=200 value_end=800 %}'},
+        ],
+    },
+    "tag_input": {
+        "label": "Tag Input",
+        "category": "form",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% tag_input name="skills" tags=tags placeholder="Add skill..." %}',
+                "context": {"tags": ["Python", "Django"]},
+            },
+        ],
+    },
+    "time_picker": {
+        "label": "Time Picker",
+        "category": "form",
+        "variants": [
+            {"name": "Default", "template": '{% time_picker name="meeting_time" label="Meeting Time" value="14:30" %}'},
+        ],
+    },
+    "toggle_group": {
+        "label": "Toggle Group",
+        "category": "form",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% toggle_group name="view" options=options value="grid" %}',
+                "context": {"options": [
+                    {"value": "list", "label": "List"},
+                    {"value": "grid", "label": "Grid"},
+                    {"value": "board", "label": "Board"},
+                ]},
+            },
+        ],
+    },
+    "voice_input": {
+        "label": "Voice Input",
+        "category": "form",
+        "variants": [
+            {"name": "Default", "template": '{% voice_input event="transcribe" lang="en-US" %}'},
+        ],
+    },
+
+    # ── Overlay (additional) ──
+
+    "bottom_sheet": {
+        "label": "Bottom Sheet",
+        "category": "overlay",
+        "variants": [
+            {
+                "name": "Open",
+                "template": '{% bottom_sheet open=True title="Actions" %}Choose an option below.{% endbottom_sheet %}',
+            },
+        ],
+    },
+    "confirm_dialog": {
+        "label": "Confirm Dialog",
+        "category": "overlay",
+        "variants": [
+            {"name": "Open", "template": '{% confirm_dialog open=True title="Delete Item" message="This action cannot be undone." variant="danger" %}'},
+        ],
+    },
+    "dropdown_menu": {
+        "label": "Dropdown Menu",
+        "category": "overlay",
+        "variants": [
+            {
+                "name": "Default",
+                "template": (
+                    '{% dropdown_menu label="Actions" open=True %}'
+                    '{% menu_item label="Edit" event="edit" icon="pencil" %}'
+                    '{% menu_divider %}'
+                    '{% menu_item label="Delete" event="delete" danger=True %}'
+                    '{% enddropdown_menu %}'
+                ),
+            },
+        ],
+    },
+    "export_dialog": {
+        "label": "Export Dialog",
+        "category": "overlay",
+        "variants": [
+            {
+                "name": "Open",
+                "template": '{% export_dialog open=True formats=formats columns=columns title="Export Report" %}',
+                "context": {
+                    "formats": [{"id": "csv", "label": "CSV"}, {"id": "xlsx", "label": "Excel"}],
+                    "columns": [{"id": "name", "label": "Name", "checked": True}, {"id": "email", "label": "Email", "checked": True}],
+                },
+            },
+        ],
+    },
+    "hover_card": {
+        "label": "Hover Card",
+        "category": "overlay",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% hover_card trigger="Hover me" position="bottom" %}Additional details shown on hover.{% endhover_card %}',
+            },
+        ],
+    },
+    "lightbox": {
+        "label": "Lightbox",
+        "category": "overlay",
+        "variants": [
+            {
+                "name": "Open",
+                "template": '{% lightbox images=images open=True active=0 %}',
+                "context": {"images": [
+                    {"src": "https://via.placeholder.com/800x600", "alt": "Photo 1", "caption": "First photo"},
+                    {"src": "https://via.placeholder.com/800x600", "alt": "Photo 2", "caption": "Second photo"},
+                ]},
+            },
+        ],
+    },
+    "notification_popover": {
+        "label": "Notification Popover",
+        "category": "overlay",
+        "variants": [
+            {
+                "name": "Open",
+                "template": '{% notification_popover notifications=notifs unread_count=1 open=True %}',
+                "context": {"notifs": [
+                    {"id": "1", "title": "New comment", "body": "Someone replied to your post.", "time": "5m ago", "read": False},
+                ]},
+            },
+        ],
+    },
+    "popconfirm": {
+        "label": "Popconfirm",
+        "category": "overlay",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% popconfirm message="Delete this record?" confirm_event="delete" %}Delete{% endpopconfirm %}',
+            },
+        ],
+    },
+    "cookie_consent": {
+        "label": "Cookie Consent",
+        "category": "overlay",
+        "variants": [
+            {
+                "name": "Default",
+                "template": (
+                    '{% cookie_consent message="We use cookies to improve your experience." accept_event="accept_cookies" privacy_url="/privacy/" %}'
+                    '{% endcookie_consent %}'
+                ),
+            },
+        ],
+    },
+
+    # ── Feedback (additional) ──
+
+    "announcement_bar": {
+        "label": "Announcement Bar",
+        "category": "feedback",
+        "variants": [
+            {
+                "name": "Info",
+                "template": '{% announcement_bar type="info" dismissible=True %}New version 2.0 is available!{% endannouncement_bar %}',
+            },
+        ],
+    },
+    "callout": {
+        "label": "Callout",
+        "category": "feedback",
+        "variants": [
+            {"name": "Default", "template": '{% callout title="Note" %}This is an important callout.{% endcallout %}'},
+            {"name": "Warning", "template": '{% callout type="warning" title="Caution" %}Proceed carefully.{% endcallout %}'},
+        ],
+    },
+    "connection_status": {
+        "label": "Connection Status",
+        "category": "feedback",
+        "variants": [
+            {"name": "Default", "template": '{% connection_status reconnecting_text="Reconnecting..." connected_text="Connected" %}'},
+        ],
+    },
+    "error_boundary": {
+        "label": "Error Boundary",
+        "category": "feedback",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% error_boundary fallback="Something went wrong" retry_event="retry" %}Protected content here.{% enderror_boundary %}',
+            },
+        ],
+    },
+    "error_page": {
+        "label": "Error Page",
+        "category": "feedback",
+        "variants": [
+            {"name": "404", "template": '{% error_page code=404 title="Page Not Found" message="The page you are looking for does not exist." %}'},
+            {"name": "500", "template": '{% error_page code=500 title="Server Error" message="Something went wrong on our end." %}'},
+        ],
+    },
+    "loading_overlay": {
+        "label": "Loading Overlay",
+        "category": "feedback",
+        "variants": [
+            {
+                "name": "Active",
+                "template": '{% loading_overlay active=True text="Loading data..." %}Content behind overlay.{% endloading_overlay %}',
+            },
+        ],
+    },
+    "page_alert": {
+        "label": "Page Alert",
+        "category": "feedback",
+        "variants": [
+            {
+                "name": "Info",
+                "template": '{% page_alert type="info" dismissible=True %}Your account has been verified.{% endpage_alert %}',
+            },
+            {
+                "name": "Warning",
+                "template": '{% page_alert type="warning" %}Your subscription expires soon.{% endpage_alert %}',
+            },
+        ],
+    },
+    "progress_circle": {
+        "label": "Progress Circle",
+        "category": "feedback",
+        "variants": [
+            {"name": "Default", "template": '{% progress_circle value=72 %}'},
+            {"name": "Complete", "template": '{% progress_circle value=100 color="primary" %}'},
+        ],
+    },
+    "server_toast_container": {
+        "label": "Server Toast Container",
+        "category": "feedback",
+        "variants": [
+            {"name": "Default", "template": '{% server_toast_container position="top-right" %}'},
+        ],
+    },
+    "skeleton_for": {
+        "label": "Skeleton For",
+        "category": "feedback",
+        "variants": [
+            {"name": "Table", "template": '{% skeleton_for component="table" columns=4 rows=5 %}'},
+            {"name": "Text", "template": '{% skeleton_for component="text" %}'},
+        ],
+    },
+    "thinking_indicator": {
+        "label": "Thinking Indicator",
+        "category": "feedback",
+        "variants": [
+            {"name": "Thinking", "template": '{% thinking_indicator status="thinking" label="Generating response..." %}'},
+        ],
+    },
+
+    # ── Data (additional) ──
+
+    "activity_feed": {
+        "label": "Activity Feed",
+        "category": "data",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% activity_feed events=events %}',
+                "context": {"events": [
+                    {"user": "Alice", "action": "created", "target": "Project Alpha", "time": "2m ago", "icon": "plus"},
+                    {"user": "Bob", "action": "deployed", "target": "v1.2.0", "time": "1h ago", "icon": "rocket"},
+                ]},
+            },
+        ],
+    },
+    "audit_log": {
+        "label": "Audit Log",
+        "category": "data",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% audit_log entries=entries %}',
+                "context": {"entries": [
+                    {"timestamp": "2026-03-25 10:00", "user": "admin", "action": "UPDATE", "resource": "User #42", "detail": "Changed role to editor"},
+                    {"timestamp": "2026-03-25 09:30", "user": "system", "action": "CREATE", "resource": "API Key", "detail": "New key generated"},
+                ]},
+            },
+        ],
+    },
+    "bar_chart": {
+        "label": "Bar Chart",
+        "category": "data",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% bar_chart data=data labels=labels title="Monthly Sales" %}',
+                "context": {"data": [120, 200, 150, 80, 240], "labels": ["Jan", "Feb", "Mar", "Apr", "May"]},
+            },
+        ],
+    },
+    "calendar": {
+        "label": "Calendar",
+        "category": "data",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% calendar year=2026 month=3 events=events %}',
+                "context": {"events": [
+                    {"date": "2026-03-15", "title": "Sprint Review", "color": "blue"},
+                    {"date": "2026-03-20", "title": "Release Day", "color": "green"},
+                ]},
+            },
+        ],
+    },
+    "calendar_heatmap": {
+        "label": "Calendar Heatmap",
+        "category": "data",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% calendar_heatmap data=data year=2026 title="Contributions" %}',
+                "context": {"data": {"2026-01-05": 3, "2026-01-12": 7, "2026-02-01": 5, "2026-03-10": 10}},
+            },
+        ],
+    },
+    "comparison_table": {
+        "label": "Comparison Table",
+        "category": "data",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% comparison_table plans=plans features=features %}',
+                "context": {
+                    "plans": [
+                        {"name": "Free", "price": "$0/mo", "highlighted": False},
+                        {"name": "Pro", "price": "$29/mo", "highlighted": True},
+                    ],
+                    "features": [
+                        {"name": "Projects", "values": ["3", "Unlimited"]},
+                        {"name": "Storage", "values": ["1 GB", "100 GB"]},
+                    ],
+                },
+            },
+        ],
+    },
+    "conversation_thread": {
+        "label": "Conversation Thread",
+        "category": "data",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% conversation_thread messages=messages %}',
+                "context": {"messages": [
+                    {"sender": "user", "name": "Alice", "text": "How do I deploy?", "time": "10:00 AM"},
+                    {"sender": "assistant", "name": "Bot", "text": "Run `make deploy` from the project root.", "time": "10:01 AM"},
+                ]},
+            },
+        ],
+    },
+    "data_card_grid": {
+        "label": "Data Card Grid",
+        "category": "data",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% data_card_grid items=items columns=2 %}',
+                "context": {"items": [
+                    {"title": "Widget A", "description": "A useful widget.", "category": "tools"},
+                    {"title": "Widget B", "description": "Another widget.", "category": "tools"},
+                ]},
+            },
+        ],
+    },
+    "data_grid": {
+        "label": "Data Grid",
+        "category": "data",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% data_grid columns=columns rows=rows striped=True %}',
+                "context": {
+                    "columns": [
+                        {"key": "name", "label": "Name", "editable": False},
+                        {"key": "email", "label": "Email", "editable": True},
+                    ],
+                    "rows": [
+                        {"id": "1", "name": "Alice", "email": "alice@example.com"},
+                        {"id": "2", "name": "Bob", "email": "bob@example.com"},
+                    ],
+                },
+            },
+        ],
+    },
+    "description_list": {
+        "label": "Description List",
+        "category": "data",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% description_list items=items %}',
+                "context": {"items": [
+                    {"term": "Name", "detail": "Alice Johnson"},
+                    {"term": "Role", "detail": "Administrator"},
+                    {"term": "Status", "detail": "Active"},
+                ]},
+            },
+        ],
+    },
+    "diff_viewer": {
+        "label": "Diff Viewer",
+        "category": "data",
+        "variants": [
+            {
+                "name": "Split",
+                "template": '{% diff_viewer old=old_text new=new_text mode="split" %}',
+                "context": {
+                    "old_text": "Hello World\nFoo Bar",
+                    "new_text": "Hello World\nFoo Baz",
+                },
+            },
+        ],
+    },
+    "file_tree": {
+        "label": "File Tree",
+        "category": "data",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% file_tree nodes=nodes event="select_file" %}',
+                "context": {"nodes": [
+                    {"id": "1", "label": "src/", "children": [
+                        {"id": "2", "label": "main.py", "children": []},
+                        {"id": "3", "label": "utils.py", "children": []},
+                    ]},
+                    {"id": "4", "label": "README.md", "children": []},
+                ]},
+            },
+        ],
+    },
+    "gantt_chart": {
+        "label": "Gantt Chart",
+        "category": "data",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% gantt_chart tasks=tasks title="Project Timeline" %}',
+                "context": {"tasks": [
+                    {"name": "Design", "start": 0, "duration": 3, "progress": 100},
+                    {"name": "Development", "start": 2, "duration": 5, "progress": 60},
+                    {"name": "Testing", "start": 6, "duration": 2, "progress": 0},
+                ]},
+            },
+        ],
+    },
+    "heatmap": {
+        "label": "Heatmap",
+        "category": "data",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% heatmap data=data x_labels=x_labels y_labels=y_labels title="Activity" %}',
+                "context": {
+                    "data": [[1, 5, 3], [8, 2, 6]],
+                    "x_labels": ["Mon", "Wed", "Fri"],
+                    "y_labels": ["Morning", "Afternoon"],
+                },
+            },
+        ],
+    },
+    "json_viewer": {
+        "label": "JSON Viewer",
+        "category": "data",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% json_viewer data=data %}',
+                "context": {"data": {"name": "djust", "version": "0.4.0", "features": ["LiveView", "VDOM", "Components"]}},
+            },
+        ],
+    },
+    "line_chart": {
+        "label": "Line Chart",
+        "category": "data",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% line_chart series=series labels=labels title="Performance" %}',
+                "context": {
+                    "series": [{"name": "Requests", "data": [100, 150, 120, 200, 180]}],
+                    "labels": ["Mon", "Tue", "Wed", "Thu", "Fri"],
+                },
+            },
+        ],
+    },
+    "log_viewer": {
+        "label": "Log Viewer",
+        "category": "data",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% log_viewer lines=lines show_line_numbers=True %}',
+                "context": {"lines": [
+                    "[INFO] Server started on port 8000",
+                    "[DEBUG] Loading configuration...",
+                    "[WARN] Deprecated setting detected",
+                    "[INFO] Ready to accept connections",
+                ]},
+            },
+        ],
+    },
+    "model_table": {
+        "label": "Model Table",
+        "category": "data",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% model_table queryset=rows include=include striped=True %}',
+                "context": {
+                    "rows": [
+                        {"id": 1, "name": "Widget", "price": "$9.99"},
+                        {"id": 2, "name": "Gadget", "price": "$19.99"},
+                    ],
+                    "include": ["name", "price"],
+                },
+            },
+        ],
+    },
+    "org_chart": {
+        "label": "Org Chart",
+        "category": "data",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% org_chart nodes=nodes root="ceo" %}',
+                "context": {"nodes": [
+                    {"id": "ceo", "label": "CEO", "parent": ""},
+                    {"id": "cto", "label": "CTO", "parent": "ceo"},
+                    {"id": "cfo", "label": "CFO", "parent": "ceo"},
+                ]},
+            },
+        ],
+    },
+    "pie_chart": {
+        "label": "Pie Chart",
+        "category": "data",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% pie_chart segments=segments title="Traffic Sources" %}',
+                "context": {"segments": [
+                    {"label": "Direct", "value": 40},
+                    {"label": "Search", "value": 35},
+                    {"label": "Social", "value": 25},
+                ]},
+            },
+            {
+                "name": "Donut",
+                "template": '{% pie_chart segments=segments title="Revenue" donut=True %}',
+                "context": {"segments": [
+                    {"label": "Product", "value": 60},
+                    {"label": "Services", "value": 40},
+                ]},
+            },
+        ],
+    },
+    "pivot_table": {
+        "label": "Pivot Table",
+        "category": "data",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% pivot_table data=data rows="region" cols="quarter" values="sales" agg="sum" %}',
+                "context": {"data": [
+                    {"region": "North", "quarter": "Q1", "sales": 100},
+                    {"region": "North", "quarter": "Q2", "sales": 150},
+                    {"region": "South", "quarter": "Q1", "sales": 200},
+                    {"region": "South", "quarter": "Q2", "sales": 175},
+                ]},
+            },
+        ],
+    },
+    "sortable_grid": {
+        "label": "Sortable Grid",
+        "category": "data",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% sortable_grid items=items columns=3 move_event="reorder" %}',
+                "context": {"items": [
+                    {"id": "1", "label": "Item A"},
+                    {"id": "2", "label": "Item B"},
+                    {"id": "3", "label": "Item C"},
+                ]},
+            },
+        ],
+    },
+    "sortable_list": {
+        "label": "Sortable List",
+        "category": "data",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% sortable_list items=items move_event="reorder" %}',
+                "context": {"items": [
+                    {"id": "1", "label": "First item"},
+                    {"id": "2", "label": "Second item"},
+                    {"id": "3", "label": "Third item"},
+                ]},
+            },
+        ],
+    },
+    "sparkline": {
+        "label": "Sparkline",
+        "category": "data",
+        "variants": [
+            {
+                "name": "Line",
+                "template": '{% sparkline data=data variant="line" %}',
+                "context": {"data": [10, 25, 15, 30, 20, 35]},
+            },
+            {
+                "name": "Bar",
+                "template": '{% sparkline data=data variant="bar" %}',
+                "context": {"data": [5, 12, 8, 20, 15]},
+            },
+        ],
+    },
+    "terminal": {
+        "label": "Terminal",
+        "category": "data",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% terminal output=output title="Console" show_line_numbers=True %}',
+                "context": {"output": [
+                    "$ python manage.py runserver",
+                    "Watching for file changes with StatReloader",
+                    "Starting development server at http://127.0.0.1:8000/",
+                ]},
+            },
+        ],
+    },
+    "treemap": {
+        "label": "Treemap",
+        "category": "data",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% treemap data=data title="Disk Usage" %}',
+                "context": {"data": [
+                    {"name": "Documents", "size": 450},
+                    {"name": "Photos", "size": 300},
+                    {"name": "Videos", "size": 800},
+                    {"name": "Code", "size": 200},
+                ]},
+            },
+        ],
+    },
+
+    # ── Navigation (additional) ──
+
+    "breadcrumb_dropdown": {
+        "label": "Breadcrumb Dropdown",
+        "category": "navigation",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% breadcrumb_dropdown items=items max_visible=3 %}',
+                "context": {"items": [
+                    {"label": "Home", "url": "/"},
+                    {"label": "Products", "url": "/products/"},
+                    {"label": "Electronics", "url": "/products/electronics/"},
+                    {"label": "Phones", "url": "/products/electronics/phones/"},
+                    {"label": "iPhone 15"},
+                ]},
+            },
+        ],
+    },
+    "nav_menu": {
+        "label": "Nav Menu",
+        "category": "navigation",
+        "variants": [
+            {
+                "name": "Default",
+                "template": (
+                    '{% nav_menu id="main-nav" brand="MyApp" active="home" %}'
+                    '{% nav_item id="home" label="Home" href="/" %}Home{% endnav_item %}'
+                    '{% nav_item id="about" label="About" href="/about/" %}About{% endnav_item %}'
+                    '{% endnav_menu %}'
+                ),
+            },
+        ],
+    },
+    "page_header": {
+        "label": "Page Header",
+        "category": "navigation",
+        "variants": [
+            {
+                "name": "Default",
+                "template": (
+                    '{% page_header title="Dashboard" subtitle="Overview of your account" %}'
+                    '{% page_header_actions %}{% dj_button label="New Project" variant="primary" %}{% endpage_header_actions %}'
+                    '{% endpage_header %}'
+                ),
+            },
+        ],
+    },
+    "scroll_spy": {
+        "label": "Scroll Spy",
+        "category": "navigation",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% scroll_spy sections=sections active="intro" %}',
+                "context": {"sections": [
+                    {"id": "intro", "label": "Introduction"},
+                    {"id": "features", "label": "Features"},
+                    {"id": "pricing", "label": "Pricing"},
+                ]},
+            },
+        ],
+    },
+    "toolbar": {
+        "label": "Toolbar",
+        "category": "navigation",
+        "variants": [
+            {
+                "name": "Default",
+                "template": (
+                    '{% toolbar %}'
+                    '{% dj_button label="Bold" size="sm" %}'
+                    '{% toolbar_separator %}'
+                    '{% dj_button label="Italic" size="sm" %}'
+                    '{% endtoolbar %}'
+                ),
+            },
+        ],
+    },
+    "wizard": {
+        "label": "Wizard",
+        "category": "navigation",
+        "variants": [
+            {
+                "name": "Default",
+                "template": (
+                    '{% wizard steps=steps active="step1" %}'
+                    '<p>Step 1 content goes here.</p>'
+                    '{% endwizard %}'
+                ),
+                "context": {"steps": [
+                    {"id": "step1", "label": "Account"},
+                    {"id": "step2", "label": "Profile"},
+                    {"id": "step3", "label": "Confirm"},
+                ]},
+            },
+        ],
+    },
+
+    # ── Indicator (additional) ──
+
+    "animated_number": {
+        "label": "Animated Number",
+        "category": "indicator",
+        "variants": [
+            {"name": "Default", "template": '{% animated_number value=1234 prefix="$" duration=800 %}'},
+            {"name": "Percentage", "template": '{% animated_number value=97 suffix="%" decimals=1 %}'},
+        ],
+    },
+    "avatar_group": {
+        "label": "Avatar Group",
+        "category": "indicator",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% avatar_group users=users max=3 %}',
+                "context": {"users": [
+                    {"name": "Alice", "src": ""},
+                    {"name": "Bob", "src": ""},
+                    {"name": "Carol", "src": ""},
+                    {"name": "Dave", "src": ""},
+                ]},
+            },
+        ],
+    },
+    "countdown": {
+        "label": "Countdown",
+        "category": "indicator",
+        "variants": [
+            {"name": "Default", "template": '{% countdown target="2026-12-31T23:59:59" %}'},
+        ],
+    },
+    "icon": {
+        "label": "Icon",
+        "category": "indicator",
+        "variants": [
+            {"name": "Default", "template": '{% icon name="check" %}'},
+            {"name": "Large", "template": '{% icon name="star" size="lg" %}'},
+        ],
+    },
+    "live_counter": {
+        "label": "Live Counter",
+        "category": "indicator",
+        "variants": [
+            {"name": "Default", "template": '{% live_counter value=42 label="Online Users" %}'},
+        ],
+    },
+    "live_indicator": {
+        "label": "Live Indicator",
+        "category": "indicator",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% live_indicator user=user field="document" action="typing" active=True %}',
+                "context": {"user": {"name": "Alice", "avatar": ""}},
+            },
+        ],
+    },
+    "meter": {
+        "label": "Meter",
+        "category": "indicator",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% meter segments=segments total=100 label="Storage" %}',
+                "context": {"segments": [
+                    {"value": 40, "color": "#3B82F6", "label": "Documents"},
+                    {"value": 25, "color": "#10B981", "label": "Photos"},
+                    {"value": 15, "color": "#F59E0B", "label": "Other"},
+                ]},
+            },
+        ],
+    },
+    "notification_badge": {
+        "label": "Notification Badge",
+        "category": "indicator",
+        "variants": [
+            {"name": "Count", "template": '{% notification_badge count=5 %}'},
+            {"name": "Overflow", "template": '{% notification_badge count=150 max=99 %}'},
+            {"name": "Dot", "template": '{% notification_badge dot=True pulse=True %}'},
+        ],
+    },
+    "presence_avatars": {
+        "label": "Presence Avatars",
+        "category": "indicator",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% presence_avatars users=users max=4 %}',
+                "context": {"users": [
+                    {"name": "Alice", "status": "online"},
+                    {"name": "Bob", "status": "away"},
+                    {"name": "Carol", "status": "online"},
+                ]},
+            },
+        ],
+    },
+    "qr_code": {
+        "label": "QR Code",
+        "category": "indicator",
+        "variants": [
+            {"name": "Default", "template": '{% qr_code data="https://djust.org" size="md" %}'},
+        ],
+    },
+    "relative_time": {
+        "label": "Relative Time",
+        "category": "indicator",
+        "variants": [
+            {"name": "Default", "template": '{% relative_time datetime="2026-03-25T10:00:00Z" %}'},
+        ],
+    },
+    "ribbon": {
+        "label": "Ribbon",
+        "category": "indicator",
+        "variants": [
+            {"name": "Default", "template": '{% ribbon text="New" variant="primary" %}'},
+            {"name": "Sale", "template": '{% ribbon text="Sale" variant="danger" position="top-left" %}'},
+        ],
+    },
+    "segmented_progress": {
+        "label": "Segmented Progress",
+        "category": "indicator",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% segmented_progress steps=steps current=2 %}',
+                "context": {"steps": [
+                    {"label": "Upload"},
+                    {"label": "Process"},
+                    {"label": "Complete"},
+                ]},
+            },
+        ],
+    },
+    "status_indicator": {
+        "label": "Status Indicator",
+        "category": "indicator",
+        "variants": [
+            {"name": "Online", "template": '{% status_indicator status="online" label="Server" %}'},
+            {"name": "Offline", "template": '{% status_indicator status="offline" label="Database" %}'},
+            {"name": "Warning", "template": '{% status_indicator status="warning" label="Cache" pulse=True %}'},
+        ],
+    },
+    "token_counter": {
+        "label": "Token Counter",
+        "category": "indicator",
+        "variants": [
+            {"name": "Default", "template": '{% token_counter current=1500 max=4096 %}'},
+        ],
+    },
+
+    # ── Typography (additional) ──
+
+    "code_snippet": {
+        "label": "Code Snippet",
+        "category": "typography",
+        "variants": [
+            {"name": "Python", "template": '{% code_snippet code="print(\'Hello, World!\')" language="python" %}'},
+        ],
+    },
+    "copyable_text": {
+        "label": "Copyable Text",
+        "category": "typography",
+        "variants": [
+            {"name": "Default", "template": '{% copyable_text %}pip install djust{% endcopyable_text %}'},
+        ],
+    },
+    "expandable_text": {
+        "label": "Expandable Text",
+        "category": "typography",
+        "variants": [
+            {
+                "name": "Default",
+                "template": (
+                    '{% expandable_text max_lines=2 %}'
+                    'This is a long paragraph of text that will be truncated after a few lines. '
+                    'Click the button to expand and read the full content of this text block.'
+                    '{% endexpandable_text %}'
+                ),
+            },
+        ],
+    },
+    "streaming_text": {
+        "label": "Streaming Text",
+        "category": "typography",
+        "variants": [
+            {"name": "Default", "template": '{% streaming_text text="The response is being generated..." cursor=True %}'},
+        ],
+    },
+    "truncated_list": {
+        "label": "Truncated List",
+        "category": "data",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% truncated_list items=items max=2 %}',
+                "context": {"items": [
+                    {"name": "Alice"},
+                    {"name": "Bob"},
+                    {"name": "Carol"},
+                    {"name": "Dave"},
+                ]},
+            },
+        ],
+    },
+
+    # ── Misc (additional) ──
+
+    "agent_step": {
+        "label": "Agent Step",
+        "category": "misc",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% agent_step tool="web_search" status="complete" duration="1.2s" %}Found 3 relevant results.{% endagent_step %}',
+            },
+        ],
+    },
+    "approval_gate": {
+        "label": "Approval Gate",
+        "category": "misc",
+        "variants": [
+            {"name": "Default", "template": '{% approval_gate message="Deploy to production?" risk="high" approve_event="approve" reject_event="reject" %}'},
+        ],
+    },
+    "await": {
+        "label": "Await",
+        "category": "misc",
+        "variants": [
+            {
+                "name": "Loading",
+                "template": '{% await loaded=False %}Loading...{% endawait %}',
+            },
+            {
+                "name": "Loaded",
+                "template": '{% await loaded=True %}Data is ready.{% endawait %}',
+            },
+        ],
+    },
+    "chat_bubble": {
+        "label": "Chat Bubble",
+        "category": "misc",
+        "variants": [
+            {
+                "name": "User",
+                "template": '{% chat_bubble message=msg %}',
+                "context": {"msg": {"sender": "user", "name": "Alice", "text": "Hello there!", "time": "10:00 AM"}},
+            },
+            {
+                "name": "Assistant",
+                "template": '{% chat_bubble message=msg %}',
+                "context": {"msg": {"sender": "assistant", "name": "Bot", "text": "How can I help?", "time": "10:01 AM"}},
+            },
+        ],
+    },
+    "collab_selection": {
+        "label": "Collab Selection",
+        "category": "misc",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% collab_selection users=users %}',
+                "context": {"users": [
+                    {"name": "Alice", "color": "#3B82F6", "text": "selected text", "start": 0, "end": 13},
+                ]},
+            },
+        ],
+    },
+    "cursors": {
+        "label": "Cursors",
+        "category": "misc",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% cursors users=users %}',
+                "context": {"users": [
+                    {"name": "Alice", "color": "#3B82F6", "x": 100, "y": 200},
+                    {"name": "Bob", "color": "#10B981", "x": 300, "y": 150},
+                ]},
+            },
+        ],
+    },
+    "fab": {
+        "label": "Floating Action Button",
+        "category": "misc",
+        "variants": [
+            {"name": "Default", "template": '{% fab icon="+" event="create" label="Create" %}'},
+        ],
+    },
+    "feedback": {
+        "label": "Feedback Widget",
+        "category": "misc",
+        "variants": [
+            {"name": "Thumbs", "template": '{% feedback event="rate_response" mode="thumbs" %}'},
+            {"name": "Stars", "template": '{% feedback event="rate_response" mode="stars" %}'},
+        ],
+    },
+    "filter_bar": {
+        "label": "Filter Bar",
+        "category": "misc",
+        "variants": [
+            {
+                "name": "Default",
+                "template": (
+                    '{% filter_bar event="filter_change" %}'
+                    '{% filter_select name="status" label="Status" options=options %}'
+                    '{% filter_search name="q" placeholder="Search..." %}'
+                    '{% endfilter_bar %}'
+                ),
+                "context": {"options": [
+                    {"value": "active", "label": "Active"},
+                    {"value": "archived", "label": "Archived"},
+                ]},
+            },
+        ],
+    },
+    "import_wizard": {
+        "label": "Import Wizard",
+        "category": "misc",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% import_wizard accepted_formats=".csv" model_fields=fields event="import_data" %}',
+                "context": {"fields": [
+                    {"id": "name", "label": "Name"},
+                    {"id": "email", "label": "Email"},
+                ]},
+            },
+        ],
+    },
+    "infinite_scroll": {
+        "label": "Infinite Scroll",
+        "category": "misc",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% infinite_scroll load_event="load_more" %}<p>Item 1</p><p>Item 2</p>{% endinfinite_scroll %}',
+            },
+        ],
+    },
+    "map_picker": {
+        "label": "Map Picker",
+        "category": "misc",
+        "variants": [
+            {"name": "Default", "template": '{% map_picker lat=40.7128 lng=-74.0060 zoom=13 pick_event="set_location" %}'},
+        ],
+    },
+    "model_selector": {
+        "label": "Model Selector",
+        "category": "misc",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% model_selector name="model" options=options value="gpt-4" label="Model" %}',
+                "context": {"options": [
+                    {"value": "gpt-4", "label": "GPT-4"},
+                    {"value": "claude", "label": "Claude"},
+                ]},
+            },
+        ],
+    },
+    "multimodal_input": {
+        "label": "Multimodal Input",
+        "category": "misc",
+        "variants": [
+            {"name": "Default", "template": '{% multimodal_input name="message" event="send" accept_files=True %}'},
+        ],
+    },
+    "reactions": {
+        "label": "Reactions",
+        "category": "misc",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% reactions options=options counts=counts event="react" %}',
+                "context": {
+                    "options": [{"emoji": "thumbsup", "label": "Like"}, {"emoji": "heart", "label": "Love"}],
+                    "counts": {"thumbsup": 5, "heart": 2},
+                },
+            },
+        ],
+    },
+    "responsive_image": {
+        "label": "Responsive Image",
+        "category": "misc",
+        "variants": [
+            {"name": "Default", "template": '{% responsive_image src="https://via.placeholder.com/800x400" alt="Hero image" aspect_ratio="2/1" %}'},
+        ],
+    },
+    "scroll_to_top": {
+        "label": "Scroll to Top",
+        "category": "misc",
+        "variants": [
+            {"name": "Default", "template": '{% scroll_to_top label="Back to top" %}'},
+        ],
+    },
+    "source_citation": {
+        "label": "Source Citation",
+        "category": "misc",
+        "variants": [
+            {"name": "Default", "template": '{% source_citation index=1 title="Wikipedia: Django" url="https://en.wikipedia.org/wiki/Django" %}'},
+        ],
+    },
+    "split_button": {
+        "label": "Split Button",
+        "category": "misc",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% split_button label="Save" event="save" options=options %}',
+                "context": {"options": [
+                    {"label": "Save as Draft", "event": "save_draft"},
+                    {"label": "Save & Publish", "event": "save_publish"},
+                ]},
+            },
+        ],
+    },
+    "theme_toggle": {
+        "label": "Theme Toggle",
+        "category": "misc",
+        "variants": [
+            {"name": "Default", "template": '{% theme_toggle current="system" event="set_theme" %}'},
+        ],
+    },
+    "tour": {
+        "label": "Tour",
+        "category": "misc",
+        "variants": [
+            {
+                "name": "Default",
+                "template": '{% tour steps=steps active=0 %}',
+                "context": {"steps": [
+                    {"target": "#header", "title": "Welcome", "content": "This is the main header."},
+                    {"target": "#sidebar", "title": "Navigation", "content": "Browse sections here."},
+                ]},
+            },
+        ],
+    },
 }
 
 
