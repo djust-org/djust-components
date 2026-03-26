@@ -9,8 +9,17 @@ Inline handlers implement: render(self, args, context) -> str
 Block handlers implement:  render(self, args, content, context) -> str
 """
 
+import json as _json
+
 from django.utils.html import conditional_escape
 from django.utils.safestring import mark_safe
+
+from djust_components.utils import (
+    CURRENCY_SYMBOLS,
+    format_cell as _format_cell_util,
+    interpolate_color,
+    interpolate_color_gradient,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -24,7 +33,6 @@ def _parse_args(args: list[str], context: dict[str, object]) -> dict[str, object
     Values that are JSON-encoded lists/objects (from the Rust engine's
     variable resolution) are deserialized automatically.
     """
-    import json as _json
 
     result = {}
     for arg in args:
@@ -825,78 +833,9 @@ class DjRadioHandler:
         )
 
 
-def _format_cell(value, col):
-    """Format a cell value based on column type declaration.
-
-    Supported types: number, currency, date, percentage, boolean.
-    """
-    col_type = col.get("type", "") if isinstance(col, dict) else ""
-    if not col_type or value is None or value == "":
-        return str(value) if value is not None else ""
-    if col_type == "number":
-        try:
-            num = float(value)
-            decimals = col.get("decimals", 0)
-            if decimals > 0:
-                return f"{num:,.{decimals}f}"
-            if num == int(num):
-                return f"{int(num):,}"
-            return f"{num:,.2f}"
-        except (ValueError, TypeError):
-            return str(value)
-    elif col_type == "currency":
-        try:
-            num = float(value)
-            symbol = col.get("currency_symbol", "$")
-            decimals = col.get("decimals", 2)
-            return f"{symbol}{num:,.{decimals}f}"
-        except (ValueError, TypeError):
-            return str(value)
-    elif col_type == "percentage":
-        try:
-            num = float(value)
-            decimals = col.get("decimals", 1)
-            return f"{num:.{decimals}f}%"
-        except (ValueError, TypeError):
-            return str(value)
-    elif col_type == "boolean":
-        truthy = str(value).lower() in ("true", "1", "yes")
-        true_label = col.get("true_label", "Yes")
-        false_label = col.get("false_label", "No")
-        return true_label if truthy else false_label
-    elif col_type == "date":
-        fmt = col.get("date_format", "")
-        if fmt and hasattr(value, "strftime"):
-            try:
-                return value.strftime(fmt)
-            except (ValueError, AttributeError):
-                return str(value)
-        return str(value)
-    return str(value)
-
-
-def _interpolate_color_simple(colors, ratio):
-    """Interpolate between hex colors based on ratio (0.0-1.0)."""
-    if len(colors) < 2:
-        return colors[0] if colors else "#000000"
-    if len(colors) == 2:
-        idx = 0
-        local_ratio = ratio
-    else:
-        segments = len(colors) - 1
-        segment = min(int(ratio * segments), segments - 1)
-        idx = segment
-        local_ratio = (ratio * segments) - segment
-    c1 = colors[idx]
-    c2 = colors[idx + 1] if idx + 1 < len(colors) else colors[idx]
-    h1 = c1.lstrip("#")
-    h2 = c2.lstrip("#")
-    r1, g1, b1 = int(h1[0:2], 16), int(h1[2:4], 16), int(h1[4:6], 16)
-    r2, g2, b2 = int(h2[0:2], 16), int(h2[2:4], 16), int(h2[4:6], 16)
-    r = int(r1 + (r2 - r1) * local_ratio)
-    g = int(g1 + (g2 - g1) * local_ratio)
-    b = int(b1 + (b2 - b1) * local_ratio)
-    return f"#{r:02x}{g:02x}{b:02x}"
+# Backward-compatible aliases — delegated to djust_components.utils
+_format_cell = _format_cell_util
+_interpolate_color_simple = interpolate_color_gradient
 
 
 class DataTableHandler:
@@ -2005,8 +1944,7 @@ class DataTableHandler:
         # Facets are shown as counts next to filter options — handled via facet_counts data attr
         facet_attr = ""
         if facets and facet_counts:
-            import json as _json
-            facet_attr = f' data-facet-counts=\'{conditional_escape(_json.dumps(facet_counts))}\''
+                    facet_attr = f' data-facet-counts=\'{conditional_escape(_json.dumps(facet_counts))}\''
 
         return mark_safe(
             f'<div class="{" ".join(wrapper_classes)}" role="grid"'
@@ -2470,7 +2408,6 @@ class FileDropzoneHandler:
 
 class VirtualListHandler:
     def render(self, args, context):
-        import json as _json
         from djust_components.templatetags.djust_components import virtual_list as _vl
         kwargs = _parse_args(args, context)
         items_val = kwargs.get("items", "vl_items")
@@ -2501,7 +2438,6 @@ class VirtualListHandler:
 
 class KanbanBoardHandler:
     def render(self, args, context):
-        import json as _json
         from djust_components.templatetags.djust_components import kanban_board as _kb
         kwargs = _parse_args(args, context)
         cols_val = kwargs.get("columns", "kanban_columns")
@@ -4138,11 +4074,7 @@ INLINE_HANDLERS.extend([
 # CASCADING FORM COMPONENTS
 # ===========================================================================
 
-CURRENCY_SYMBOLS = {
-    "USD": "$", "EUR": "\u20ac", "GBP": "\u00a3", "JPY": "\u00a5",
-    "CAD": "CA$", "AUD": "A$", "CHF": "CHF", "CNY": "\u00a5",
-    "INR": "\u20b9", "BRL": "R$", "KRW": "\u20a9", "MXN": "MX$",
-}
+# CURRENCY_SYMBOLS imported from djust_components.utils at module top
 
 
 class DependentSelectHandler:
@@ -5800,8 +5732,7 @@ class MentionsInputHandler:
     """Inline handler for {% mentions_input name=... users=... %}"""
 
     def render(self, args, context):
-        import json as _json
-
+    
         kw = _parse_args(args, context)
         name = kw.get("name", "message")
         users = kw.get("users", [])
@@ -6593,7 +6524,6 @@ class FormArrayHandler:
 
 class ScrollSpyHandler:
     def render(self, args, context):
-        import json as _json
         kw = _parse_args(args, context)
         sections = kw.get("sections", [])
         active = kw.get("active", "")
@@ -7961,19 +7891,7 @@ class SparklineHandler:
 
 class HeatmapHandler:
     """Inline handler for {% heatmap data=matrix x_labels=x y_labels=y %}"""
-    @staticmethod
-    def _interpolate_color(c1, c2, t):
-        def parse_hex(c):
-            c = c.lstrip("#")
-            if len(c) == 3:
-                c = c[0]*2 + c[1]*2 + c[2]*2
-            return int(c[0:2], 16), int(c[2:4], 16), int(c[4:6], 16)
-        r1, g1, b1 = parse_hex(c1)
-        r2, g2, b2 = parse_hex(c2)
-        r = int(r1 + (r2 - r1) * t)
-        g = int(g1 + (g2 - g1) * t)
-        b = int(b1 + (b2 - b1) * t)
-        return f"#{r:02x}{g:02x}{b:02x}"
+    _interpolate_color = staticmethod(interpolate_color)
 
     def render(self, args, context):
         kw = _parse_args(args, context)
@@ -8593,7 +8511,6 @@ class JsonViewerHandler:
         return f'<span class="dj-json__value">{conditional_escape(str(value))}</span>'
 
     def render(self, args, context):
-        import json as _json
         kw = _parse_args(args, context)
         data = kw.get("data", None)
         collapsed_depth = kw.get("collapsed_depth", 2)

@@ -32,6 +32,8 @@ import io
 import json
 import math
 
+from djust_components.utils import format_cell, interpolate_color_gradient
+
 __all__ = ["DataTableMixin"]
 
 
@@ -39,13 +41,16 @@ class DataTableMixin:
     """Mixin for LiveViews that provides automatic data table event handlers."""
 
     # ── Class-level configuration ──
+    # Note: mutable defaults (lists/dicts) are set to None here to avoid
+    # the shared-mutable-default pitfall.  ``init_table_state()`` resolves
+    # None → empty list/dict on the *instance*.
     table_model = None
     table_queryset = None
-    table_columns = []
+    table_columns = None
     table_page_size = 25
     table_default_sort = ""
     table_default_sort_desc = False
-    table_searchable_fields = []
+    table_searchable_fields = None
     table_row_key = "id"
     table_selectable = False
 
@@ -57,7 +62,7 @@ class DataTableMixin:
     table_page_event = "table_page"
 
     # Phase 2 class-level configuration
-    table_editable_columns = []
+    table_editable_columns = None
     table_edit_event = "table_cell_edit"
     table_resizable = False
     table_reorderable = False
@@ -78,11 +83,11 @@ class DataTableMixin:
     # Phase 3 class-level configuration
     table_expandable = False
     table_expand_event = "table_expand"
-    table_bulk_actions = []
+    table_bulk_actions = None
     table_bulk_action_event = "table_bulk_action"
     table_exportable = False
     table_export_event = "table_export"
-    table_export_formats = ["csv", "json"]
+    table_export_formats = None  # defaults to ["csv", "json"]
     table_group_by = ""
     table_group_event = "table_group"
     table_group_toggle_event = "table_group_toggle"
@@ -98,9 +103,9 @@ class DataTableMixin:
     table_show_stats = False
 
     # Phase 4 class-level configuration
-    table_footer_aggregations = {}  # {col_key: "sum"|"avg"|"count"|"min"|"max"}
-    table_row_class_map = {}  # {col_key: {value: css_class}} or callable(row) -> css_class
-    table_column_groups = []  # list of {"label": "Q1", "columns": ["jan","feb","mar"]}
+    table_footer_aggregations = None  # {col_key: "sum"|"avg"|"count"|"min"|"max"}
+    table_row_class_map = None  # {col_key: {value: css_class}} or callable(row) -> css_class
+    table_column_groups = None  # list of {"label": "Q1", "columns": ["jan","feb","mar"]}
     table_row_drag = False
     table_row_drag_event = "table_row_drag"
     table_copyable = False
@@ -110,16 +115,42 @@ class DataTableMixin:
     # Phase 5 class-level configuration
     table_importable = False
     table_import_event = "table_import"
-    table_import_formats = ["csv", "json"]
+    table_import_formats = None  # defaults to ["csv", "json"]
     table_import_preview = True  # preview before confirming
-    table_computed_columns = []  # list of {"key": ..., "label": ..., "expression": ...}
+    table_computed_columns = None  # list of {"key": ..., "label": ..., "expression": ...}
     table_cell_merge_key = "_merge"  # row data key for colspan info
-    table_column_expressions = {}  # {col_key: expression_string} for advanced filtering
+    table_column_expressions = None  # {col_key: expression_string} for advanced filtering
     table_expression_event = "table_expression"
-    table_conditional_formatting = []  # list of formatting preset dicts
+    table_conditional_formatting = None  # list of formatting preset dicts
 
     def init_table_state(self):
         """Initialize instance state. Call from mount()."""
+        # Resolve None class-level defaults to fresh instances
+        if self.table_columns is None:
+            self.table_columns = []
+        if self.table_searchable_fields is None:
+            self.table_searchable_fields = []
+        if self.table_editable_columns is None:
+            self.table_editable_columns = []
+        if self.table_bulk_actions is None:
+            self.table_bulk_actions = []
+        if self.table_export_formats is None:
+            self.table_export_formats = ["csv", "json"]
+        if self.table_footer_aggregations is None:
+            self.table_footer_aggregations = {}
+        if self.table_row_class_map is None:
+            self.table_row_class_map = {}
+        if self.table_column_groups is None:
+            self.table_column_groups = []
+        if self.table_import_formats is None:
+            self.table_import_formats = ["csv", "json"]
+        if self.table_computed_columns is None:
+            self.table_computed_columns = []
+        if self.table_column_expressions is None:
+            self.table_column_expressions = {}
+        if self.table_conditional_formatting is None:
+            self.table_conditional_formatting = []
+
         self.table_sort_by = self.table_default_sort
         self.table_sort_desc = self.table_default_sort_desc
         self.table_search_query = ""
@@ -678,36 +709,7 @@ class DataTableMixin:
 
     def _interpolate_color(self, colors, ratio):
         """Interpolate between hex colors based on ratio (0.0-1.0)."""
-        if len(colors) < 2:
-            return colors[0] if colors else "#000000"
-
-        # For 2 colors: simple lerp
-        # For 3 colors: first half between 0-1, second half between 1-2
-        if len(colors) == 2:
-            idx = 0
-            local_ratio = ratio
-        else:
-            segments = len(colors) - 1
-            segment = min(int(ratio * segments), segments - 1)
-            idx = segment
-            local_ratio = (ratio * segments) - segment
-
-        c1 = colors[idx]
-        c2 = colors[idx + 1] if idx + 1 < len(colors) else colors[idx]
-
-        def hex_to_rgb(h):
-            h = h.lstrip("#")
-            return tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
-
-        def rgb_to_hex(r, g, b):
-            return f"#{int(r):02x}{int(g):02x}{int(b):02x}"
-
-        r1, g1, b1 = hex_to_rgb(c1)
-        r2, g2, b2 = hex_to_rgb(c2)
-        r = r1 + (r2 - r1) * local_ratio
-        g = g1 + (g2 - g1) * local_ratio
-        b = b1 + (b2 - b1) * local_ratio
-        return rgb_to_hex(r, g, b)
+        return interpolate_color_gradient(colors, ratio)
 
     def get_cell_merge(self, row, col_key):
         """Get colspan for a cell from row's _merge data.
@@ -775,52 +777,7 @@ class DataTableMixin:
 
         Supported types: number, currency, date, percentage, boolean.
         """
-        if not isinstance(col, dict):
-            return str(value) if value is not None else ""
-        col_type = col.get("type", "")
-        if not col_type or value is None or value == "":
-            return str(value) if value is not None else ""
-
-        if col_type == "number":
-            try:
-                num = float(value)
-                decimals = col.get("decimals", 0)
-                if decimals > 0:
-                    return f"{num:,.{decimals}f}"
-                if num == int(num):
-                    return f"{int(num):,}"
-                return f"{num:,.2f}"
-            except (ValueError, TypeError):
-                return str(value)
-        elif col_type == "currency":
-            try:
-                num = float(value)
-                symbol = col.get("currency_symbol", "$")
-                decimals = col.get("decimals", 2)
-                return f"{symbol}{num:,.{decimals}f}"
-            except (ValueError, TypeError):
-                return str(value)
-        elif col_type == "percentage":
-            try:
-                num = float(value)
-                decimals = col.get("decimals", 1)
-                return f"{num:.{decimals}f}%"
-            except (ValueError, TypeError):
-                return str(value)
-        elif col_type == "boolean":
-            truthy = str(value).lower() in ("true", "1", "yes")
-            true_label = col.get("true_label", "Yes")
-            false_label = col.get("false_label", "No")
-            return true_label if truthy else false_label
-        elif col_type == "date":
-            fmt = col.get("date_format", "")
-            if fmt and hasattr(value, "strftime"):
-                try:
-                    return value.strftime(fmt)
-                except (ValueError, AttributeError):
-                    return str(value)
-            return str(value)
-        return str(value)
+        return format_cell(value, col)
 
     # ── Phase 3 Computed Helpers ──
 

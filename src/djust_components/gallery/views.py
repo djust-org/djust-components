@@ -2,6 +2,7 @@
 
 from django.http import HttpResponse
 from django.template import Template, Context
+from django.templatetags.static import static
 
 from .registry import get_gallery_data
 
@@ -13,6 +14,8 @@ GALLERY_TEMPLATE = """\
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>djust-components Gallery</title>
+    <link rel="stylesheet" href="{{ component_css_url }}">
+    <link rel="stylesheet" href="{{ component_classes_css_url }}">
     <style>
         /* ── Reset & Base ── */
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -386,7 +389,9 @@ def gallery_view(request):
 
     # Render the full page (using simple string substitution, not Django template,
     # to avoid conflicts with the {{ }} in the gallery template itself)
-    html = GALLERY_TEMPLATE.replace("{{ sidebar_html }}", sidebar_html)
+    html = GALLERY_TEMPLATE.replace("{{ component_css_url }}", static("djust_components/components.css"))
+    html = html.replace("{{ component_classes_css_url }}", static("djust_components/components-classes.css"))
+    html = html.replace("{{ sidebar_html }}", sidebar_html)
     html = html.replace("{{ content_html }}", content_html)
 
     return HttpResponse(html)
