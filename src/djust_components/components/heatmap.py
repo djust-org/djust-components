@@ -5,6 +5,8 @@ from typing import Optional
 
 from djust import Component
 
+from djust_components.utils import interpolate_color
+
 
 class Heatmap(Component):
     """Style-agnostic SVG heatmap using CSS custom properties.
@@ -61,20 +63,7 @@ class Heatmap(Component):
         self.show_values = show_values
         self.custom_class = custom_class
 
-    @staticmethod
-    def _interpolate_color(c1: str, c2: str, t: float) -> str:
-        """Linearly interpolate between two hex colors."""
-        def parse_hex(c: str) -> tuple:
-            c = c.lstrip("#")
-            if len(c) == 3:
-                c = c[0]*2 + c[1]*2 + c[2]*2
-            return int(c[0:2], 16), int(c[2:4], 16), int(c[4:6], 16)
-        r1, g1, b1 = parse_hex(c1)
-        r2, g2, b2 = parse_hex(c2)
-        r = int(r1 + (r2 - r1) * t)
-        g = int(g1 + (g2 - g1) * t)
-        b = int(b1 + (b2 - b1) * t)
-        return f"#{r:02x}{g:02x}{b:02x}"
+    _interpolate_color = staticmethod(interpolate_color)
 
     def _render_custom(self) -> str:
         classes = ["dj-heatmap"]

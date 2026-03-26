@@ -5,11 +5,7 @@ from typing import Optional
 
 from djust import Component
 
-CURRENCY_SYMBOLS = {
-    "USD": "$", "EUR": "\u20ac", "GBP": "\u00a3", "JPY": "\u00a5",
-    "CAD": "CA$", "AUD": "A$", "CHF": "CHF", "CNY": "\u00a5",
-    "INR": "\u20b9", "BRL": "R$", "KRW": "\u20a9", "MXN": "MX$",
-}
+from djust_components.utils import CURRENCY_SYMBOLS
 
 
 class CurrencyInput(Component):
