@@ -1,0 +1,10 @@
+Files changed for feat-lv-gallery-layout (LV-GALLERY-LAYOUT):
+
+Modified:
+- src/djust_components/gallery/live_views.py (extracted GalleryThemeMixin, added CategoryGalleryView)
+- src/djust_components/gallery/urls.py (added lv/<slug>/ route)
+- CHANGELOG.md (added entry)
+
+Created:
+- src/djust_components/templates/djust_components/gallery/category.html (category template)
+- tests/test_gallery_liveviews.py (19 tests: 8 mount, 7 events, 2 rendering, 2 XSS)
