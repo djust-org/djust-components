@@ -212,15 +212,15 @@
 | **P3** | Activity Feed (#80) | v2.0 |
 | **P3** | Voting / Reactions (#81) | v2.0 |
 | ~~**P0**~~ | ~~Gallery CSS Reset Fix (#GALLERY-RESET)~~ ✅ PR #66 | v2.2 |
-| **P0** | CSS Class Names — Layout (#CSS-NAMES-LAYOUT) | v2.2 |
-| **P0** | CSS Class Names — Form (#CSS-NAMES-FORM) | v2.2 |
-| **P0** | CSS Class Names — Data (#CSS-NAMES-DATA) | v2.2 |
-| **P1** | CSS Class Names — Overlay (#CSS-NAMES-OVERLAY) | v2.2 |
-| **P1** | CSS Class Names — Feedback (#CSS-NAMES-FEEDBACK) | v2.2 |
-| **P1** | CSS Class Names — Navigation (#CSS-NAMES-NAV) | v2.2 |
-| **P1** | CSS Class Names — Indicator (#CSS-NAMES-INDICATOR) | v2.2 |
-| **P2** | CSS Class Names — Typography (#CSS-NAMES-TYPOGRAPHY) | v2.2 |
-| **P2** | CSS Class Names — Misc (#CSS-NAMES-MISC) | v2.2 |
+| ~~**P0**~~ | ~~CSS Class Names — Layout (#CSS-NAMES-LAYOUT)~~ ✅ PR #67 | v2.2 |
+| ~~**P0**~~ | ~~CSS Class Names — Form (#CSS-NAMES-FORM)~~ ✅ audited, no mismatches | v2.2 |
+| ~~**P0**~~ | ~~CSS Class Names — Data (#CSS-NAMES-DATA)~~ ✅ PR #68 (pagination fix) | v2.2 |
+| ~~**P1**~~ | ~~CSS Class Names — Overlay (#CSS-NAMES-OVERLAY)~~ ✅ PR #68 (modal, tooltip) | v2.2 |
+| ~~**P1**~~ | ~~CSS Class Names — Feedback (#CSS-NAMES-FEEDBACK)~~ ✅ audited, no mismatches | v2.2 |
+| ~~**P1**~~ | ~~CSS Class Names — Navigation (#CSS-NAMES-NAV)~~ ✅ audited, no mismatches | v2.2 |
+| ~~**P1**~~ | ~~CSS Class Names — Indicator (#CSS-NAMES-INDICATOR)~~ ✅ audited, no mismatches | v2.2 |
+| ~~**P2**~~ | ~~CSS Class Names — Typography (#CSS-NAMES-TYPOGRAPHY)~~ ✅ audited, no mismatches | v2.2 |
+| ~~**P2**~~ | ~~CSS Class Names — Misc (#CSS-NAMES-MISC)~~ ✅ audited, no mismatches | v2.2 |
 | **P0** | Gallery Examples for All Tags (#GALLERY-EXAMPLES) | v2.1 |
 | **P0** | Shared Test Infrastructure (#TEST-INFRA) | v2.1 |
 | **P1** | Code Quality — Split Monolithic Files (#CODE-SPLIT) | v2.1 |
