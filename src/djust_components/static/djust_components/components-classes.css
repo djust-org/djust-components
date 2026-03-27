@@ -250,9 +250,10 @@
 .dj-card {
   display: flex;
   flex-direction: column;
-  background: var(--dj-card-bg, white);
-  border: 1px solid var(--dj-card-border, rgb(229, 231, 235));
-  border-radius: var(--dj-card-radius, 0.5rem);
+  background: var(--dj-card-bg, hsl(var(--card, 0 0% 100%)));
+  color: hsl(var(--card-foreground, 240 10% 4%));
+  border: 1px solid var(--dj-card-border, hsl(var(--border, 240 6% 90%)));
+  border-radius: var(--dj-card-radius, calc(var(--radius, 0.5rem) + 2px));
   overflow: hidden;
   transition: all 0.15s ease;
 }
@@ -309,17 +310,18 @@
 }
 
 .dj-card-header {
-  padding: 1rem;
-  border-bottom: 1px solid var(--dj-card-border, rgb(229, 231, 235));
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--dj-card-border, hsl(var(--border, 240 6% 90%)));
 }
 
 .dj-card-content {
   flex: 1;
+  padding: 1.5rem;
 }
 
 .dj-card-footer {
-  padding: 1rem;
-  border-top: 1px solid var(--dj-card-border, rgb(229, 231, 235));
+  padding: 1.5rem;
+  border-top: 1px solid var(--dj-card-border, hsl(var(--border, 240 6% 90%)));
 }
 
 /* Adjust padding when card has padding class and sections */
