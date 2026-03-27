@@ -410,9 +410,30 @@ class TestGalleryLiveView:
         assert view.mode == "light"
         assert view.preview_mode == "desktop"
         assert len(view.category_cards) == 9
-        assert view.theme_css  # non-empty CSS string
+        assert isinstance(view.theme_css, str)  # CSS string (may be empty without djust-theming)
 
     def test_liveview_mount_reads_cookies(self):
+        from djust_components.gallery.live_views import GalleryIndexView
+
+        view = GalleryIndexView()
+        factory = RequestFactory()
+        request = factory.get("/")
+        # Use values that exist in the fallback lists too (material/default always valid)
+        request.COOKIES = {"gallery_ds": "material", "gallery_preset": "default", "gallery_mode": "dark"}
+        view.mount(request)
+
+        assert view.design_system == "material"
+        assert view.preset == "default"
+        assert view.mode == "dark"
+
+    def test_liveview_mount_reads_cookies_with_theming(self):
+        """Test cookie reading with full theme options (requires djust-theming)."""
+        pytest = __import__("pytest")
+        try:
+            import djust_theming  # noqa: F401
+        except ImportError:
+            pytest.skip("djust-theming not installed")
+
         from djust_components.gallery.live_views import GalleryIndexView
 
         view = GalleryIndexView()
