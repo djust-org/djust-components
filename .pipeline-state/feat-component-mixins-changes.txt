@@ -1,0 +1,27 @@
+## feat-component-mixins — Changes Summary
+
+### New Files
+- src/djust_components/mixins/base.py — ComponentMixin base class with instance registry pattern
+- src/djust_components/mixins/accordion.py — AccordionMixin (accordion_toggle, init_accordion, get_accordion_ctx)
+- src/djust_components/mixins/tabs.py — TabsMixin (set_tab, init_tabs, get_tabs_ctx)
+- src/djust_components/mixins/modal.py — ModalMixin (open_modal, close_modal, toggle_modal)
+- src/djust_components/mixins/collapsible.py — CollapsibleMixin (toggle_collapsible)
+- src/djust_components/mixins/sheet.py — SheetMixin (open_sheet, close_sheet)
+- src/djust_components/mixins/dropdown.py — DropdownMixin (toggle_dropdown, close_dropdown)
+- src/djust_components/mixins/tooltip.py — TooltipMixin (show_tooltip, hide_tooltip)
+- src/djust_components/mixins/carousel.py — CarouselMixin (carousel_prev, carousel_next, carousel_go)
+- tests/test_component_mixins.py — 100 tests for all mixins + template tag component_id + composition
+- docs/DEP-001-component-mixins.md — Enhancement proposal documenting the architecture
+
+### Modified Files
+- src/djust_components/mixins/__init__.py — Export all 9 new mixins
+- src/djust_components/__init__.py — Export all 9 new mixins from top-level package
+- src/djust_components/templatetags/djust_components.py — Added component_id param to 8 interactive template tags (accordion, tabs, modal, dropdown, collapsible, sheet, tooltip, carousel)
+- src/djust_components/gallery/live_views.py — Refactored CategoryGalleryView to use mixins instead of manual state dicts
+- tests/test_gallery_liveviews.py — Updated tests for mixin-based CategoryGalleryView (22 tests)
+- CHANGELOG.md — Added entry for per-component interactive mixins
+
+### Test Results
+- 100 new mixin tests (all pass)
+- 22 gallery LiveView tests (all pass, updated for mixin pattern)
+- 3717 total tests passing, 0 failures

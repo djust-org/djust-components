@@ -5,6 +5,14 @@ from django.http import Http404
 from djust import LiveView
 from djust.decorators import event_handler
 
+from djust_components.mixins import (
+    AccordionMixin,
+    CollapsibleMixin,
+    ModalMixin,
+    SheetMixin,
+    TabsMixin,
+)
+
 from .views import _get_theme_css, _get_theme_options, _render_component_cards
 
 
@@ -90,8 +98,16 @@ class GalleryIndexView(GalleryThemeMixin, LiveView):
             })
 
 
-class CategoryGalleryView(GalleryThemeMixin, LiveView):
-    """Per-category gallery page with rendered components and interactive state."""
+class CategoryGalleryView(
+    AccordionMixin, TabsMixin, CollapsibleMixin, ModalMixin, SheetMixin,
+    GalleryThemeMixin, LiveView,
+):
+    """Per-category gallery page with rendered components and interactive state.
+
+    Uses per-component mixins (AccordionMixin, TabsMixin, etc.) for interactive
+    state management instead of manual state dicts.  Each mixin provides event
+    handlers and instance routing via component_id.
+    """
 
     template_name = "djust_components/gallery/category.html"
     login_required = False
@@ -156,38 +172,18 @@ class CategoryGalleryView(GalleryThemeMixin, LiveView):
                 "label": CATEGORIES.get(next_slug, next_slug.title()),
             }
 
-        # Interactive state dicts
-        self.accordion_states = {}
-        self.active_tabs = {}
-        self.collapsible_states = {}
-        self.modal_open = {}
-        self.sheet_open = {}
-
-    @event_handler
-    def accordion_toggle(self, id="", index=0, **kwargs):
-        """Toggle an accordion item open/closed."""
-        if id not in self.accordion_states:
-            self.accordion_states[id] = {}
-        current = self.accordion_states[id].get(index, False)
-        self.accordion_states[id][index] = not current
-
-    @event_handler
-    def set_tab(self, id="", value="", **kwargs):
-        """Set the active tab for a tab group."""
-        self.active_tabs[id] = value
-
-    @event_handler
-    def toggle_collapsible(self, id="", **kwargs):
-        """Toggle a collapsible section open/closed."""
-        current = self.collapsible_states.get(id, False)
-        self.collapsible_states[id] = not current
-
-    @event_handler
-    def close_modal(self, id="", **kwargs):
-        """Close a modal by ID."""
-        self.modal_open[id] = False
-
-    @event_handler
-    def close_sheet(self, id="", **kwargs):
-        """Close a sheet by ID."""
-        self.sheet_open[id] = False
+        # Initialise interactive component instances via mixins.
+        # Each rendered component that needs interactivity gets an instance
+        # registered with the corresponding mixin, keyed by component name.
+        _interactive_types = {
+            "accordion": self.init_accordion,
+            "tabs": self.init_tabs,
+            "collapsible": self.init_collapsible,
+            "modal": self.init_modal,
+            "sheet": self.init_sheet,
+        }
+        for comp in self.rendered_components:
+            cname = comp["name"]
+            init_fn = _interactive_types.get(cname)
+            if init_fn is not None:
+                init_fn(cname)
