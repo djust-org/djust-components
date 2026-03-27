@@ -1,0 +1,15 @@
+{% extends "djust_components/gallery/_base.html" %}
+
+{% block title %}djust-components Gallery{% endblock %}
+
+{% block content %}
+<h2>Categories</h2>
+<div class="category-grid">
+    {% for cat in category_cards %}
+    <a class="category-card" href="{{ cat.slug }}/">
+        <h3>{{ cat.label }}</h3>
+        <span class="count">{{ cat.count }} component{{ cat.count|pluralize }}</span>
+    </a>
+    {% endfor %}
+</div>
+{% endblock %}

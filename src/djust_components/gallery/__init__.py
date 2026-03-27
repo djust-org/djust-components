@@ -17,12 +17,14 @@ Submodules:
 """
 
 from .registry import discover_component_classes, discover_template_tags, get_gallery_data
+from .live_views import GalleryIndexView
 from .views import gallery_category_view, gallery_index_view, gallery_view
 
 __all__ = [
     "discover_component_classes",
     "discover_template_tags",
     "get_gallery_data",
+    "GalleryIndexView",
     "gallery_category_view",
     "gallery_index_view",
     "gallery_view",
