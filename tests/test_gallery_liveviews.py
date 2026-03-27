@@ -1,4 +1,4 @@
-"""Tests for per-category LiveView gallery views."""
+"""Tests for per-category LiveView gallery views (descriptor-based)."""
 
 import pytest
 from django.http import Http404
@@ -14,7 +14,7 @@ def _mount_view(view_class):
     return view
 
 
-# ─── Mount Tests ───
+# --- Mount Tests ---
 
 
 class TestGalleryCategoryViews:
@@ -113,26 +113,37 @@ class TestGalleryCategoryViews:
         assert view.next_category is not None
         assert view.next_category["slug"] == CATEGORY_ORDER[1]
 
-    def test_layout_has_interactive_instances(self):
+    def test_layout_has_descriptor_state(self):
+        """Descriptor-based views have component state accessible as attributes."""
         from djust_components.gallery.live_views import LayoutGalleryView
+        from djust_components.mixins.base import TypedState
 
         view = _mount_view(LayoutGalleryView)
 
-        has_any = any([
-            view.accordion_instances,
-            view.tabs_instances,
-            view.collapsible_instances,
-            view.modal_instances,
-            view.sheet_instances,
-        ])
-        assert has_any
+        # Descriptors auto-initialise state on access
+        assert isinstance(view.accordion, TypedState)
+        assert isinstance(view.tabs, TypedState)
+        assert isinstance(view.collapsible, TypedState)
+        assert isinstance(view.modal, TypedState)
+        assert isinstance(view.sheet, TypedState)
+
+    def test_layout_descriptors_registered(self):
+        """LayoutGalleryView has descriptors in _component_descriptors."""
+        from djust_components.gallery.live_views import LayoutGalleryView
+
+        descriptors = LayoutGalleryView._component_descriptors
+        assert "accordion" in descriptors
+        assert "tabs" in descriptors
+        assert "collapsible" in descriptors
+        assert "modal" in descriptors
+        assert "sheet" in descriptors
 
 
-# ─── Event Handler Tests ───
+# --- Event Handler Tests ---
 
 
 class TestGalleryViewEvents:
-    """Tests for mixin-provided event handlers."""
+    """Tests for descriptor-provided event handlers."""
 
     def _make_view(self):
         from djust_components.gallery.live_views import LayoutGalleryView
@@ -142,49 +153,47 @@ class TestGalleryViewEvents:
         view = self._make_view()
         for handler in (
             "accordion_toggle", "set_tab", "toggle_collapsible",
-            "close_modal", "open_modal", "toggle_modal",
-            "close_sheet", "open_sheet",
+            "toggle_modal", "toggle_sheet",
             "change_design_system", "change_preset", "toggle_mode", "set_preview",
         ):
             assert hasattr(view, handler), f"Missing: {handler}"
 
     def test_accordion_toggle(self):
         view = self._make_view()
-        view.init_accordion("test-acc")
-        view.accordion_toggle(value="item1", component_id="test-acc")
-        assert view.accordion_instances["test-acc"]["active"] == "item1"
+        view.accordion_toggle(value="item1", component_id="accordion")
+        assert view.accordion.active == "item1"
 
     def test_accordion_close(self):
         view = self._make_view()
-        view.init_accordion("test-acc", active="item1")
-        view.accordion_toggle(value="item1", component_id="test-acc")
-        assert view.accordion_instances["test-acc"]["active"] == ""
+        view.accordion_toggle(value="item1", component_id="accordion")
+        view.accordion_toggle(value="item1", component_id="accordion")
+        assert view.accordion.active == ""
 
     def test_set_tab(self):
         view = self._make_view()
-        view.init_tabs("test-tabs")
-        view.set_tab(value="settings", component_id="test-tabs")
-        assert view.tabs_instances["test-tabs"]["active"] == "settings"
+        view.set_tab(value="settings", component_id="tabs")
+        assert view.tabs.active == "settings"
 
     def test_toggle_collapsible(self):
         view = self._make_view()
-        view.init_collapsible("test-coll")
-        view.toggle_collapsible(component_id="test-coll")
-        assert view.collapsible_instances["test-coll"]["is_open"] is True
-        view.toggle_collapsible(component_id="test-coll")
-        assert view.collapsible_instances["test-coll"]["is_open"] is False
+        view.toggle_collapsible(component_id="collapsible")
+        assert view.collapsible.is_open is True
+        view.toggle_collapsible(component_id="collapsible")
+        assert view.collapsible.is_open is False
 
-    def test_close_modal(self):
+    def test_toggle_modal(self):
         view = self._make_view()
-        view.init_modal("test-modal", is_open=True)
-        view.close_modal(component_id="test-modal")
-        assert view.modal_instances["test-modal"]["is_open"] is False
+        view.toggle_modal(component_id="modal")
+        assert view.modal.is_open is True
+        view.toggle_modal(component_id="modal")
+        assert view.modal.is_open is False
 
-    def test_close_sheet(self):
+    def test_toggle_sheet(self):
         view = self._make_view()
-        view.init_sheet("test-sheet", is_open=True)
-        view.close_sheet(component_id="test-sheet")
-        assert view.sheet_instances["test-sheet"]["is_open"] is False
+        view.toggle_sheet(component_id="sheet")
+        assert view.sheet.is_open is True
+        view.toggle_sheet(component_id="sheet")
+        assert view.sheet.is_open is False
 
     def test_toggle_mode(self):
         view = self._make_view()
@@ -194,15 +203,12 @@ class TestGalleryViewEvents:
 
     def test_unknown_component_id_safe(self):
         view = self._make_view()
-        # Should not raise
+        # Should not raise — descriptors handle unknown component_ids gracefully
         view.accordion_toggle(value="x", component_id="nonexistent")
         view.set_tab(value="x", component_id="nonexistent")
-        view.toggle_collapsible(component_id="nonexistent")
-        view.close_modal(component_id="nonexistent")
-        view.close_sheet(component_id="nonexistent")
 
 
-# ─── Rendering Tests ───
+# --- Rendering Tests ---
 
 
 class TestGalleryViewRendering:
@@ -227,7 +233,7 @@ class TestGalleryViewRendering:
         assert any("Accordion" in label for label in labels)
 
 
-# ─── XSS Tests ───
+# --- XSS Tests ---
 
 
 class TestGalleryViewXSS:
@@ -260,3 +266,53 @@ class TestGalleryViewXSS:
         request.COOKIES = {}
         with pytest.raises(Http404):
             view.mount(request)
+
+
+# --- Descriptor integration tests ---
+
+
+class TestGalleryDescriptorIntegration:
+    """Verify descriptor-based gallery views work end-to-end."""
+
+    def test_data_view_has_tabs_descriptor(self):
+        from djust_components.gallery.live_views import DataGalleryView
+        assert "tabs" in DataGalleryView._component_descriptors
+
+    def test_overlay_view_has_modal_and_sheet(self):
+        from djust_components.gallery.live_views import OverlayGalleryView
+        assert "modal" in OverlayGalleryView._component_descriptors
+        assert "sheet" in OverlayGalleryView._component_descriptors
+
+    def test_nav_view_has_accordion_and_tabs(self):
+        from djust_components.gallery.live_views import NavGalleryView
+        assert "accordion" in NavGalleryView._component_descriptors
+        assert "tabs" in NavGalleryView._component_descriptors
+
+    def test_misc_view_has_accordion_tabs_modal(self):
+        from djust_components.gallery.live_views import MiscGalleryView
+        assert "accordion" in MiscGalleryView._component_descriptors
+        assert "tabs" in MiscGalleryView._component_descriptors
+        assert "modal" in MiscGalleryView._component_descriptors
+
+    def test_build_extra_context_reads_descriptor_state(self):
+        """_build_extra_context reads from descriptor state."""
+        from djust_components.gallery.live_views import LayoutGalleryView
+        view = _mount_view(LayoutGalleryView)
+
+        # Set accordion state
+        view.accordion_toggle(value="item1", component_id="accordion")
+
+        ctx = view._build_extra_context("accordion")
+        assert ctx == {"active": "item1"}
+
+    def test_build_extra_context_empty_for_unknown(self):
+        from djust_components.gallery.live_views import LayoutGalleryView
+        view = _mount_view(LayoutGalleryView)
+        ctx = view._build_extra_context("nonexistent")
+        assert ctx == {}
+
+    def test_form_view_no_descriptors(self):
+        """FormGalleryView has no interactive descriptors."""
+        from djust_components.gallery.live_views import FormGalleryView
+        descriptors = getattr(FormGalleryView, "_component_descriptors", {})
+        assert len(descriptors) == 0

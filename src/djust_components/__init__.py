@@ -57,9 +57,30 @@ from .components.server_event_toast import ServerEventToastMixin  # noqa: E402
 from .icons import render_icon  # noqa: E402
 from .helpers import push_toast, confirm_action  # noqa: E402
 from .presets import register_preset, get_preset  # noqa: E402
+from .descriptors import (  # noqa: E402
+    Accordion,
+    Tabs,
+    Modal,
+    Collapsible,
+    Sheet,
+    Dropdown,
+    Tooltip,
+    Carousel,
+)
 
 __all__ = [
+    # LiveViews
     "TtydTerminalView",
+    # Descriptor components (preferred — DEP-002)
+    "Accordion",
+    "Tabs",
+    "Modal",
+    "Collapsible",
+    "Sheet",
+    "Dropdown",
+    "Tooltip",
+    "Carousel",
+    # Mixins (deprecated — use descriptors above instead)
     "ComponentMixin",
     "DataTableMixin",
     "AccordionMixin",
@@ -71,6 +92,7 @@ __all__ = [
     "TooltipMixin",
     "CarouselMixin",
     "ServerEventToastMixin",
+    # Helpers
     "render_icon",
     "push_toast",
     "confirm_action",

@@ -1,7 +1,17 @@
 """
 CarouselMixin — carousel/slideshow state management for djust LiveViews.
 
-Usage::
+.. deprecated::
+    Use the descriptor-based ``Carousel`` component from
+    ``djust_components.descriptors`` instead (DEP-002)::
+
+        from djust_components.descriptors import Carousel
+
+        class MyPage(LiveView):
+            slides = Carousel(total=5)
+            # self.slides.active → 0
+
+Legacy usage::
 
     class MyPage(CarouselMixin, LiveView):
         def mount(self, request, **kwargs):
@@ -24,7 +34,10 @@ class CarouselState(TypedState):
 
 
 class CarouselMixin(ComponentMixin):
-    """Mixin adding carousel state management and event handlers."""
+    """Mixin adding carousel state management and event handlers.
+
+    .. deprecated:: Use ``djust_components.descriptors.Carousel`` instead.
+    """
 
     component_name = "carousel"
     carousel_instances = None

@@ -1,7 +1,17 @@
 """
 ModalMixin — modal dialog state management for djust LiveViews.
 
-Usage::
+.. deprecated::
+    Use the descriptor-based ``Modal`` component from
+    ``djust_components.descriptors`` instead (DEP-002)::
+
+        from djust_components.descriptors import Modal
+
+        class MyPage(LiveView):
+            confirm = Modal()
+            # self.confirm.is_open → False
+
+Legacy usage::
 
     class MyPage(ModalMixin, LiveView):
         def mount(self, request, **kwargs):
@@ -23,7 +33,10 @@ class ModalState(TypedState):
 
 
 class ModalMixin(ComponentMixin):
-    """Mixin adding modal state management and event handlers."""
+    """Mixin adding modal state management and event handlers.
+
+    .. deprecated:: Use ``djust_components.descriptors.Modal`` instead.
+    """
 
     component_name = "modal"
     modal_instances = None

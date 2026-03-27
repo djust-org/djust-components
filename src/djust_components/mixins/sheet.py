@@ -1,7 +1,17 @@
 """
 SheetMixin — slide-out sheet/drawer state management for djust LiveViews.
 
-Usage::
+.. deprecated::
+    Use the descriptor-based ``Sheet`` component from
+    ``djust_components.descriptors`` instead (DEP-002)::
+
+        from djust_components.descriptors import Sheet
+
+        class MyPage(LiveView):
+            sidebar = Sheet(side="right")
+            # self.sidebar.is_open → False
+
+Legacy usage::
 
     class MyPage(SheetMixin, LiveView):
         def mount(self, request, **kwargs):
@@ -24,7 +34,10 @@ class SheetState(TypedState):
 
 
 class SheetMixin(ComponentMixin):
-    """Mixin adding sheet/drawer state management and event handlers."""
+    """Mixin adding sheet/drawer state management and event handlers.
+
+    .. deprecated:: Use ``djust_components.descriptors.Sheet`` instead.
+    """
 
     component_name = "sheet"
     sheet_instances = None

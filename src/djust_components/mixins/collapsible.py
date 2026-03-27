@@ -1,7 +1,17 @@
 """
 CollapsibleMixin — collapsible section state management for djust LiveViews.
 
-Usage::
+.. deprecated::
+    Use the descriptor-based ``Collapsible`` component from
+    ``djust_components.descriptors`` instead (DEP-002)::
+
+        from djust_components.descriptors import Collapsible
+
+        class MyPage(LiveView):
+            details = Collapsible()
+            # self.details.is_open → False
+
+Legacy usage::
 
     class MyPage(CollapsibleMixin, LiveView):
         def mount(self, request, **kwargs):
@@ -23,7 +33,10 @@ class CollapsibleState(TypedState):
 
 
 class CollapsibleMixin(ComponentMixin):
-    """Mixin adding collapsible section state management and event handlers."""
+    """Mixin adding collapsible section state management and event handlers.
+
+    .. deprecated:: Use ``djust_components.descriptors.Collapsible`` instead.
+    """
 
     component_name = "collapsible"
     collapsible_instances = None

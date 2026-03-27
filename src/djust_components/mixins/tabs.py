@@ -1,7 +1,17 @@
 """
 TabsMixin — tab state management for djust LiveViews.
 
-Usage::
+.. deprecated::
+    Use the descriptor-based ``Tabs`` component from
+    ``djust_components.descriptors`` instead (DEP-002)::
+
+        from djust_components.descriptors import Tabs
+
+        class MyPage(LiveView):
+            nav = Tabs(active="overview")
+            # self.nav.active → "overview"
+
+Legacy usage::
 
     class MyPage(TabsMixin, LiveView):
         def mount(self, request, **kwargs):
@@ -23,7 +33,10 @@ class TabsState(TypedState):
 
 
 class TabsMixin(ComponentMixin):
-    """Mixin adding tab state management and event handlers."""
+    """Mixin adding tab state management and event handlers.
+
+    .. deprecated:: Use ``djust_components.descriptors.Tabs`` instead.
+    """
 
     component_name = "tabs"
     tabs_instances = None

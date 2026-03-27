@@ -1,7 +1,17 @@
 """
 DropdownMixin — dropdown menu state management for djust LiveViews.
 
-Usage::
+.. deprecated::
+    Use the descriptor-based ``Dropdown`` component from
+    ``djust_components.descriptors`` instead (DEP-002)::
+
+        from djust_components.descriptors import Dropdown
+
+        class MyPage(LiveView):
+            menu = Dropdown()
+            # self.menu.is_open → False
+
+Legacy usage::
 
     class MyPage(DropdownMixin, LiveView):
         def mount(self, request, **kwargs):
@@ -23,7 +33,10 @@ class DropdownState(TypedState):
 
 
 class DropdownMixin(ComponentMixin):
-    """Mixin adding dropdown menu state management and event handlers."""
+    """Mixin adding dropdown menu state management and event handlers.
+
+    .. deprecated:: Use ``djust_components.descriptors.Dropdown`` instead.
+    """
 
     component_name = "dropdown"
     dropdown_instances = None

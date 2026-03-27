@@ -1,9 +1,21 @@
 # DEP-002: Component Descriptor System
 
-**Status**: Draft
+**Status**: Implemented
 **Created**: 2026-03-27
+**Implemented**: 2026-03-27
 **Builds on**: djust's existing `LiveComponent` (components/base.py)
-**Supersedes**: DEP-001 mixins (will be deprecated)
+**Supersedes**: DEP-001 mixins (deprecated)
+
+### Implementation Notes
+
+- All 8 component classes implemented in `src/djust_components/descriptors/`
+- `LiveComponent` descriptor protocol (`__set_name__`, `__get__`, `__set__`) implemented in djust core (`djust/python/djust/components/base.py`)
+- TypedState dirty tracking and render caching attributes (`_dirty`, `_cached_html`, `_render_hash`) implemented in `mixins/base.py`
+- Gallery views refactored from mixin-based to descriptor-based (no more `AccordionMixin` in class bases)
+- DEP-001 mixins marked deprecated with docstring notices; remain functional
+- Client-tier WebSocket skip (7.4) and `dj-update="ignore"` (7.5) deferred to future djust core JS changes (TODOs in Dropdown/Tooltip Meta)
+- Open question resolved: `self.faq.active` pattern chosen over `self.state.active` (attribute name IS the component identity)
+- Tier is per-component (declared on Meta), not per-state-key
 
 ---
 

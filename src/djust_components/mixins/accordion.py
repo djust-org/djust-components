@@ -1,7 +1,17 @@
 """
 AccordionMixin — accordion state management for djust LiveViews.
 
-Usage::
+.. deprecated::
+    Use the descriptor-based ``Accordion`` component from
+    ``djust_components.descriptors`` instead (DEP-002)::
+
+        from djust_components.descriptors import Accordion
+
+        class MyPage(LiveView):
+            faq = Accordion(active="q1")
+            # self.faq.active → "q1"
+
+Legacy usage::
 
     class MyPage(AccordionMixin, LiveView):
         def mount(self, request, **kwargs):
@@ -27,7 +37,10 @@ class AccordionState(TypedState):
 
 
 class AccordionMixin(ComponentMixin):
-    """Mixin adding accordion state management and event handlers."""
+    """Mixin adding accordion state management and event handlers.
+
+    .. deprecated:: Use ``djust_components.descriptors.Accordion`` instead.
+    """
 
     component_name = "accordion"
     accordion_instances = None

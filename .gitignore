@@ -78,3 +78,4 @@ manage.py
 
 # Pipeline logs
 .pipeline-log.md
+.claude/worktrees/

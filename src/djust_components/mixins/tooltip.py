@@ -1,11 +1,21 @@
 """
 TooltipMixin — server-managed tooltip state for djust LiveViews.
 
+.. deprecated::
+    Use the descriptor-based ``Tooltip`` component from
+    ``djust_components.descriptors`` instead (DEP-002)::
+
+        from djust_components.descriptors import Tooltip
+
+        class MyPage(LiveView):
+            hint = Tooltip()
+            # self.hint.is_visible → False
+
 Most tooltips are CSS-only, but this mixin handles cases where tooltip
 visibility needs to be tracked on the server (e.g. for analytics or
 conditional content loading).
 
-Usage::
+Legacy usage::
 
     class MyPage(TooltipMixin, LiveView):
         def mount(self, request, **kwargs):
@@ -27,7 +37,10 @@ class TooltipState(TypedState):
 
 
 class TooltipMixin(ComponentMixin):
-    """Mixin adding server-managed tooltip state and event handlers."""
+    """Mixin adding server-managed tooltip state and event handlers.
+
+    .. deprecated:: Use ``djust_components.descriptors.Tooltip`` instead.
+    """
 
     component_name = "tooltip"
     tooltip_instances = None

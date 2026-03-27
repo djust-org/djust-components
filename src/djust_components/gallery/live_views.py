@@ -1,19 +1,22 @@
-"""LiveView-based gallery views for interactive component browsing."""
+"""LiveView-based gallery views for interactive component browsing.
+
+Uses descriptor-based components (DEP-002) instead of mixins for interactive
+state management.  Descriptors auto-initialise on first access and register
+event handlers automatically.
+"""
 
 from django.http import Http404
 
 from djust import LiveView
 from djust.decorators import event_handler
 
-from djust_components.mixins import (
-    AccordionMixin,
-    CollapsibleMixin,
-    ModalMixin,
-    SheetMixin,
-    TabsMixin,
+from djust_components.descriptors import (
+    Accordion,
+    Collapsible,
+    Modal,
+    Sheet,
+    Tabs,
 )
-from djust_components.mixins.accordion import AccordionState
-from djust_components.mixins.tabs import TabsState
 
 from .views import _get_theme_css, _get_theme_options, _render_component_cards
 
@@ -75,18 +78,30 @@ class GalleryThemeMixin:
 
 
 class GalleryCategoryMixin(GalleryThemeMixin):
-    """Base for per-category gallery views.
+    """Base for per-category gallery views using descriptor-based components.
 
-    Subclasses declare their category and which components are interactive::
+    Subclasses declare descriptors as class attributes::
 
-        class LayoutGalleryView(AccordionMixin, TabsMixin, ...,
-                                GalleryCategoryMixin, LiveView):
+        class LayoutGalleryView(GalleryCategoryMixin, LiveView):
             category_slug = "layout"
-            interactive_components = ["accordion", "tabs", "collapsible", "modal", "sheet"]
-            _state_context = {
-                "accordion": ("accordion_instances", AccordionState, "active"),
-                "tabs": ("tabs_instances", TabsState, "active"),
-            }
+            accordion = Accordion()
+            tabs = Tabs()
+            collapsible = Collapsible()
+            modal = Modal()
+            sheet = Sheet()
+
+    Descriptors auto-initialise on first access.  Event handlers
+    (``accordion_toggle``, ``set_tab``, etc.) are auto-registered by
+    the descriptor protocol.
+
+    To pass descriptor state into template rendering, override
+    ``_descriptor_context_map`` — a dict mapping component name to
+    (descriptor_attr, state_key)::
+
+        _descriptor_context_map = {
+            "accordion": ("accordion", "active"),
+            "tabs": ("tabs", "active"),
+        }
     """
 
     template_name = "djust_components/gallery/category.html"
@@ -94,17 +109,7 @@ class GalleryCategoryMixin(GalleryThemeMixin):
 
     # ── Subclass configuration ──
     category_slug = ""
-    interactive_components = []
-    _state_context = {}
-
-    # Maps component name → init method name
-    _INIT_METHODS = {
-        "accordion": "init_accordion",
-        "tabs": "init_tabs",
-        "collapsible": "init_collapsible",
-        "modal": "init_modal",
-        "sheet": "init_sheet",
-    }
+    _descriptor_context_map = {}
 
     def mount(self, request, **kwargs):
         from .examples import CATEGORIES, CATEGORY_ORDER
@@ -149,14 +154,13 @@ class GalleryCategoryMixin(GalleryThemeMixin):
             if idx < len(CATEGORY_ORDER) - 1 else None
         )
 
-        # Register mixin instances for interactive components
-        for comp in self.raw_components:
-            method = self._INIT_METHODS.get(comp["name"])
-            if method and comp["name"] in self.interactive_components:
-                getattr(self, method)(comp["name"])
+        # Touch descriptors to initialise state (descriptors auto-create on access)
+        descriptors = getattr(type(self), "_component_descriptors", {})
+        for attr_name in descriptors:
+            getattr(self, attr_name)
 
     def get_context_data(self, **kwargs):
-        """Re-render component examples with current mixin state."""
+        """Re-render component examples with current descriptor state."""
         self.rendered_components = []
         for comp in self.raw_components:
             ctx = self._build_extra_context(comp["name"])
@@ -170,17 +174,19 @@ class GalleryCategoryMixin(GalleryThemeMixin):
         return super().get_context_data(**kwargs)
 
     def _build_extra_context(self, comp_name):
-        mapping = self._state_context.get(comp_name)
+        """Build extra template context from descriptor state.
+
+        Uses ``_descriptor_context_map`` to look up which descriptor
+        attribute and state key to read for a given component name.
+        """
+        mapping = self._descriptor_context_map.get(comp_name)
         if mapping is None:
             return {}
-        attr_name, state_class, ctx_key = mapping
-        instances = getattr(self, attr_name, None)
-        if not instances or comp_name not in instances:
+        attr_name, ctx_key = mapping
+        state = getattr(self, attr_name, None)
+        if state is None:
             return {}
-        inst = self._get_typed_instance(comp_name, state_class)
-        if inst is None:
-            return {}
-        return {ctx_key: getattr(inst, ctx_key, "")}
+        return {ctx_key: getattr(state, ctx_key, "")}
 
 
 # ---------------------------------------------------------------------------
@@ -212,16 +218,17 @@ class GalleryIndexView(GalleryThemeMixin, LiveView):
             })
 
 
-class LayoutGalleryView(
-    AccordionMixin, TabsMixin, CollapsibleMixin, ModalMixin, SheetMixin,
-    GalleryCategoryMixin, LiveView,
-):
+class LayoutGalleryView(GalleryCategoryMixin, LiveView):
     """Layout category — accordion, tabs, cards, sheets, etc."""
     category_slug = "layout"
-    interactive_components = ["accordion", "tabs", "collapsible", "modal", "sheet"]
-    _state_context = {
-        "accordion": ("accordion_instances", AccordionState, "active"),
-        "tabs": ("tabs_instances", TabsState, "active"),
+    accordion = Accordion()
+    tabs = Tabs()
+    collapsible = Collapsible()
+    modal = Modal()
+    sheet = Sheet()
+    _descriptor_context_map = {
+        "accordion": ("accordion", "active"),
+        "tabs": ("tabs", "active"),
     }
 
 
@@ -230,21 +237,20 @@ class FormGalleryView(GalleryCategoryMixin, LiveView):
     category_slug = "form"
 
 
-class DataGalleryView(TabsMixin, GalleryCategoryMixin, LiveView):
+class DataGalleryView(GalleryCategoryMixin, LiveView):
     """Data category — tables, charts, trees, etc."""
     category_slug = "data"
-    interactive_components = ["tabs"]
-    _state_context = {
-        "tabs": ("tabs_instances", TabsState, "active"),
+    tabs = Tabs()
+    _descriptor_context_map = {
+        "tabs": ("tabs", "active"),
     }
 
 
-class OverlayGalleryView(
-    ModalMixin, SheetMixin, GalleryCategoryMixin, LiveView,
-):
+class OverlayGalleryView(GalleryCategoryMixin, LiveView):
     """Overlay category — modals, dropdowns, tooltips, etc."""
     category_slug = "overlay"
-    interactive_components = ["modal", "sheet"]
+    modal = Modal()
+    sheet = Sheet()
 
 
 class FeedbackGalleryView(GalleryCategoryMixin, LiveView):
@@ -252,15 +258,14 @@ class FeedbackGalleryView(GalleryCategoryMixin, LiveView):
     category_slug = "feedback"
 
 
-class NavGalleryView(
-    AccordionMixin, TabsMixin, GalleryCategoryMixin, LiveView,
-):
+class NavGalleryView(GalleryCategoryMixin, LiveView):
     """Navigation category — stepper, breadcrumb, pagination, etc."""
     category_slug = "navigation"
-    interactive_components = ["accordion", "tabs"]
-    _state_context = {
-        "accordion": ("accordion_instances", AccordionState, "active"),
-        "tabs": ("tabs_instances", TabsState, "active"),
+    accordion = Accordion()
+    tabs = Tabs()
+    _descriptor_context_map = {
+        "accordion": ("accordion", "active"),
+        "tabs": ("tabs", "active"),
     }
 
 
@@ -274,14 +279,13 @@ class TypographyGalleryView(GalleryCategoryMixin, LiveView):
     category_slug = "typography"
 
 
-class MiscGalleryView(
-    AccordionMixin, TabsMixin, ModalMixin,
-    GalleryCategoryMixin, LiveView,
-):
+class MiscGalleryView(GalleryCategoryMixin, LiveView):
     """Misc category — carousel, chat, theme toggle, etc."""
     category_slug = "misc"
-    interactive_components = ["accordion", "tabs", "modal"]
-    _state_context = {
-        "accordion": ("accordion_instances", AccordionState, "active"),
-        "tabs": ("tabs_instances", TabsState, "active"),
+    accordion = Accordion()
+    tabs = Tabs()
+    modal = Modal()
+    _descriptor_context_map = {
+        "accordion": ("accordion", "active"),
+        "tabs": ("tabs", "active"),
     }
