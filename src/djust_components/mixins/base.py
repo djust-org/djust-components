@@ -31,6 +31,12 @@ class TypedState(dict):
         state.active        # "s1"  — IDE autocomplete works
         state["active"]     # "s1"  — dict access also works
         state.active = "s2" # sets both the property and the dict key
+
+    **Dirty tracking:** Mutations via ``__setitem__`` set ``_dirty = True``
+    when the value actually changes.  The render caching system checks this
+    flag to skip re-rendering unchanged components.  ``_cached_html`` is
+    cleared on any mutation, and ``_render_hash`` tracks the state hash
+    of the last successful render.
     """
 
     def __init_subclass__(cls, **kwargs):
@@ -51,8 +57,19 @@ class TypedState(dict):
 
         setattr(cls, name, property(getter, setter))
 
+    def __setitem__(self, key, value):
+        if not key.startswith("_"):
+            old = self.get(key)
+            if old != value:
+                object.__setattr__(self, "_dirty", True)
+                object.__setattr__(self, "_cached_html", None)
+        super().__setitem__(key, value)
+
     def __init__(self, **kwargs):
         super().__init__()
+        object.__setattr__(self, "_dirty", True)
+        object.__setattr__(self, "_cached_html", None)
+        object.__setattr__(self, "_render_hash", None)
         # Set defaults from annotations, then override with kwargs
         for name in type(self).__annotations__:
             if name.startswith("_"):
@@ -64,6 +81,8 @@ class TypedState(dict):
             else:
                 self[name] = default
         self.update(kwargs)
+        # Clean after initialization — first render will pick up defaults
+        object.__setattr__(self, "_dirty", True)
 
     @classmethod
     def from_dict(cls, d):

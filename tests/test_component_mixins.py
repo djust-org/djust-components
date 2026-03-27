@@ -89,6 +89,95 @@ class TestComponentMixinBase:
         assert result == {"a": {"val": 1}}
 
 
+# ─── TypedState Dirty Tracking ───
+
+
+class TestTypedStateDirtyFlag:
+    def test_mutation_sets_dirty(self):
+        from djust_components.mixins.base import TypedState
+
+        class MyState(TypedState):
+            active: str = ""
+
+        s = MyState()
+        object.__setattr__(s, "_dirty", False)
+        s.active = "q1"
+        assert s._dirty is True
+
+    def test_same_value_stays_clean(self):
+        from djust_components.mixins.base import TypedState
+
+        class MyState(TypedState):
+            active: str = "q1"
+
+        s = MyState(active="q1")
+        object.__setattr__(s, "_dirty", False)
+        s.active = "q1"
+        assert s._dirty is False
+
+    def test_mutation_clears_cached_html(self):
+        from djust_components.mixins.base import TypedState
+
+        class MyState(TypedState):
+            active: str = ""
+
+        s = MyState()
+        object.__setattr__(s, "_cached_html", "<div>cached</div>")
+        s.active = "q2"
+        assert s._cached_html is None
+
+    def test_from_dict_rehydration_idempotent(self):
+        from djust_components.mixins.base import TypedState
+
+        class MyState(TypedState):
+            active: str = ""
+
+        original = MyState(active="q1")
+        rehydrated = MyState.from_dict(original)
+        assert rehydrated is original
+
+    def test_from_dict_converts_plain_dict(self):
+        from djust_components.mixins.base import TypedState
+
+        class MyState(TypedState):
+            active: str = ""
+
+        result = MyState.from_dict({"active": "q1"})
+        assert isinstance(result, MyState)
+        assert result.active == "q1"
+
+    def test_dirty_flag_after_init(self):
+        from djust_components.mixins.base import TypedState
+
+        class MyState(TypedState):
+            active: str = ""
+
+        s = MyState(active="q1")
+        assert s._dirty is True  # new state is dirty (needs first render)
+
+    def test_json_serialization_preserves_values(self):
+        from djust_components.mixins.base import TypedState
+
+        class MyState(TypedState):
+            active: str = ""
+            multiple: bool = False
+
+        s = MyState(active="q1", multiple=True)
+        data = json.loads(json.dumps(s))
+        assert data == {"active": "q1", "multiple": True}
+
+    def test_render_hash_cleared_on_mutation(self):
+        from djust_components.mixins.base import TypedState
+
+        class MyState(TypedState):
+            count: int = 0
+
+        s = MyState()
+        object.__setattr__(s, "_render_hash", "abc123")
+        s.count = 5
+        assert s._cached_html is None
+
+
 # ─── AccordionMixin ───
 
 
