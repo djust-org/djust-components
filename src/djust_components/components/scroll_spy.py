@@ -65,13 +65,20 @@ class ScrollSpy(Component):
         sections_json = html.escape(json.dumps(self.sections))
 
         nav_items = []
-        for section_id in self.sections:
-            e_id = html.escape(str(section_id))
-            active_cls = " dj-scroll-spy__item--active" if section_id == self.active else ""
+        for section in self.sections:
+            if isinstance(section, dict):
+                s_id = section.get("id", "")
+                s_label = section.get("label", s_id)
+            else:
+                s_id = str(section)
+                s_label = s_id
+            e_id = html.escape(str(s_id))
+            e_label = html.escape(str(s_label))
+            active_cls = " dj-scroll-spy__item--active" if str(s_id) == str(self.active) else ""
             nav_items.append(
                 f'<a href="#{e_id}" '
                 f'class="dj-scroll-spy__item{active_cls}" '
-                f'data-section="{e_id}">{e_id}</a>'
+                f'data-section="{e_id}">{e_label}</a>'
             )
 
         return (
