@@ -221,6 +221,17 @@
 | ~~**P1**~~ | ~~CSS Class Names — Indicator (#CSS-NAMES-INDICATOR)~~ ✅ audited, no mismatches | v2.2 |
 | ~~**P2**~~ | ~~CSS Class Names — Typography (#CSS-NAMES-TYPOGRAPHY)~~ ✅ audited, no mismatches | v2.2 |
 | ~~**P2**~~ | ~~CSS Class Names — Misc (#CSS-NAMES-MISC)~~ ✅ audited, no mismatches | v2.2 |
+| **P0** | LiveView Gallery — Index + Category Navigation (#LV-GALLERY-INDEX) | v2.3 |
+| **P0** | LiveView Gallery — Layout Category (#LV-GALLERY-LAYOUT) | v2.3 |
+| **P0** | LiveView Gallery — Form Category (#LV-GALLERY-FORM) | v2.3 |
+| **P0** | LiveView Gallery — Data Category (#LV-GALLERY-DATA) | v2.3 |
+| **P1** | LiveView Gallery — Overlay Category (#LV-GALLERY-OVERLAY) | v2.3 |
+| **P1** | LiveView Gallery — Feedback Category (#LV-GALLERY-FEEDBACK) | v2.3 |
+| **P1** | LiveView Gallery — Navigation Category (#LV-GALLERY-NAV) | v2.3 |
+| **P1** | LiveView Gallery — Indicator Category (#LV-GALLERY-INDICATOR) | v2.3 |
+| **P2** | LiveView Gallery — Typography Category (#LV-GALLERY-TYPOGRAPHY) | v2.3 |
+| **P2** | LiveView Gallery — Misc Category (#LV-GALLERY-MISC) | v2.3 |
+| **P2** | Missing Component Classes — Stepper, etc. (#MISSING-CLASSES) | v2.3 |
 | **P0** | Gallery Examples for All Tags (#GALLERY-EXAMPLES) | v2.1 |
 | **P0** | Shared Test Infrastructure (#TEST-INFRA) | v2.1 |
 | **P1** | Code Quality — Split Monolithic Files (#CODE-SPLIT) | v2.1 |
@@ -768,6 +779,41 @@ The mixin auto-generates `table_sort`, `table_filter`, `table_search`, `table_pa
 **CSS Class Names — Typography** (#CSS-NAMES-TYPOGRAPHY) — Fix CSS selectors for 7 typography components: Code Block, Expandable Text, Kbd, Streaming Text, Markdown, etc.
 
 **CSS Class Names — Misc** (#CSS-NAMES-MISC) — Fix CSS selectors for 27 misc components: Carousel, Chat Bubble, Copy Button, FAB, Filter Bar, Theme Toggle, Tour, etc.
+
+---
+
+### Milestone: v2.3 — LiveView Gallery
+
+**Goal**: Convert the component gallery from static Django views to djust LiveViews. Each category gets its own LiveView page where components are fully interactive over WebSocket — no JS shim needed. Components respond to `dj-click` events through real `@event_handler` methods.
+
+**Architecture**: One LiveView per category page (not one giant LiveView for all 188 components). Each category LiveView:
+- Pre-renders its component examples in `mount()` via `Template.render()`, caches as `mark_safe()` HTML
+- Manages component-specific state (accordion open/closed, tab active, modal visible, etc.)
+- Implements `@event_handler` methods for all interactive patterns in that category
+- Template uses `{% load djust_components %}` directly for components that can be rendered inline
+- Search/filter within category is reactive (state update → re-render → diff)
+
+**LiveView Gallery — Index + Category Navigation** (#LV-GALLERY-INDEX) — Create `GalleryIndexView(LiveView)` as the landing page. Shows category cards with counts, links to per-category LiveViews. Theme switching (design system, preset, mode) managed as LiveView state — instant updates without page reload. Sidebar navigation highlights current category. Create `gallery/templates/gallery/` directory for LiveView templates. Wire URL routing: `/` → index, `/<slug>/` → category LiveView, `/all/` → legacy static view.
+
+**LiveView Gallery — Layout Category** (#LV-GALLERY-LAYOUT) — Create `LayoutGalleryView(LiveView)` for 15 layout components. Event handlers: `accordion_toggle`, `set_tab`, `toggle_collapsible`, `close_modal`, `close_sheet`. Pre-render Card, Split Pane, Dashboard Grid, Masonry Grid, Aspect Ratio, Scroll Area, Sticky Header, App Shell, Sidebar, Resizable Panel examples in mount(). Remove JS interactivity shim — all handled by LiveView.
+
+**LiveView Gallery — Form Category** (#LV-GALLERY-FORM) — Create `FormGalleryView(LiveView)` for 43 form components. Event handlers: form input changes, switch toggle, slider value, date picker, file dropzone, color picker, tag input add/remove, etc. This is the largest category — may need grouped state management.
+
+**LiveView Gallery — Data Category** (#LV-GALLERY-DATA) — Create `DataGalleryView(LiveView)` for 32 data components. Event handlers: table sort/paginate/search, kanban drag, tree expand, calendar navigate, chart tooltip hover. Data Table is the most complex — reuse DataTableMixin.
+
+**LiveView Gallery — Overlay Category** (#LV-GALLERY-OVERLAY) — Create `OverlayGalleryView(LiveView)` for 15 overlay components. Event handlers: modal open/close, dropdown toggle, tooltip show/hide, sheet open/close, command palette toggle, popconfirm confirm/cancel.
+
+**LiveView Gallery — Feedback Category** (#LV-GALLERY-FEEDBACK) — Create `FeedbackGalleryView(LiveView)` for 17 feedback components. Event handlers: toast dismiss, alert dismiss, progress animate, skeleton toggle.
+
+**LiveView Gallery — Navigation Category** (#LV-GALLERY-NAV) — Create `NavGalleryView(LiveView)` for 10 navigation components. Event handlers: stepper step change, breadcrumb navigate, wizard next/prev, timeline expand.
+
+**LiveView Gallery — Indicator Category** (#LV-GALLERY-INDICATOR) — Create `IndicatorGalleryView(LiveView)` for 22 indicator components. Event handlers: rating select, gauge animate, counter increment, avatar group expand.
+
+**LiveView Gallery — Typography Category** (#LV-GALLERY-TYPOGRAPHY) — Create `TypographyGalleryView(LiveView)` for 7 typography components. Event handlers: code block copy, expandable text toggle, streaming text animate.
+
+**LiveView Gallery — Misc Category** (#LV-GALLERY-MISC) — Create `MiscGalleryView(LiveView)` for 27 misc components. Event handlers: carousel slide, chat send, theme toggle, tour step, FAB expand, filter bar apply.
+
+**Missing Component Classes — Stepper, etc.** (#MISSING-CLASSES) — Create Python component classes for components that have template tags but no class. Audit `components/__init__.py` against `templatetags/djust_components.py` to find gaps. Each class needs `__init__`, `_render_custom()`, and tests.
 
 ---
 
