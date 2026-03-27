@@ -238,8 +238,8 @@ class AccordionNode(template.Node):
 
         items = [n for n in self.nodelist if isinstance(n, AccordionItemNode)]
         parts = []
-        for item in items:
-            iid = _resolve(item.item_id, context)
+        for idx, item in enumerate(items):
+            iid = _resolve(item.item_id, context) or f"item-{idx}"
             title = _resolve(item.title, context)
             is_open = iid == active
             open_cls = "dj-accordion-item--open" if is_open else ""

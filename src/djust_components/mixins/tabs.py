@@ -11,9 +11,15 @@ Usage::
 
 from djust.decorators import event_handler
 
-from .base import ComponentMixin
+from .base import ComponentMixin, TypedState
 
-__all__ = ["TabsMixin"]
+__all__ = ["TabsMixin", "TabsState"]
+
+
+class TabsState(TypedState):
+    """Typed state for a single tabs instance."""
+
+    active: str = ""
 
 
 class TabsMixin(ComponentMixin):
@@ -31,25 +37,24 @@ class TabsMixin(ComponentMixin):
         """
         if self.tabs_instances is None:
             self.tabs_instances = {}
-        instances = self.tabs_instances
-        instances[instance_id] = {
-            "active": active,
-        }
+        self.tabs_instances[instance_id] = TabsState(active=active)
 
     @event_handler
     def set_tab(self, value="", component_id="", **kwargs):
         """Set the active tab for a tab group."""
-        instances = self.tabs_instances or {}
-        inst = instances.get(component_id)
+        component_id = self._resolve_component_id(component_id)
+        inst = self._get_typed_instance(component_id, TabsState)
         if inst is None:
             return
-        inst["active"] = value
+        inst.active = value
 
     def get_tabs_ctx(self, instance_id):
         """Return template context dict for a tabs instance."""
-        inst = (self.tabs_instances or {}).get(instance_id, {})
+        inst = self._get_typed_instance(instance_id, TabsState)
+        if inst is None:
+            return {"active": "", "event": "set_tab", "component_id": instance_id}
         return {
-            "active": inst.get("active", ""),
+            "active": inst.active,
             "event": "set_tab",
             "component_id": instance_id,
         }

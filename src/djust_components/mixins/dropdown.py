@@ -11,9 +11,15 @@ Usage::
 
 from djust.decorators import event_handler
 
-from .base import ComponentMixin
+from .base import ComponentMixin, TypedState
 
-__all__ = ["DropdownMixin"]
+__all__ = ["DropdownMixin", "DropdownState"]
+
+
+class DropdownState(TypedState):
+    """Typed state for a single dropdown instance."""
+
+    is_open: bool = False
 
 
 class DropdownMixin(ComponentMixin):
@@ -31,34 +37,38 @@ class DropdownMixin(ComponentMixin):
         """
         if self.dropdown_instances is None:
             self.dropdown_instances = {}
-        instances = self.dropdown_instances
-        instances[instance_id] = {
-            "is_open": bool(is_open),
-        }
+        self.dropdown_instances[instance_id] = DropdownState(is_open=bool(is_open))
 
     @event_handler
     def toggle_dropdown(self, component_id="", **kwargs):
         """Toggle a dropdown open/closed."""
-        instances = self.dropdown_instances or {}
-        inst = instances.get(component_id)
+        component_id = self._resolve_component_id(component_id)
+        inst = self._get_typed_instance(component_id, DropdownState)
         if inst is None:
             return
-        inst["is_open"] = not inst["is_open"]
+        inst.is_open = not inst.is_open
 
     @event_handler
     def close_dropdown(self, component_id="", **kwargs):
         """Close a dropdown by component_id."""
-        instances = self.dropdown_instances or {}
-        inst = instances.get(component_id)
+        component_id = self._resolve_component_id(component_id)
+        inst = self._get_typed_instance(component_id, DropdownState)
         if inst is None:
             return
-        inst["is_open"] = False
+        inst.is_open = False
 
     def get_dropdown_ctx(self, instance_id):
         """Return template context dict for a dropdown instance."""
-        inst = (self.dropdown_instances or {}).get(instance_id, {})
+        inst = self._get_typed_instance(instance_id, DropdownState)
+        if inst is None:
+            return {
+                "is_open": False,
+                "toggle_event": "toggle_dropdown",
+                "close_event": "close_dropdown",
+                "component_id": instance_id,
+            }
         return {
-            "is_open": inst.get("is_open", False),
+            "is_open": inst.is_open,
             "toggle_event": "toggle_dropdown",
             "close_event": "close_dropdown",
             "component_id": instance_id,

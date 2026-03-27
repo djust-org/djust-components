@@ -72,9 +72,9 @@ EXAMPLES = {
             {
                 "name": "Default",
                 "template": (
-                    '{% accordion id="acc1" %}'
-                    '{% accordion_item title="Section 1" %}Content for section 1.{% endaccordion_item %}'
-                    '{% accordion_item title="Section 2" %}Content for section 2.{% endaccordion_item %}'
+                    '{% accordion id="acc1" active=active %}'
+                    '{% accordion_item id="s1" title="Section 1" %}Content for section 1.{% endaccordion_item %}'
+                    '{% accordion_item id="s2" title="Section 2" %}Content for section 2.{% endaccordion_item %}'
                     '{% endaccordion %}'
                 ),
             },

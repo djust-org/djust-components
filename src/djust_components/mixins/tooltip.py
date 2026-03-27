@@ -15,9 +15,15 @@ Usage::
 
 from djust.decorators import event_handler
 
-from .base import ComponentMixin
+from .base import ComponentMixin, TypedState
 
-__all__ = ["TooltipMixin"]
+__all__ = ["TooltipMixin", "TooltipState"]
+
+
+class TooltipState(TypedState):
+    """Typed state for a single tooltip instance."""
+
+    is_visible: bool = False
 
 
 class TooltipMixin(ComponentMixin):
@@ -35,34 +41,38 @@ class TooltipMixin(ComponentMixin):
         """
         if self.tooltip_instances is None:
             self.tooltip_instances = {}
-        instances = self.tooltip_instances
-        instances[instance_id] = {
-            "is_visible": bool(is_visible),
-        }
+        self.tooltip_instances[instance_id] = TooltipState(is_visible=bool(is_visible))
 
     @event_handler
     def show_tooltip(self, component_id="", **kwargs):
         """Show a tooltip by component_id."""
-        instances = self.tooltip_instances or {}
-        inst = instances.get(component_id)
+        component_id = self._resolve_component_id(component_id)
+        inst = self._get_typed_instance(component_id, TooltipState)
         if inst is None:
             return
-        inst["is_visible"] = True
+        inst.is_visible = True
 
     @event_handler
     def hide_tooltip(self, component_id="", **kwargs):
         """Hide a tooltip by component_id."""
-        instances = self.tooltip_instances or {}
-        inst = instances.get(component_id)
+        component_id = self._resolve_component_id(component_id)
+        inst = self._get_typed_instance(component_id, TooltipState)
         if inst is None:
             return
-        inst["is_visible"] = False
+        inst.is_visible = False
 
     def get_tooltip_ctx(self, instance_id):
         """Return template context dict for a tooltip instance."""
-        inst = (self.tooltip_instances or {}).get(instance_id, {})
+        inst = self._get_typed_instance(instance_id, TooltipState)
+        if inst is None:
+            return {
+                "is_visible": False,
+                "show_event": "show_tooltip",
+                "hide_event": "hide_tooltip",
+                "component_id": instance_id,
+            }
         return {
-            "is_visible": inst.get("is_visible", False),
+            "is_visible": inst.is_visible,
             "show_event": "show_tooltip",
             "hide_event": "hide_tooltip",
             "component_id": instance_id,

@@ -546,8 +546,16 @@ def _render_scripts():
     </script>"""
 
 
-def _render_component_cards(components):
-    """Render component cards with variant previews. Returns HTML string."""
+def _render_component_cards(components, extra_context=None):
+    """Render component cards with variant previews. Returns HTML string.
+
+    Args:
+        components: List of component dicts with name, label, type, variants.
+        extra_context: Optional dict merged into each template tag's render
+            context.  Used by per-category gallery LiveViews to pass mixin state
+            (e.g. ``{"active": "s1"}``) so interactive components reflect
+            the current LiveView state.
+    """
     parts = []
     for comp in components:
         anchor = comp["name"].lower().replace(" ", "-")
@@ -566,7 +574,10 @@ def _render_component_cards(components):
                 try:
                     tpl_str = variant["template"]
                     t = Template("{% load djust_components %}" + tpl_str)
-                    rendered = t.render(Context(variant.get("context", {})))
+                    ctx = dict(variant.get("context", {}))
+                    if extra_context:
+                        ctx.update(extra_context)
+                    rendered = t.render(Context(ctx))
                 except Exception as exc:
                     rendered = f'<div style="color:red;">Render error: {exc}</div>'
             elif comp["type"] == "class":

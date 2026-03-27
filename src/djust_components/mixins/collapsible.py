@@ -11,9 +11,15 @@ Usage::
 
 from djust.decorators import event_handler
 
-from .base import ComponentMixin
+from .base import ComponentMixin, TypedState
 
-__all__ = ["CollapsibleMixin"]
+__all__ = ["CollapsibleMixin", "CollapsibleState"]
+
+
+class CollapsibleState(TypedState):
+    """Typed state for a single collapsible instance."""
+
+    is_open: bool = False
 
 
 class CollapsibleMixin(ComponentMixin):
@@ -31,25 +37,24 @@ class CollapsibleMixin(ComponentMixin):
         """
         if self.collapsible_instances is None:
             self.collapsible_instances = {}
-        instances = self.collapsible_instances
-        instances[instance_id] = {
-            "is_open": bool(is_open),
-        }
+        self.collapsible_instances[instance_id] = CollapsibleState(is_open=bool(is_open))
 
     @event_handler
     def toggle_collapsible(self, component_id="", **kwargs):
         """Toggle a collapsible section open/closed."""
-        instances = self.collapsible_instances or {}
-        inst = instances.get(component_id)
+        component_id = self._resolve_component_id(component_id)
+        inst = self._get_typed_instance(component_id, CollapsibleState)
         if inst is None:
             return
-        inst["is_open"] = not inst["is_open"]
+        inst.is_open = not inst.is_open
 
     def get_collapsible_ctx(self, instance_id):
         """Return template context dict for a collapsible instance."""
-        inst = (self.collapsible_instances or {}).get(instance_id, {})
+        inst = self._get_typed_instance(instance_id, CollapsibleState)
+        if inst is None:
+            return {"is_open": False, "event": "toggle_collapsible", "component_id": instance_id}
         return {
-            "is_open": inst.get("is_open", False),
+            "is_open": inst.is_open,
             "event": "toggle_collapsible",
             "component_id": instance_id,
         }

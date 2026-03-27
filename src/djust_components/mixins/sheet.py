@@ -11,9 +11,16 @@ Usage::
 
 from djust.decorators import event_handler
 
-from .base import ComponentMixin
+from .base import ComponentMixin, TypedState
 
-__all__ = ["SheetMixin"]
+__all__ = ["SheetMixin", "SheetState"]
+
+
+class SheetState(TypedState):
+    """Typed state for a single sheet instance."""
+
+    is_open: bool = False
+    side: str = "right"
 
 
 class SheetMixin(ComponentMixin):
@@ -32,36 +39,43 @@ class SheetMixin(ComponentMixin):
         """
         if self.sheet_instances is None:
             self.sheet_instances = {}
-        instances = self.sheet_instances
-        instances[instance_id] = {
-            "is_open": bool(is_open),
-            "side": side if side in ("left", "right") else "right",
-        }
+        self.sheet_instances[instance_id] = SheetState(
+            is_open=bool(is_open),
+            side=side if side in ("left", "right") else "right",
+        )
 
     @event_handler
     def open_sheet(self, component_id="", **kwargs):
         """Open a sheet by component_id."""
-        instances = self.sheet_instances or {}
-        inst = instances.get(component_id)
+        component_id = self._resolve_component_id(component_id)
+        inst = self._get_typed_instance(component_id, SheetState)
         if inst is None:
             return
-        inst["is_open"] = True
+        inst.is_open = True
 
     @event_handler
     def close_sheet(self, component_id="", **kwargs):
         """Close a sheet by component_id."""
-        instances = self.sheet_instances or {}
-        inst = instances.get(component_id)
+        component_id = self._resolve_component_id(component_id)
+        inst = self._get_typed_instance(component_id, SheetState)
         if inst is None:
             return
-        inst["is_open"] = False
+        inst.is_open = False
 
     def get_sheet_ctx(self, instance_id):
         """Return template context dict for a sheet instance."""
-        inst = (self.sheet_instances or {}).get(instance_id, {})
+        inst = self._get_typed_instance(instance_id, SheetState)
+        if inst is None:
+            return {
+                "is_open": False,
+                "side": "right",
+                "open_event": "open_sheet",
+                "close_event": "close_sheet",
+                "component_id": instance_id,
+            }
         return {
-            "is_open": inst.get("is_open", False),
-            "side": inst.get("side", "right"),
+            "is_open": inst.is_open,
+            "side": inst.side,
             "open_event": "open_sheet",
             "close_event": "close_sheet",
             "component_id": instance_id,

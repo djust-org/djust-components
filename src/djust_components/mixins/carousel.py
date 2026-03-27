@@ -11,9 +11,16 @@ Usage::
 
 from djust.decorators import event_handler
 
-from .base import ComponentMixin
+from .base import ComponentMixin, TypedState
 
-__all__ = ["CarouselMixin"]
+__all__ = ["CarouselMixin", "CarouselState"]
+
+
+class CarouselState(TypedState):
+    """Typed state for a single carousel instance."""
+
+    active: int = 0
+    total: int = 0
 
 
 class CarouselMixin(ComponentMixin):
@@ -32,55 +39,60 @@ class CarouselMixin(ComponentMixin):
         """
         if self.carousel_instances is None:
             self.carousel_instances = {}
-        instances = self.carousel_instances
-        instances[instance_id] = {
-            "active": int(active),
-            "total": int(total),
-        }
+        self.carousel_instances[instance_id] = CarouselState(
+            active=int(active),
+            total=int(total),
+        )
 
     @event_handler
     def carousel_prev(self, component_id="", **kwargs):
         """Go to the previous slide (wraps around)."""
-        instances = self.carousel_instances or {}
-        inst = instances.get(component_id)
+        component_id = self._resolve_component_id(component_id)
+        inst = self._get_typed_instance(component_id, CarouselState)
         if inst is None:
             return
-        total = inst["total"]
-        if total > 0:
-            inst["active"] = (inst["active"] - 1) % total
+        if inst.total > 0:
+            inst.active = (inst.active - 1) % inst.total
 
     @event_handler
     def carousel_next(self, component_id="", **kwargs):
         """Go to the next slide (wraps around)."""
-        instances = self.carousel_instances or {}
-        inst = instances.get(component_id)
+        component_id = self._resolve_component_id(component_id)
+        inst = self._get_typed_instance(component_id, CarouselState)
         if inst is None:
             return
-        total = inst["total"]
-        if total > 0:
-            inst["active"] = (inst["active"] + 1) % total
+        if inst.total > 0:
+            inst.active = (inst.active + 1) % inst.total
 
     @event_handler
     def carousel_go(self, value="0", component_id="", **kwargs):
         """Go to a specific slide by index."""
-        instances = self.carousel_instances or {}
-        inst = instances.get(component_id)
+        component_id = self._resolve_component_id(component_id)
+        inst = self._get_typed_instance(component_id, CarouselState)
         if inst is None:
             return
         try:
             index = int(value)
         except (ValueError, TypeError):
             return
-        total = inst["total"]
-        if total > 0 and 0 <= index < total:
-            inst["active"] = index
+        if inst.total > 0 and 0 <= index < inst.total:
+            inst.active = index
 
     def get_carousel_ctx(self, instance_id):
         """Return template context dict for a carousel instance."""
-        inst = (self.carousel_instances or {}).get(instance_id, {})
+        inst = self._get_typed_instance(instance_id, CarouselState)
+        if inst is None:
+            return {
+                "active": 0,
+                "total": 0,
+                "prev_event": "carousel_prev",
+                "next_event": "carousel_next",
+                "go_event": "carousel_go",
+                "component_id": instance_id,
+            }
         return {
-            "active": inst.get("active", 0),
-            "total": inst.get("total", 0),
+            "active": inst.active,
+            "total": inst.total,
             "prev_event": "carousel_prev",
             "next_event": "carousel_next",
             "go_event": "carousel_go",

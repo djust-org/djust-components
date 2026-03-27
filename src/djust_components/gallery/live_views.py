@@ -12,19 +12,21 @@ from djust_components.mixins import (
     SheetMixin,
     TabsMixin,
 )
+from djust_components.mixins.accordion import AccordionState
+from djust_components.mixins.tabs import TabsState
 
 from .views import _get_theme_css, _get_theme_options, _render_component_cards
 
 
-class GalleryThemeMixin:
-    """Shared theme management for gallery LiveViews.
+# ---------------------------------------------------------------------------
+# Shared mixins
+# ---------------------------------------------------------------------------
 
-    Reads theme cookies, validates against allowlists, and provides
-    event handlers for changing design system, preset, mode, and preview.
-    """
+
+class GalleryThemeMixin:
+    """Shared theme management: cookies, validation, event handlers."""
 
     def mount_theme(self, request):
-        """Read and validate theme state from cookies."""
         self.preset_options, self.ds_options = _get_theme_options()
 
         self.design_system = request.COOKIES.get("gallery_ds", "material")
@@ -72,6 +74,120 @@ class GalleryThemeMixin:
         )
 
 
+class GalleryCategoryMixin(GalleryThemeMixin):
+    """Base for per-category gallery views.
+
+    Subclasses declare their category and which components are interactive::
+
+        class LayoutGalleryView(AccordionMixin, TabsMixin, ...,
+                                GalleryCategoryMixin, LiveView):
+            category_slug = "layout"
+            interactive_components = ["accordion", "tabs", "collapsible", "modal", "sheet"]
+            _state_context = {
+                "accordion": ("accordion_instances", AccordionState, "active"),
+                "tabs": ("tabs_instances", TabsState, "active"),
+            }
+    """
+
+    template_name = "djust_components/gallery/category.html"
+    login_required = False
+
+    # ── Subclass configuration ──
+    category_slug = ""
+    interactive_components = []
+    _state_context = {}
+
+    # Maps component name → init method name
+    _INIT_METHODS = {
+        "accordion": "init_accordion",
+        "tabs": "init_tabs",
+        "collapsible": "init_collapsible",
+        "modal": "init_modal",
+        "sheet": "init_sheet",
+    }
+
+    def mount(self, request, **kwargs):
+        from .examples import CATEGORIES, CATEGORY_ORDER
+        from .registry import get_gallery_data
+
+        slug = self.category_slug
+        if slug not in CATEGORIES:
+            raise Http404(f"Unknown category: {slug}")
+
+        self.category_label = CATEGORIES[slug]
+        self.mount_theme(request)
+
+        # Sidebar
+        data = get_gallery_data()
+        categories = data["categories"]
+        self.category_cards = []
+        for s in CATEGORY_ORDER:
+            label = CATEGORIES.get(s, s.title())
+            self.category_cards.append({
+                "slug": s,
+                "label": label,
+                "count": len(categories.get(label, [])),
+            })
+
+        # View class name for dj-view attribute in template
+        self.view_class_name = type(self).__name__
+
+        # Components for this category
+        self.raw_components = categories.get(self.category_label, [])
+        self.active_category = slug
+
+        # Prev/next navigation
+        idx = CATEGORY_ORDER.index(slug)
+        self.prev_category = (
+            {"slug": CATEGORY_ORDER[idx - 1],
+             "label": CATEGORIES.get(CATEGORY_ORDER[idx - 1], "")}
+            if idx > 0 else None
+        )
+        self.next_category = (
+            {"slug": CATEGORY_ORDER[idx + 1],
+             "label": CATEGORIES.get(CATEGORY_ORDER[idx + 1], "")}
+            if idx < len(CATEGORY_ORDER) - 1 else None
+        )
+
+        # Register mixin instances for interactive components
+        for comp in self.raw_components:
+            method = self._INIT_METHODS.get(comp["name"])
+            if method and comp["name"] in self.interactive_components:
+                getattr(self, method)(comp["name"])
+
+    def get_context_data(self, **kwargs):
+        """Re-render component examples with current mixin state."""
+        self.rendered_components = []
+        for comp in self.raw_components:
+            ctx = self._build_extra_context(comp["name"])
+            rendered_html = _render_component_cards([comp], extra_context=ctx)
+            self.rendered_components.append({
+                "name": comp["name"],
+                "label": comp["label"],
+                "type": comp["type"],
+                "rendered_html": rendered_html,
+            })
+        return super().get_context_data(**kwargs)
+
+    def _build_extra_context(self, comp_name):
+        mapping = self._state_context.get(comp_name)
+        if mapping is None:
+            return {}
+        attr_name, state_class, ctx_key = mapping
+        instances = getattr(self, attr_name, None)
+        if not instances or comp_name not in instances:
+            return {}
+        inst = self._get_typed_instance(comp_name, state_class)
+        if inst is None:
+            return {}
+        return {ctx_key: getattr(inst, ctx_key, "")}
+
+
+# ---------------------------------------------------------------------------
+# Views
+# ---------------------------------------------------------------------------
+
+
 class GalleryIndexView(GalleryThemeMixin, LiveView):
     """Landing page showing category cards with reactive theme switching."""
 
@@ -86,104 +202,86 @@ class GalleryIndexView(GalleryThemeMixin, LiveView):
 
         data = get_gallery_data()
         categories = data["categories"]
-
         self.category_cards = []
         for slug in CATEGORY_ORDER:
-            cat_label = CATEGORIES.get(slug, slug.title())
-            comps = categories.get(cat_label, [])
+            label = CATEGORIES.get(slug, slug.title())
             self.category_cards.append({
                 "slug": slug,
-                "label": cat_label,
-                "count": len(comps),
+                "label": label,
+                "count": len(categories.get(label, [])),
             })
 
 
-class CategoryGalleryView(
+class LayoutGalleryView(
     AccordionMixin, TabsMixin, CollapsibleMixin, ModalMixin, SheetMixin,
-    GalleryThemeMixin, LiveView,
+    GalleryCategoryMixin, LiveView,
 ):
-    """Per-category gallery page with rendered components and interactive state.
+    """Layout category — accordion, tabs, cards, sheets, etc."""
+    category_slug = "layout"
+    interactive_components = ["accordion", "tabs", "collapsible", "modal", "sheet"]
+    _state_context = {
+        "accordion": ("accordion_instances", AccordionState, "active"),
+        "tabs": ("tabs_instances", TabsState, "active"),
+    }
 
-    Uses per-component mixins (AccordionMixin, TabsMixin, etc.) for interactive
-    state management instead of manual state dicts.  Each mixin provides event
-    handlers and instance routing via component_id.
-    """
 
-    template_name = "djust_components/gallery/category.html"
-    login_required = False
+class FormGalleryView(GalleryCategoryMixin, LiveView):
+    """Form category — inputs, selects, pickers, etc."""
+    category_slug = "form"
 
-    def mount(self, request, category_slug=None, **kwargs):
-        from .examples import CATEGORIES, CATEGORY_ORDER
-        from .registry import get_gallery_data
 
-        # Validate category slug
-        if category_slug not in CATEGORIES:
-            raise Http404(f"Unknown category: {category_slug}")
+class DataGalleryView(TabsMixin, GalleryCategoryMixin, LiveView):
+    """Data category — tables, charts, trees, etc."""
+    category_slug = "data"
+    interactive_components = ["tabs"]
+    _state_context = {
+        "tabs": ("tabs_instances", TabsState, "active"),
+    }
 
-        self.category_slug = category_slug
-        self.category_label = CATEGORIES[category_slug]
 
-        # Theme
-        self.mount_theme(request)
+class OverlayGalleryView(
+    ModalMixin, SheetMixin, GalleryCategoryMixin, LiveView,
+):
+    """Overlay category — modals, dropdowns, tooltips, etc."""
+    category_slug = "overlay"
+    interactive_components = ["modal", "sheet"]
 
-        # Gallery data
-        data = get_gallery_data()
-        categories = data["categories"]
 
-        # Build category cards for sidebar
-        self.category_cards = []
-        for slug in CATEGORY_ORDER:
-            cat_label = CATEGORIES.get(slug, slug.title())
-            comps = categories.get(cat_label, [])
-            self.category_cards.append({
-                "slug": slug,
-                "label": cat_label,
-                "count": len(comps),
-            })
+class FeedbackGalleryView(GalleryCategoryMixin, LiveView):
+    """Feedback category — alerts, toasts, progress, etc."""
+    category_slug = "feedback"
 
-        # Render components for this category
-        components = categories.get(self.category_label, [])
-        self.rendered_components = []
-        for comp in components:
-            rendered_html = _render_component_cards([comp])
-            self.rendered_components.append({
-                "name": comp["name"],
-                "label": comp["label"],
-                "type": comp["type"],
-                "rendered_html": rendered_html,
-            })
 
-        self.active_category = category_slug
+class NavGalleryView(
+    AccordionMixin, TabsMixin, GalleryCategoryMixin, LiveView,
+):
+    """Navigation category — stepper, breadcrumb, pagination, etc."""
+    category_slug = "navigation"
+    interactive_components = ["accordion", "tabs"]
+    _state_context = {
+        "accordion": ("accordion_instances", AccordionState, "active"),
+        "tabs": ("tabs_instances", TabsState, "active"),
+    }
 
-        # Prev/next navigation
-        idx = CATEGORY_ORDER.index(category_slug)
-        self.prev_category = None
-        self.next_category = None
-        if idx > 0:
-            prev_slug = CATEGORY_ORDER[idx - 1]
-            self.prev_category = {
-                "slug": prev_slug,
-                "label": CATEGORIES.get(prev_slug, prev_slug.title()),
-            }
-        if idx < len(CATEGORY_ORDER) - 1:
-            next_slug = CATEGORY_ORDER[idx + 1]
-            self.next_category = {
-                "slug": next_slug,
-                "label": CATEGORIES.get(next_slug, next_slug.title()),
-            }
 
-        # Initialise interactive component instances via mixins.
-        # Each rendered component that needs interactivity gets an instance
-        # registered with the corresponding mixin, keyed by component name.
-        _interactive_types = {
-            "accordion": self.init_accordion,
-            "tabs": self.init_tabs,
-            "collapsible": self.init_collapsible,
-            "modal": self.init_modal,
-            "sheet": self.init_sheet,
-        }
-        for comp in self.rendered_components:
-            cname = comp["name"]
-            init_fn = _interactive_types.get(cname)
-            if init_fn is not None:
-                init_fn(cname)
+class IndicatorGalleryView(GalleryCategoryMixin, LiveView):
+    """Indicator category — badges, gauges, ratings, etc."""
+    category_slug = "indicator"
+
+
+class TypographyGalleryView(GalleryCategoryMixin, LiveView):
+    """Typography category — code blocks, markdown, etc."""
+    category_slug = "typography"
+
+
+class MiscGalleryView(
+    AccordionMixin, TabsMixin, ModalMixin,
+    GalleryCategoryMixin, LiveView,
+):
+    """Misc category — carousel, chat, theme toggle, etc."""
+    category_slug = "misc"
+    interactive_components = ["accordion", "tabs", "modal"]
+    _state_context = {
+        "accordion": ("accordion_instances", AccordionState, "active"),
+        "tabs": ("tabs_instances", TabsState, "active"),
+    }
