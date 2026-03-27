@@ -37,6 +37,7 @@ TEMPLATES = [
                 'django.template.context_processors.debug',
                 'django.template.context_processors.request',
                 'djust_theming.context_processors.theme_context',
+                'djust_components.gallery.context_processors.gallery_theme',
             ],
         },
     },

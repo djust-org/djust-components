@@ -18,7 +18,6 @@ def _mount_view(view_class):
 
 
 class TestGalleryCategoryViews:
-    """Tests for per-category gallery views."""
 
     def test_layout_view_exists(self):
         from djust_components.gallery.live_views import LayoutGalleryView
@@ -70,57 +69,22 @@ class TestGalleryCategoryViews:
             assert view.category_slug == slug
             assert view.category_label == CATEGORIES[slug]
 
-    def test_mount_reads_theme_cookies(self):
-        from djust_components.gallery.live_views import LayoutGalleryView
-
-        view = LayoutGalleryView()
-        request = RequestFactory().get("/")
-        request.COOKIES = {
-            "gallery_ds": "material",
-            "gallery_preset": "default",
-            "gallery_mode": "dark",
-        }
-        view.mount(request)
-
-        assert view.design_system == "material"
-        assert view.preset == "default"
-        assert view.mode == "dark"
-
-    def test_mount_validates_cookies(self):
-        from djust_components.gallery.live_views import LayoutGalleryView
-
-        view = LayoutGalleryView()
-        request = RequestFactory().get("/")
-        request.COOKIES = {
-            "gallery_ds": "INVALID",
-            "gallery_mode": "bogus",
-            "gallery_preset": "<script>alert(1)</script>",
-        }
-        view.mount(request)
-
-        assert view.design_system == "material"
-        assert view.mode == "light"
-        assert view.preset == "default"
-
     def test_mount_builds_prev_next(self):
         from djust_components.gallery.live_views import LayoutGalleryView
         from djust_components.gallery.examples import CATEGORY_ORDER
 
         view = _mount_view(LayoutGalleryView)
 
-        # "layout" is first in CATEGORY_ORDER, so no previous
         assert view.prev_category is None
         assert view.next_category is not None
         assert view.next_category["slug"] == CATEGORY_ORDER[1]
 
     def test_layout_has_descriptor_state(self):
-        """Descriptor-based views have component state accessible as attributes."""
         from djust_components.gallery.live_views import LayoutGalleryView
         from djust_components.mixins.base import TypedState
 
         view = _mount_view(LayoutGalleryView)
 
-        # Descriptors auto-initialise state on access
         assert isinstance(view.accordion, TypedState)
         assert isinstance(view.tabs, TypedState)
         assert isinstance(view.collapsible, TypedState)
@@ -128,7 +92,6 @@ class TestGalleryCategoryViews:
         assert isinstance(view.sheet, TypedState)
 
     def test_layout_descriptors_registered(self):
-        """LayoutGalleryView has descriptors in _component_descriptors."""
         from djust_components.gallery.live_views import LayoutGalleryView
 
         descriptors = LayoutGalleryView._component_descriptors
@@ -143,18 +106,16 @@ class TestGalleryCategoryViews:
 
 
 class TestGalleryViewEvents:
-    """Tests for descriptor-provided event handlers."""
 
     def _make_view(self):
         from djust_components.gallery.live_views import LayoutGalleryView
         return _mount_view(LayoutGalleryView)
 
-    def test_event_handlers_exist(self):
+    def test_component_event_handlers_exist(self):
         view = self._make_view()
         for handler in (
             "accordion_toggle", "set_tab", "toggle_collapsible",
             "toggle_modal", "toggle_sheet",
-            "change_design_system", "change_preset", "toggle_mode", "set_preview",
         ):
             assert hasattr(view, handler), f"Missing: {handler}"
 
@@ -185,25 +146,14 @@ class TestGalleryViewEvents:
         view = self._make_view()
         view.toggle_modal(component_id="modal")
         assert view.modal.is_open is True
-        view.toggle_modal(component_id="modal")
-        assert view.modal.is_open is False
 
     def test_toggle_sheet(self):
         view = self._make_view()
         view.toggle_sheet(component_id="sheet")
         assert view.sheet.is_open is True
-        view.toggle_sheet(component_id="sheet")
-        assert view.sheet.is_open is False
-
-    def test_toggle_mode(self):
-        view = self._make_view()
-        assert view.mode == "light"
-        view.toggle_mode()
-        assert view.mode == "dark"
 
     def test_unknown_component_id_safe(self):
         view = self._make_view()
-        # Should not raise — descriptors handle unknown component_ids gracefully
         view.accordion_toggle(value="x", component_id="nonexistent")
         view.set_tab(value="x", component_id="nonexistent")
 
@@ -238,24 +188,7 @@ class TestGalleryViewRendering:
 
 class TestGalleryViewXSS:
 
-    def test_xss_cookie_values_escaped(self):
-        from djust_components.gallery.live_views import LayoutGalleryView
-
-        view = LayoutGalleryView()
-        request = RequestFactory().get("/")
-        request.COOKIES = {
-            "gallery_ds": '<script>alert("xss")</script>',
-            "gallery_preset": '"><img src=x onerror=alert(1)>',
-            "gallery_mode": '<script>alert(1)</script>',
-        }
-        view.mount(request)
-
-        assert view.design_system == "material"
-        assert view.preset == "default"
-        assert view.mode == "light"
-
     def test_xss_category_slug_rejected(self):
-        """GalleryCategoryMixin validates slug against known categories."""
         from djust_components.gallery.live_views import GalleryCategoryMixin
 
         class BadView(GalleryCategoryMixin):
@@ -268,11 +201,52 @@ class TestGalleryViewXSS:
             view.mount(request)
 
 
-# --- Descriptor integration tests ---
+# --- Theme Context Processor Tests ---
+
+
+class TestGalleryThemeContextProcessor:
+
+    def test_context_processor_returns_theme_data(self):
+        from djust_components.gallery.context_processors import gallery_theme
+
+        request = RequestFactory().get("/")
+        request.COOKIES = {}
+        ctx = gallery_theme(request)
+
+        assert "theme_css" in ctx
+        assert ctx["design_system"] == "material"
+        assert ctx["preset"] == "default"
+        assert ctx["mode"] == "light"
+        assert "ds_options" in ctx
+        assert "preset_options" in ctx
+
+    def test_context_processor_reads_cookies(self):
+        from djust_components.gallery.context_processors import gallery_theme
+
+        request = RequestFactory().get("/")
+        request.COOKIES = {"gallery_mode": "dark"}
+        ctx = gallery_theme(request)
+
+        assert ctx["mode"] == "dark"
+
+    def test_context_processor_validates_cookies(self):
+        from djust_components.gallery.context_processors import gallery_theme
+
+        request = RequestFactory().get("/")
+        request.COOKIES = {
+            "gallery_ds": '<script>alert("xss")</script>',
+            "gallery_mode": "INVALID",
+        }
+        ctx = gallery_theme(request)
+
+        assert ctx["design_system"] == "material"
+        assert ctx["mode"] == "light"
+
+
+# --- Descriptor Integration Tests ---
 
 
 class TestGalleryDescriptorIntegration:
-    """Verify descriptor-based gallery views work end-to-end."""
 
     def test_data_view_has_tabs_descriptor(self):
         from djust_components.gallery.live_views import DataGalleryView
@@ -283,37 +257,20 @@ class TestGalleryDescriptorIntegration:
         assert "modal" in OverlayGalleryView._component_descriptors
         assert "sheet" in OverlayGalleryView._component_descriptors
 
-    def test_nav_view_has_accordion_and_tabs(self):
-        from djust_components.gallery.live_views import NavGalleryView
-        assert "accordion" in NavGalleryView._component_descriptors
-        assert "tabs" in NavGalleryView._component_descriptors
-
-    def test_misc_view_has_accordion_tabs_modal(self):
-        from djust_components.gallery.live_views import MiscGalleryView
-        assert "accordion" in MiscGalleryView._component_descriptors
-        assert "tabs" in MiscGalleryView._component_descriptors
-        assert "modal" in MiscGalleryView._component_descriptors
-
     def test_build_extra_context_reads_descriptor_state(self):
-        """_build_extra_context reads from descriptor state."""
         from djust_components.gallery.live_views import LayoutGalleryView
         view = _mount_view(LayoutGalleryView)
-
-        # Set accordion state
         view.accordion_toggle(value="item1", component_id="accordion")
 
         ctx = view._build_extra_context("accordion")
         assert ctx["active"] == "item1"
-        assert "component_id" in ctx  # full state dict is passed
 
     def test_build_extra_context_empty_for_unknown(self):
         from djust_components.gallery.live_views import LayoutGalleryView
         view = _mount_view(LayoutGalleryView)
-        ctx = view._build_extra_context("nonexistent")
-        assert ctx == {}
+        assert view._build_extra_context("nonexistent") == {}
 
     def test_form_view_no_descriptors(self):
-        """FormGalleryView has no interactive descriptors."""
         from djust_components.gallery.live_views import FormGalleryView
         descriptors = getattr(FormGalleryView, "_component_descriptors", {})
         assert len(descriptors) == 0

@@ -162,7 +162,7 @@
         <div class="gallery-toolbar">
             <div class="toolbar-group">
                 <label>Design</label>
-                <select dj-change="change_design_system">
+                <select id="gallery-ds-select" onchange="galleryTheme.setDS(this.value)">
                     {% for ds in ds_options %}
                     <option value="{{ ds }}" {% if ds == design_system %}selected{% endif %}>{{ ds }}</option>
                     {% endfor %}
@@ -170,16 +170,16 @@
             </div>
             <div class="toolbar-group">
                 <label>Preset</label>
-                <select dj-change="change_preset">
+                <select id="gallery-preset-select" onchange="galleryTheme.setPreset(this.value)">
                     {% for p in preset_options %}
                     <option value="{{ p }}" {% if p == preset %}selected{% endif %}>{{ p }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <button dj-click="set_preview" data-value="mobile" class="{% if preview_mode == 'mobile' %}active{% endif %}">Mobile</button>
-            <button dj-click="set_preview" data-value="tablet" class="{% if preview_mode == 'tablet' %}active{% endif %}">Tablet</button>
-            <button dj-click="set_preview" data-value="desktop" class="{% if preview_mode == 'desktop' %}active{% endif %}">Desktop</button>
-            <button class="theme-toggle" dj-click="toggle_mode">{% if mode == "dark" %}&#9728;&#65039;{% else %}&#127769;{% endif %}</button>
+            <button onclick="galleryTheme.setPreview('mobile')" class="preview-btn {% if preview_mode == 'mobile' %}active{% endif %}" data-preview="mobile">Mobile</button>
+            <button onclick="galleryTheme.setPreview('tablet')" class="preview-btn {% if preview_mode == 'tablet' %}active{% endif %}" data-preview="tablet">Tablet</button>
+            <button onclick="galleryTheme.setPreview('desktop')" class="preview-btn {% if preview_mode == 'desktop' %}active{% endif %}" data-preview="desktop">Desktop</button>
+            <button class="theme-toggle" onclick="galleryTheme.toggleMode()">{% if mode == "dark" %}&#9728;&#65039;{% else %}&#127769;{% endif %}</button>
         </div>
     </header>
 
@@ -196,16 +196,37 @@
 </div>
 
 <script>
-    // Persist theme to cookies when LiveView pushes event
-    document.addEventListener('djust:event', function(e) {
-        if (e.detail && e.detail.event === 'set_theme_cookies') {
-            var d = e.detail.data;
-            document.cookie = 'gallery_ds=' + d.ds + ';path=/;max-age=31536000;SameSite=Lax';
-            document.cookie = 'gallery_preset=' + d.preset + ';path=/;max-age=31536000;SameSite=Lax';
-            document.cookie = 'gallery_mode=' + d.mode + ';path=/;max-age=31536000;SameSite=Lax';
-            document.documentElement.setAttribute('data-theme', d.mode);
+    // Client-side theme management — no server round-trip needed.
+    // Cookies are read by the context processor on next page load.
+    var galleryTheme = {
+        _setCookie: function(name, value) {
+            document.cookie = name + '=' + value + ';path=/;max-age=31536000;SameSite=Lax';
+        },
+        setDS: function(value) {
+            this._setCookie('gallery_ds', value);
+            window.location.reload();
+        },
+        setPreset: function(value) {
+            this._setCookie('gallery_preset', value);
+            window.location.reload();
+        },
+        toggleMode: function() {
+            var current = document.documentElement.getAttribute('data-theme') || '{{ mode }}';
+            var next = current === 'dark' ? 'light' : 'dark';
+            this._setCookie('gallery_mode', next);
+            document.documentElement.setAttribute('data-theme', next);
+            window.location.reload();
+        },
+        setPreview: function(value) {
+            var container = document.querySelector('.preview-container');
+            if (container) {
+                container.className = 'gallery-content preview-container ' + value;
+            }
+            document.querySelectorAll('.preview-btn').forEach(function(btn) {
+                btn.classList.toggle('active', btn.getAttribute('data-preview') === value);
+            });
         }
-    });
+    };
 </script>
 </body>
 </html>

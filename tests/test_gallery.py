@@ -405,81 +405,30 @@ class TestGalleryLiveView:
         request.COOKIES = {}
         view.mount(request)
 
-        assert view.design_system == "material"
-        assert view.preset == "default"
-        assert view.mode == "light"
-        assert view.preview_mode == "desktop"
+        # Theme is now handled by context processor, not the view
         assert len(view.category_cards) == 9
-        assert isinstance(view.theme_css, str)  # CSS string (may be empty without djust-theming)
 
-    def test_liveview_mount_reads_cookies(self):
-        from djust_components.gallery.live_views import GalleryIndexView
+    def test_theme_handled_by_context_processor(self):
+        """Theme is now a site-level concern via gallery_theme context processor."""
+        from djust_components.gallery.context_processors import gallery_theme
 
-        view = GalleryIndexView()
-        factory = RequestFactory()
-        request = factory.get("/")
-        # Use values that exist in the fallback lists too (material/default always valid)
-        request.COOKIES = {"gallery_ds": "material", "gallery_preset": "default", "gallery_mode": "dark"}
-        view.mount(request)
+        request = RequestFactory().get("/")
+        request.COOKIES = {"gallery_ds": "material", "gallery_mode": "dark"}
+        ctx = gallery_theme(request)
 
-        assert view.design_system == "material"
-        assert view.preset == "default"
-        assert view.mode == "dark"
+        assert ctx["design_system"] == "material"
+        assert ctx["mode"] == "dark"
+        assert "theme_css" in ctx
 
-    def test_liveview_mount_reads_cookies_with_theming(self):
-        """Test cookie reading with full theme options (requires djust-theming)."""
-        pytest = __import__("pytest")
-        try:
-            import djust_theming  # noqa: F401
-        except ImportError:
-            pytest.skip("djust-theming not installed")
+    def test_theme_context_processor_validates(self):
+        from djust_components.gallery.context_processors import gallery_theme
 
-        from djust_components.gallery.live_views import GalleryIndexView
-
-        view = GalleryIndexView()
-        factory = RequestFactory()
-        request = factory.get("/")
-        request.COOKIES = {"gallery_ds": "ios", "gallery_preset": "cyberpunk", "gallery_mode": "dark"}
-        view.mount(request)
-
-        assert view.design_system == "ios"
-        assert view.preset == "cyberpunk"
-        assert view.mode == "dark"
-
-    def test_liveview_mount_validates_cookies(self):
-        from djust_components.gallery.live_views import GalleryIndexView
-
-        view = GalleryIndexView()
-        factory = RequestFactory()
-        request = factory.get("/")
+        request = RequestFactory().get("/")
         request.COOKIES = {"gallery_ds": "INVALID", "gallery_mode": "bogus"}
-        view.mount(request)
+        ctx = gallery_theme(request)
 
-        assert view.design_system == "material"  # fallback
-        assert view.mode == "light"  # fallback
-
-    def test_liveview_event_handlers_exist(self):
-        from djust_components.gallery.live_views import GalleryIndexView
-        view = GalleryIndexView()
-        assert hasattr(view, "change_design_system")
-        assert hasattr(view, "change_preset")
-        assert hasattr(view, "toggle_mode")
-        assert hasattr(view, "set_preview")
-
-    def test_toggle_mode_switches(self):
-        from djust_components.gallery.live_views import GalleryIndexView
-
-        view = GalleryIndexView()
-        factory = RequestFactory()
-        request = factory.get("/")
-        request.COOKIES = {}
-        view.mount(request)
-
-        assert view.mode == "light"
-        view.toggle_mode()
-        assert view.mode == "dark"
-        view.toggle_mode()
-        assert view.mode == "light"
+        assert ctx["design_system"] == "material"
+        assert ctx["mode"] == "light"
 
 
 # ─── Edge Case Tests ───
