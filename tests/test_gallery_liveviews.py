@@ -104,12 +104,34 @@ class TestCategoryGalleryViewMount:
             assert view.category_slug == slug
             assert view.category_label == CATEGORIES[slug]
 
+    def test_mount_initialises_mixin_instances(self):
+        """Verify that mount() uses mixins to track interactive component state."""
+        from djust_components.gallery.live_views import CategoryGalleryView
+
+        view = CategoryGalleryView()
+        request = RequestFactory().get("/")
+        request.COOKIES = {}
+        view.mount(request, category_slug="layout")
+
+        # After mount, mixin instance dicts should exist (may be None if
+        # no components of that type are in the category, but at least
+        # accordion should exist for layout category)
+        has_any_instances = any([
+            view.accordion_instances,
+            view.tabs_instances,
+            view.collapsible_instances,
+            view.modal_instances,
+            view.sheet_instances,
+        ])
+        # Layout category should have at least one interactive component
+        assert has_any_instances
+
 
 # ─── Event Handler Tests ───
 
 
 class TestCategoryGalleryViewEvents:
-    """Tests for CategoryGalleryView event handlers."""
+    """Tests for CategoryGalleryView event handlers (provided by mixins)."""
 
     def _make_mounted_view(self, slug="layout"):
         from djust_components.gallery.live_views import CategoryGalleryView
@@ -123,12 +145,16 @@ class TestCategoryGalleryViewEvents:
     def test_event_handlers_exist(self):
         view = self._make_mounted_view()
         for handler in (
+            # From mixins
             "accordion_toggle",
             "set_tab",
             "toggle_collapsible",
             "close_modal",
+            "open_modal",
+            "toggle_modal",
             "close_sheet",
-            # inherited from mixin
+            "open_sheet",
+            # inherited from GalleryThemeMixin
             "change_design_system",
             "change_preset",
             "toggle_mode",
@@ -136,49 +162,44 @@ class TestCategoryGalleryViewEvents:
         ):
             assert hasattr(view, handler), f"Missing event handler: {handler}"
 
-    def test_accordion_toggle(self):
+    def test_accordion_toggle_via_mixin(self):
         view = self._make_mounted_view()
+        # Init a test accordion instance
+        view.init_accordion("test-acc")
+        view.accordion_toggle(value="item1", component_id="test-acc")
+        assert view.accordion_instances["test-acc"]["active"] == "item1"
 
-        # Initially empty
-        assert view.accordion_states == {}
-
-        # Toggle open
-        view.accordion_toggle(id="acc1", index=0)
-        assert view.accordion_states == {"acc1": {0: True}}
-
-        # Toggle closed
-        view.accordion_toggle(id="acc1", index=0)
-        assert view.accordion_states == {"acc1": {0: False}}
-
-    def test_set_tab(self):
+    def test_accordion_toggle_close(self):
         view = self._make_mounted_view()
+        view.init_accordion("test-acc", active="item1")
+        view.accordion_toggle(value="item1", component_id="test-acc")
+        assert view.accordion_instances["test-acc"]["active"] == ""
 
-        assert view.active_tabs == {}
-        view.set_tab(id="t1", value="settings")
-        assert view.active_tabs == {"t1": "settings"}
-
-    def test_toggle_collapsible(self):
+    def test_set_tab_via_mixin(self):
         view = self._make_mounted_view()
+        view.init_tabs("test-tabs")
+        view.set_tab(value="settings", component_id="test-tabs")
+        assert view.tabs_instances["test-tabs"]["active"] == "settings"
 
-        assert view.collapsible_states == {}
-        view.toggle_collapsible(id="col1")
-        assert view.collapsible_states == {"col1": True}
-        view.toggle_collapsible(id="col1")
-        assert view.collapsible_states == {"col1": False}
-
-    def test_close_modal(self):
+    def test_toggle_collapsible_via_mixin(self):
         view = self._make_mounted_view()
+        view.init_collapsible("test-coll")
+        view.toggle_collapsible(component_id="test-coll")
+        assert view.collapsible_instances["test-coll"]["is_open"] is True
+        view.toggle_collapsible(component_id="test-coll")
+        assert view.collapsible_instances["test-coll"]["is_open"] is False
 
-        assert view.modal_open == {}
-        view.close_modal(id="m1")
-        assert view.modal_open == {"m1": False}
-
-    def test_close_sheet(self):
+    def test_close_modal_via_mixin(self):
         view = self._make_mounted_view()
+        view.init_modal("test-modal", is_open=True)
+        view.close_modal(component_id="test-modal")
+        assert view.modal_instances["test-modal"]["is_open"] is False
 
-        assert view.sheet_open == {}
-        view.close_sheet(id="s1")
-        assert view.sheet_open == {"s1": False}
+    def test_close_sheet_via_mixin(self):
+        view = self._make_mounted_view()
+        view.init_sheet("test-sheet", is_open=True)
+        view.close_sheet(component_id="test-sheet")
+        assert view.sheet_instances["test-sheet"]["is_open"] is False
 
     def test_toggle_mode_switches(self):
         view = self._make_mounted_view()
@@ -188,6 +209,17 @@ class TestCategoryGalleryViewEvents:
         assert view.mode == "dark"
         view.toggle_mode()
         assert view.mode == "light"
+
+    def test_unknown_component_id_is_safe(self):
+        """Event handlers should silently ignore unknown component_ids."""
+        view = self._make_mounted_view()
+        view.init_accordion("real")
+        # These should not raise
+        view.accordion_toggle(value="x", component_id="nonexistent")
+        view.set_tab(value="x", component_id="nonexistent")
+        view.toggle_collapsible(component_id="nonexistent")
+        view.close_modal(component_id="nonexistent")
+        view.close_sheet(component_id="nonexistent")
 
 
 # ─── Rendering Tests ───

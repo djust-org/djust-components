@@ -102,12 +102,14 @@ class ModalNode(template.Node):
         }.get(size, "dj-modal--md")
         e_close_event = conditional_escape(close_event)
         e_title = conditional_escape(title)
+        component_id = kw.get("component_id", "")
+        cid_attr = f' data-component-id="{conditional_escape(component_id)}"' if component_id else ""
 
-        return mark_safe(f"""<div class="dj-modal-backdrop" dj-click="{e_close_event}">
+        return mark_safe(f"""<div class="dj-modal-backdrop" dj-click="{e_close_event}"{cid_attr}>
   <div class="dj-modal {size_class}" onclick="event.stopPropagation()">
     <div class="dj-modal__header">
       <h3 class="dj-modal__title">{e_title}</h3>
-      <button class="dj-modal__close" dj-click="{e_close_event}">&times;</button>
+      <button class="dj-modal__close" dj-click="{e_close_event}"{cid_attr}>&times;</button>
     </div>
     <div class="dj-modal__body">{content}</div>
   </div>
@@ -155,6 +157,9 @@ class TabsNode(template.Node):
         if not active and tabs:
             active = _resolve(tabs[0].tab_id, context)
 
+        component_id = kw.get("component_id", "")
+        cid_attr = f' data-component-id="{conditional_escape(component_id)}"' if component_id else ""
+
         # Build tab nav
         nav_items = []
         for tab in tabs:
@@ -165,7 +170,7 @@ class TabsNode(template.Node):
             icon_html = f'<span class="dj-tab__icon">{conditional_escape(icon)}</span> ' if icon else ""
             nav_items.append(
                 f'<button class="dj-tab {active_cls}" '
-                f'dj-click="{conditional_escape(event)}" data-value="{conditional_escape(tid)}">'
+                f'dj-click="{conditional_escape(event)}" data-value="{conditional_escape(tid)}"{cid_attr}>'
                 f'{icon_html}{conditional_escape(label)}</button>'
             )
 
@@ -228,6 +233,9 @@ class AccordionNode(template.Node):
         active = kw.get("active", "")
         event = kw.get("event", "accordion_toggle")
 
+        component_id = kw.get("component_id", "")
+        cid_attr = f' data-component-id="{conditional_escape(component_id)}"' if component_id else ""
+
         items = [n for n in self.nodelist if isinstance(n, AccordionItemNode)]
         parts = []
         for item in items:
@@ -244,7 +252,7 @@ class AccordionNode(template.Node):
                 )
             parts.append(
                 f'<div class="dj-accordion-item {open_cls}">'
-                f'<button class="dj-accordion__trigger" dj-click="{conditional_escape(event)}" data-value="{conditional_escape(iid)}">'
+                f'<button class="dj-accordion__trigger" dj-click="{conditional_escape(event)}" data-value="{conditional_escape(iid)}"{cid_attr}>'
                 f'<span>{conditional_escape(title)}</span>'
                 f'<span class="dj-accordion__chevron {chevron_cls}">&#9662;</span>'
                 f'</button>'
@@ -296,6 +304,8 @@ class DropdownNode(template.Node):
         content = self.nodelist.render(context)
         open_attr = ' data-open' if is_open else ""
         variant_cls = f"dj-dropdown--{conditional_escape(variant)}"
+        component_id = kw.get("component_id", "")
+        cid_attr = f' data-component-id="{conditional_escape(component_id)}"' if component_id else ""
 
         menu_html = ""
         if is_open:
@@ -303,7 +313,7 @@ class DropdownNode(template.Node):
 
         return mark_safe(
             f'<div class="dj-dropdown {variant_cls}" id="{conditional_escape(dropdown_id)}"{open_attr}>'
-            f'<button class="dj-dropdown__trigger" dj-click="{conditional_escape(toggle_event)}">{conditional_escape(label)}</button>'
+            f'<button class="dj-dropdown__trigger" dj-click="{conditional_escape(toggle_event)}"{cid_attr}>{conditional_escape(label)}</button>'
             f'{menu_html}</div>'
         )
 
@@ -346,9 +356,11 @@ class TooltipNode(template.Node):
         text = kw.get("text", "")
         position = kw.get("position", "top")  # top, bottom, left, right
         content = self.nodelist.render(context)
+        component_id = kw.get("component_id", "")
+        cid_attr = f' data-component-id="{conditional_escape(component_id)}"' if component_id else ""
 
         return mark_safe(
-            f'<span class="dj-tooltip dj-tooltip--{conditional_escape(position)}">'
+            f'<span class="dj-tooltip dj-tooltip--{conditional_escape(position)}"{cid_attr}>'
             f'{content}'
             f'<span class="dj-tooltip__text">{conditional_escape(text)}</span>'
             f'</span>'
@@ -1947,12 +1959,14 @@ class CollapsibleNode(template.Node):
         e_event = conditional_escape(event)
         open_cls = " collapsible-open" if open_ else ""
         content = self.nodelist.render(context)
+        component_id = kw.get("component_id", "")
+        cid_attr = f' data-component-id="{conditional_escape(component_id)}"' if component_id else ""
 
         return mark_safe(
             f'<div class="collapsible{open_cls}" id="{e_uid}">'
             f'<button class="collapsible-trigger" '
             f'onclick="(function(el){{el.closest(\'.collapsible\').classList.toggle(\'collapsible-open\');}})(this)"'
-            f' dj-click="{e_event}">'
+            f' dj-click="{e_event}"{cid_attr}>'
             f'<span class="collapsible-label">{e_trigger}</span>'
             f'<span class="collapsible-icon">▾</span>'
             f'</button>'
@@ -1993,20 +2007,22 @@ class SheetNode(template.Node):
         e_close = conditional_escape(close_event)
         open_attr = ' data-open="true"' if open_ else ""
         content = self.nodelist.render(context)
+        component_id = kw.get("component_id", "")
+        cid_attr = f' data-component-id="{conditional_escape(component_id)}"' if component_id else ""
 
         title_html = (
             f'<div class="sheet-header">'
             f'<h3 class="sheet-title">{e_title}</h3>'
-            f'<button class="sheet-close" dj-click="{e_close}">&times;</button>'
+            f'<button class="sheet-close" dj-click="{e_close}"{cid_attr}>&times;</button>'
             f'</div>'
             if title else
             f'<div class="sheet-header-close">'
-            f'<button class="sheet-close" dj-click="{e_close}">&times;</button>'
+            f'<button class="sheet-close" dj-click="{e_close}"{cid_attr}>&times;</button>'
             f'</div>'
         )
 
         return mark_safe(
-            f'<div class="sheet-overlay" dj-click="{e_close}"{open_attr}></div>'
+            f'<div class="sheet-overlay" dj-click="{e_close}"{cid_attr}{open_attr}></div>'
             f'<div class="sheet sheet-{e_side}"{open_attr}>'
             f'{title_html}'
             f'<div class="sheet-body">{content}</div>'
@@ -2142,7 +2158,8 @@ def gauge(value=0, max_value=100, label="", color="primary", size="md", show_val
 
 @register.simple_tag
 def carousel(images=None, active=0, prev_event="carousel_prev",
-             next_event="carousel_next", go_event="carousel_go"):
+             next_event="carousel_next", go_event="carousel_go",
+             component_id=""):
     """Render an image carousel / slideshow."""
     if images is None:
         images = []
@@ -2157,6 +2174,7 @@ def carousel(images=None, active=0, prev_event="carousel_prev",
     e_prev = conditional_escape(prev_event)
     e_next = conditional_escape(next_event)
     e_go = conditional_escape(go_event)
+    cid_attr = f' data-component-id="{conditional_escape(component_id)}"' if component_id else ""
 
     slides = ""
     dots = ""
@@ -2184,7 +2202,7 @@ def carousel(images=None, active=0, prev_event="carousel_prev",
         dot_cls = " carousel-dot-active" if i == active else ""
         dots += (
             f'<button class="carousel-dot{dot_cls}" '
-            f'dj-click="{e_go}" data-value="{i}"></button>'
+            f'dj-click="{e_go}" data-value="{i}"{cid_attr}></button>'
         )
 
     total = len(images)
@@ -2196,8 +2214,8 @@ def carousel(images=None, active=0, prev_event="carousel_prev",
     return mark_safe(
         f'<div class="carousel">'
         f'<div class="carousel-track">{slides}</div>'
-        f'<button class="carousel-btn carousel-btn-prev" dj-click="{e_prev}">&#8249;</button>'
-        f'<button class="carousel-btn carousel-btn-next" dj-click="{e_next}">&#8250;</button>'
+        f'<button class="carousel-btn carousel-btn-prev" dj-click="{e_prev}"{cid_attr}>&#8249;</button>'
+        f'<button class="carousel-btn carousel-btn-next" dj-click="{e_next}"{cid_attr}>&#8250;</button>'
         f'<div class="carousel-dots">{dots}</div>'
         f'{counter_html}'
         f'</div>'
