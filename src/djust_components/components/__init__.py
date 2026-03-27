@@ -141,6 +141,67 @@ from .breadcrumb_dropdown import BreadcrumbDropdown
 from .data_card_grid import DataCardGrid
 from .agent_step import AgentStep
 from .qr_code import QRCode
+from .accordion import Accordion
+from .announcement_bar import AnnouncementBar
+from .app_shell import AppShell
+from .aspect_ratio import AspectRatio
+from .avatar import Avatar
+from .breadcrumb import Breadcrumb
+from .callout import Callout
+from .carousel import Carousel
+from .code_block import CodeBlock
+from .collapsible import Collapsible
+from .color_picker import ColorPicker
+from .combobox import Combobox
+from .command_palette import CommandPalette
+from .context_menu import ContextMenu
+from .copy_button import CopyButton
+from .data_table import DataTable
+from .date_picker import DatePicker
+from .description_list import DescriptionList
+from .dropdown import Dropdown
+from .empty_state import EmptyState
+from .fab import Fab
+from .fieldset import Fieldset
+from .file_dropzone import FileDropzone
+from .filter_bar import FilterBar
+from .form_group import FormGroup
+from .gauge import Gauge
+from .icon import Icon
+from .inline_edit import InlineEdit
+from .input_group import InputGroup
+from .kanban_board import KanbanBoard
+from .kbd import Kbd
+from .loading_overlay import LoadingOverlay
+from .modal import Modal
+from .multi_select import MultiSelect
+from .nav_menu import NavMenu
+from .notification_center import NotificationCenter
+from .number_stepper import NumberStepper
+from .otp_input import OtpInput
+from .page_header import PageHeader
+from .pagination import Pagination
+from .popover import Popover
+from .rating import Rating
+from .rich_text_editor import RichTextEditor
+from .scroll_area import ScrollArea
+from .sheet import Sheet
+from .sidebar import Sidebar
+from .skeleton import Skeleton
+from .split_button import SplitButton
+from .split_pane import SplitPane
+from .stepper import Stepper
+from .sticky_header import StickyHeader
+from .table_of_contents import TableOfContents
+from .tabs import Tabs
+from .tag_input import TagInput
+from .theme_toggle import ThemeToggle
+from .timeline import Timeline
+from .toggle_group import ToggleGroup
+from .toolbar import Toolbar
+from .tooltip import Tooltip
+from .tree_view import TreeView
+from .virtual_list import VirtualList
 
 __all__ = [
     "Alert",
@@ -252,4 +313,65 @@ __all__ = [
     "DataCardGrid",
     "AgentStep",
     "QRCode",
+    "Accordion",
+    "AnnouncementBar",
+    "AppShell",
+    "AspectRatio",
+    "Avatar",
+    "Breadcrumb",
+    "Callout",
+    "Carousel",
+    "CodeBlock",
+    "Collapsible",
+    "ColorPicker",
+    "Combobox",
+    "CommandPalette",
+    "ContextMenu",
+    "CopyButton",
+    "DataTable",
+    "DatePicker",
+    "DescriptionList",
+    "Dropdown",
+    "EmptyState",
+    "Fab",
+    "Fieldset",
+    "FileDropzone",
+    "FilterBar",
+    "FormGroup",
+    "Gauge",
+    "Icon",
+    "InlineEdit",
+    "InputGroup",
+    "KanbanBoard",
+    "Kbd",
+    "LoadingOverlay",
+    "Modal",
+    "MultiSelect",
+    "NavMenu",
+    "NotificationCenter",
+    "NumberStepper",
+    "OtpInput",
+    "PageHeader",
+    "Pagination",
+    "Popover",
+    "Rating",
+    "RichTextEditor",
+    "ScrollArea",
+    "Sheet",
+    "Sidebar",
+    "Skeleton",
+    "SplitButton",
+    "SplitPane",
+    "Stepper",
+    "StickyHeader",
+    "TableOfContents",
+    "Tabs",
+    "TagInput",
+    "ThemeToggle",
+    "Timeline",
+    "ToggleGroup",
+    "Toolbar",
+    "Tooltip",
+    "TreeView",
+    "VirtualList",
 ]
