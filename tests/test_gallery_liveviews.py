@@ -303,7 +303,8 @@ class TestGalleryDescriptorIntegration:
         view.accordion_toggle(value="item1", component_id="accordion")
 
         ctx = view._build_extra_context("accordion")
-        assert ctx == {"active": "item1"}
+        assert ctx["active"] == "item1"
+        assert "component_id" in ctx  # full state dict is passed
 
     def test_build_extra_context_empty_for_unknown(self):
         from djust_components.gallery.live_views import LayoutGalleryView

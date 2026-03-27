@@ -92,16 +92,8 @@ class GalleryCategoryMixin(GalleryThemeMixin):
 
     Descriptors auto-initialise on first access.  Event handlers
     (``accordion_toggle``, ``set_tab``, etc.) are auto-registered by
-    the descriptor protocol.
-
-    To pass descriptor state into template rendering, override
-    ``_descriptor_context_map`` — a dict mapping component name to
-    (descriptor_attr, state_key)::
-
-        _descriptor_context_map = {
-            "accordion": ("accordion", "active"),
-            "tabs": ("tabs", "active"),
-        }
+    the descriptor protocol.  Descriptor state is automatically passed
+    to template rendering — no manual context mapping needed.
     """
 
     template_name = "djust_components/gallery/category.html"
@@ -109,7 +101,6 @@ class GalleryCategoryMixin(GalleryThemeMixin):
 
     # ── Subclass configuration ──
     category_slug = ""
-    _descriptor_context_map = {}
 
     def mount(self, request, **kwargs):
         from .examples import CATEGORIES, CATEGORY_ORDER
@@ -176,17 +167,18 @@ class GalleryCategoryMixin(GalleryThemeMixin):
     def _build_extra_context(self, comp_name):
         """Build extra template context from descriptor state.
 
-        Uses ``_descriptor_context_map`` to look up which descriptor
-        attribute and state key to read for a given component name.
+        If a descriptor with a matching attribute name exists on this view,
+        its entire state dict is merged into the template context.  This
+        lets template tags like ``{% accordion active=active %}`` resolve
+        their kwargs from the descriptor's current state automatically.
         """
-        mapping = self._descriptor_context_map.get(comp_name)
-        if mapping is None:
+        descriptors = getattr(type(self), "_component_descriptors", {})
+        if comp_name not in descriptors:
             return {}
-        attr_name, ctx_key = mapping
-        state = getattr(self, attr_name, None)
-        if state is None:
+        state = getattr(self, comp_name, None)
+        if state is None or not isinstance(state, dict):
             return {}
-        return {ctx_key: getattr(state, ctx_key, "")}
+        return dict(state)
 
 
 # ---------------------------------------------------------------------------
@@ -226,10 +218,7 @@ class LayoutGalleryView(GalleryCategoryMixin, LiveView):
     collapsible = Collapsible()
     modal = Modal()
     sheet = Sheet()
-    _descriptor_context_map = {
-        "accordion": ("accordion", "active"),
-        "tabs": ("tabs", "active"),
-    }
+
 
 
 class FormGalleryView(GalleryCategoryMixin, LiveView):
@@ -241,9 +230,6 @@ class DataGalleryView(GalleryCategoryMixin, LiveView):
     """Data category — tables, charts, trees, etc."""
     category_slug = "data"
     tabs = Tabs()
-    _descriptor_context_map = {
-        "tabs": ("tabs", "active"),
-    }
 
 
 class OverlayGalleryView(GalleryCategoryMixin, LiveView):
@@ -263,10 +249,7 @@ class NavGalleryView(GalleryCategoryMixin, LiveView):
     category_slug = "navigation"
     accordion = Accordion()
     tabs = Tabs()
-    _descriptor_context_map = {
-        "accordion": ("accordion", "active"),
-        "tabs": ("tabs", "active"),
-    }
+
 
 
 class IndicatorGalleryView(GalleryCategoryMixin, LiveView):
@@ -285,7 +268,4 @@ class MiscGalleryView(GalleryCategoryMixin, LiveView):
     accordion = Accordion()
     tabs = Tabs()
     modal = Modal()
-    _descriptor_context_map = {
-        "accordion": ("accordion", "active"),
-        "tabs": ("tabs", "active"),
-    }
+
