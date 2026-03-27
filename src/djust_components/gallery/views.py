@@ -92,8 +92,8 @@ def _render_head(mode, theme_css, title="djust-components Gallery"):
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{title}</title>
-    <style data-djust-theme>{theme_css}</style>
     {theming_base_link}
+    <style data-djust-theme>{theme_css}</style>
     <link rel="stylesheet" href="{static("djust_components/components.css")}">
     <link rel="stylesheet" href="{static("djust_components/components-classes.css")}">
     <style>
