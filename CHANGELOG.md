@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **LiveView category gallery** (#LV-GALLERY-LAYOUT): Added `CategoryGalleryView` — a generic LiveView for browsing any component category with reactive theme switching, prev/next navigation, and interactive state management (accordion, tabs, collapsible, modal, sheet). Extracted `GalleryThemeMixin` shared between `GalleryIndexView` and `CategoryGalleryView`. New URL at `lv/<slug>/` coexists with static views during transition.
 - **Visual regression test infrastructure** (#VRT): Added GitHub Actions workflow (`.github/workflows/vrt.yml`) that captures Playwright screenshots of the component gallery at 3 breakpoints (mobile/tablet/desktop) x 2 color modes (light/dark) and diffs against committed baselines. Includes local capture script (`scripts/capture-vrt-baselines.sh`) and strategy documentation (`docs/VISUAL_REGRESSION.md`). Workflow triggers only on PRs that modify CSS or template files.
 
 ### Security
