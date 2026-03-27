@@ -7,10 +7,12 @@ Include in your project's urls.py::
 
 from django.urls import path
 
+from .live_views import GalleryIndexView
 from .views import gallery_category_view, gallery_index_view, gallery_view
 
 urlpatterns = [
-    path("", gallery_index_view, name="gallery-index"),
+    path("", GalleryIndexView.as_view(), name="gallery-index"),
     path("all/", gallery_view, name="gallery-all"),
+    path("static-index/", gallery_index_view, name="gallery-static-index"),
     path("<slug:category_slug>/", gallery_category_view, name="gallery-category"),
 ]
