@@ -1,7 +1,7 @@
 # Dockerfile for components.djust.org
 # Builds djust-components from source and runs the component_showcase Django app
 
-FROM python:3.11-slim-bookworm
+FROM python:3.12-slim-bookworm
 
 WORKDIR /app
 
