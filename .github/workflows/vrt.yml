@@ -127,7 +127,7 @@ jobs:
 
       - name: Upload current screenshots
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: vrt-screenshots
           path: screenshots/
@@ -135,7 +135,7 @@ jobs:
 
       - name: Upload diff images
         if: steps.compare.outcome == 'failure'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: vrt-diffs
           path: diffs/
