@@ -1,0 +1,20 @@
+# Production dependencies for components.djust.org
+
+# Core
+Django>=5.0.9
+channels>=4.0.0
+daphne>=4.0.0
+whitenoise>=6.0.0
+
+# djust-components runtime deps
+markdown>=3.0
+nh3>=0.2
+
+# djust framework (pre-built wheel from CI, falls back to PyPI)
+djust>=0.3.0
+
+# djust-theming (from PyPI)
+djust-theming>=0.3.0
+
+# Sentry error tracking (optional)
+sentry-sdk[django]>=2.0.0

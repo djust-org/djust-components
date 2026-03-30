@@ -5,7 +5,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-component-showcase-demo-key')
 DEBUG = os.environ.get('DJANGO_DEBUG', 'true').lower() not in ('false', '0', 'no')
-ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', '*').split(',')
+_allowed = os.environ.get('DJANGO_ALLOWED_HOSTS', '*').split(',')
+_pod_ip = os.environ.get('POD_IP', '')
+ALLOWED_HOSTS = [h.strip() for h in _allowed if h.strip()] + ([_pod_ip] if _pod_ip else [])
+
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get('CSRF_TRUSTED_ORIGINS', 'https://components.djust.org').split(',')
+    if origin.strip()
+]
 
 INSTALLED_APPS = [
     'daphne',

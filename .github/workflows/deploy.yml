@@ -1,0 +1,151 @@
+name: Build and Deploy to Kubernetes (components.djust.org)
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ghcr.io/djust-org/djust-components-site
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Build djust wheel (framework dependency)
+        env:
+          DJUST_BUILD_TOKEN: ${{ secrets.DJUST_BUILD_TOKEN }}
+        run: |
+          if [ -z "$DJUST_BUILD_TOKEN" ]; then
+            echo "Warning: DJUST_BUILD_TOKEN not set — djust will be installed from PyPI"
+            exit 0
+          fi
+
+          pip3 install maturin
+          git clone https://x-access-token:${DJUST_BUILD_TOKEN}@github.com/djust-org/djust.git /tmp/djust
+          cd /tmp/djust
+          python3 -m maturin build --release --interpreter python3.11
+
+          mkdir -p $GITHUB_WORKSPACE/wheels
+          cp /tmp/djust/target/wheels/*.whl $GITHUB_WORKSPACE/wheels/
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+            echo "tag=$GITHUB_REF_NAME" >> $GITHUB_OUTPUT
+          else
+            echo "version=latest" >> $GITHUB_OUTPUT
+            echo "tag=latest" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_NAME }}:${{ steps.version.outputs.tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Deploy to Kubernetes
+        env:
+          KUBECONFIG_DATA: ${{ secrets.KUBECONFIG }}
+          DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
+        run: |
+          if [ -z "$KUBECONFIG_DATA" ]; then
+            echo "Error: KUBECONFIG secret not set!"
+            echo ""
+            echo "Add a base64-encoded kubeconfig as secret KUBECONFIG at:"
+            echo "  https://github.com/djust-org/djust-components/settings/secrets/actions"
+            exit 1
+          fi
+
+          if [ -z "$DJANGO_SECRET_KEY" ]; then
+            echo "Error: DJANGO_SECRET_KEY secret not set!"
+            echo ""
+            echo "Generate one with:"
+            echo "  python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())'"
+            echo ""
+            echo "Add it as secret DJANGO_SECRET_KEY at:"
+            echo "  https://github.com/djust-org/djust-components/settings/secrets/actions"
+            exit 1
+          fi
+
+          # Set up kubectl
+          echo "$KUBECONFIG_DATA" | base64 -d > /tmp/kubeconfig
+          export KUBECONFIG=/tmp/kubeconfig
+
+          # Create namespace
+          kubectl apply -f k8s/namespace.yaml
+
+          # Create/update image pull secret
+          kubectl create secret docker-registry ghcr-secret \
+            -n djust-components \
+            --docker-server=ghcr.io \
+            --docker-username=$GITHUB_ACTOR \
+            --docker-password=${{ secrets.GITHUB_TOKEN }} \
+            --docker-email=noreply@github.com \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+          # Create/update Django secret
+          kubectl create secret generic djust-components-secret \
+            -n djust-components \
+            --from-literal=secret-key="$DJANGO_SECRET_KEY" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+          # Deploy with versioned image tag
+          VERSION=${{ steps.version.outputs.tag }}
+          sed -i "s|${{ env.IMAGE_NAME }}:latest|${{ env.IMAGE_NAME }}:${VERSION}|" k8s/deployment.yaml
+          kubectl apply -f k8s/deployment.yaml
+
+          # Apply ingress
+          kubectl apply -f k8s/ingress.yaml
+
+          # Restart to pick up new image
+          kubectl rollout restart deployment/djust-components -n djust-components
+
+          # Wait for rollout
+          kubectl rollout status deployment/djust-components -n djust-components --timeout=5m
+
+      - name: Show deployment status
+        if: always()
+        run: |
+          if [ -z "${{ secrets.KUBECONFIG }}" ]; then exit 0; fi
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > /tmp/kubeconfig
+          export KUBECONFIG=/tmp/kubeconfig
+          kubectl get pods -n djust-components
+          kubectl get ingress -n djust-components
+
+      - name: Deployment summary
+        run: |
+          echo "Deployment complete!"
+          echo "Site: https://components.djust.org"
+          echo "Image: ${{ env.IMAGE_NAME }}:${{ steps.version.outputs.tag }}"

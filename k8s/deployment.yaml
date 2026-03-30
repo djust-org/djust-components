@@ -1,0 +1,86 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: djust-components
+  namespace: djust-components
+spec:
+  selector:
+    app: djust-components
+  ports:
+  - port: 8000
+    targetPort: 8000
+    name: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: djust-components
+  namespace: djust-components
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: djust-components
+  template:
+    metadata:
+      labels:
+        app: djust-components
+    spec:
+      imagePullSecrets:
+      - name: ghcr-secret
+      containers:
+      - name: djust-components
+        image: ghcr.io/djust-org/djust-components-site:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+          name: http
+        env:
+        - name: DJANGO_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: djust-components-secret
+              key: secret-key
+        - name: DJANGO_DEBUG
+          value: "False"
+        - name: DJANGO_ALLOWED_HOSTS
+          value: "components.djust.org,localhost,127.0.0.1"
+        - name: CSRF_TRUSTED_ORIGINS
+          value: "https://components.djust.org"
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: SENTRY_DSN
+          valueFrom:
+            secretKeyRef:
+              name: djust-components-secret
+              key: sentry-dsn
+              optional: true
+        - name: SENTRY_ENVIRONMENT
+          value: "production"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
