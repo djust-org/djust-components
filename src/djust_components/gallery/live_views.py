@@ -8,6 +8,7 @@ views don't need to know about theming.
 from django.http import Http404
 
 from djust import LiveView
+from djust.decorators import event_handler
 
 from djust_components.descriptors import (
     Accordion,
@@ -112,7 +113,7 @@ class GalleryCategoryMixin:
 
 
 class GalleryIndexView(LiveView):
-    """Landing page showing category cards."""
+    """Landing page showing category cards with search."""
 
     template_name = "djust_components/gallery/index.html"
     login_required = False
@@ -123,11 +124,52 @@ class GalleryIndexView(LiveView):
 
         data = get_gallery_data()
         categories = data["categories"]
-        self.category_cards = [
+        self._category_cards = [
             {"slug": s, "label": CATEGORIES.get(s, s.title()),
              "count": len(categories.get(CATEGORIES.get(s, s.title()), []))}
             for s in CATEGORY_ORDER
         ]
+        self.category_cards = list(self._category_cards)
+        self.total_count = sum(c["count"] for c in self._category_cards)
+        self.search_query = ""
+        self.filtered_cards = []
+        self.filtered_count = 0
+
+        # Flat list of all components for search
+        self._all_components = []
+        for s in CATEGORY_ORDER:
+            label = CATEGORIES.get(s, s.title())
+            for comp in categories.get(label, []):
+                self._all_components.append({
+                    "name": comp["name"],
+                    "label": comp["label"],
+                    "category_slug": s,
+                    "category_label": label,
+                })
+
+    @event_handler
+    def search(self, value="", **kwargs):
+        self.search_query = value.strip()
+        if not self.search_query:
+            self.filtered_cards = []
+            self.filtered_count = 0
+        else:
+            q = self.search_query.lower()
+            results = [
+                c for c in self._all_components
+                if q in c["label"].lower() or q in c["name"].lower()
+                or q in c["category_label"].lower()
+            ]
+            # Deduplicate by (category_slug, label) — show each unique label once
+            seen = set()
+            deduped = []
+            for c in results:
+                key = (c["category_slug"], c["label"])
+                if key not in seen:
+                    seen.add(key)
+                    deduped.append(c)
+            self.filtered_cards = deduped
+            self.filtered_count = len(deduped)
 
 
 # ---------------------------------------------------------------------------

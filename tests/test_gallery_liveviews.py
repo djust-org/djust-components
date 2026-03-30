@@ -201,6 +201,74 @@ class TestGalleryViewXSS:
             view.mount(request)
 
 
+# --- GalleryIndexView Tests ---
+
+
+class TestGalleryIndexView:
+
+    def _mount_index(self):
+        from djust_components.gallery.live_views import GalleryIndexView
+        view = GalleryIndexView()
+        request = RequestFactory().get("/")
+        request.COOKIES = {}
+        view.mount(request)
+        return view
+
+    def test_mount_populates_category_cards(self):
+        view = self._mount_index()
+        assert len(view.category_cards) > 0
+        assert all("slug" in c and "label" in c and "count" in c for c in view.category_cards)
+
+    def test_mount_total_count(self):
+        view = self._mount_index()
+        assert view.total_count > 0
+
+    def test_mount_initial_search_empty(self):
+        view = self._mount_index()
+        assert view.search_query == ""
+        assert view.filtered_cards == []
+        assert view.filtered_count == 0
+
+    def test_search_returns_results(self):
+        view = self._mount_index()
+        view.search(value="button")
+        assert len(view.filtered_cards) > 0
+        assert view.search_query == "button"
+        assert view.filtered_count == len(view.filtered_cards)
+
+    def test_search_returns_empty_for_no_match(self):
+        view = self._mount_index()
+        view.search(value="xyzzy_no_match_9999")
+        assert view.filtered_cards == []
+        assert view.filtered_count == 0
+
+    def test_search_clear_resets_state(self):
+        view = self._mount_index()
+        view.search(value="button")
+        view.search(value="")
+        assert view.filtered_cards == []
+        assert view.search_query == ""
+
+    def test_search_results_have_required_fields(self):
+        view = self._mount_index()
+        view.search(value="tab")
+        for c in view.filtered_cards:
+            assert "name" in c
+            assert "label" in c
+            assert "category_slug" in c
+            assert "category_label" in c
+
+    def test_search_deduplicates_results(self):
+        view = self._mount_index()
+        view.search(value="badge")
+        # Results should have no duplicate (category_slug, label) pairs
+        seen = set()
+        for c in view.filtered_cards:
+            key = (c["category_slug"], c["label"])
+            assert key not in seen, f"Duplicate result: {key}"
+            seen.add(key)
+
+
 # --- Theme Context Processor Tests ---
 
 
