@@ -172,7 +172,7 @@ class AccordionItemHandler:
             f'<button class="accordion-trigger" aria-expanded="{expanded}" '
             f'dj-click="{event}" data-value="{item_id}">'
             f'<span class="accordion-title">{title}</span>'
-            f'<svg class="accordion-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">'
+            f'<svg class="accordion-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">'
             f'<polyline points="6 9 12 15 18 9"></polyline></svg>'
             f"</button>"
             f'<div class="accordion-panel"{panel_hidden}>{content}</div>'
