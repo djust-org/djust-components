@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "djust-components"
-version = "0.3.0"
+version = "0.4.0rc2"
 description = "Reusable UI components for djust — the Phoenix LiveView for Django"
 readme = "README.md"
 license = "MIT"
