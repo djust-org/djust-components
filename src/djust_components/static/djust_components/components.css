@@ -620,7 +620,7 @@
 .dp-day-range-start.dp-day-range-end { border-radius: var(--radius-md); }
 
 /* Code Block */
-.code-block { background: hsl(var(--card) / 0.8); border: 1px solid hsl(var(--border)); border-radius: var(--radius-lg); overflow: hidden; font-size: var(--text-sm); }
+.code-block { background: hsl(var(--card) / 0.8); border: 1px solid hsl(var(--border)); border-radius: var(--radius-lg); overflow: hidden; font-size: var(--text-sm); margin-top: 0.75rem; }
 .code-block-header { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-4); background: hsl(var(--muted) / 0.5); border-bottom: 1px solid hsl(var(--border)); }
 .code-block-filename { font-size: var(--text-xs); font-weight: var(--font-semibold); color: hsl(var(--foreground)); font-family: var(--font-mono, ui-monospace, monospace); }
 .code-block-lang { font-size: var(--text-xs); font-weight: var(--font-medium); color: hsl(var(--muted-foreground)); margin-inline-start: auto; text-transform: uppercase; letter-spacing: 0.05em; }
