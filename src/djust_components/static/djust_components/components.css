@@ -48,7 +48,7 @@
 /* Chat-bounce — staggered dots for typing/thinking indicators */
 @keyframes dj-chat-bounce { 0%, 60%, 100% { transform: translateY(0); opacity: 0.4; } 30% { transform: translateY(-0.3rem); opacity: 1; } }
 
-@layer djust-components {
+/* djust-components base styles */
 
 /* Modal (rendered: dj-modal-backdrop, dj-modal, dj-modal__header/title/close/body) */
 .modal-overlay, .dj-modal-backdrop { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; padding: var(--space-4); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); background: rgba(0, 0, 0, 0.5); }
@@ -2358,4 +2358,4 @@ button.rating-star:hover ~ .rating-star { color: hsl(var(--muted-foreground) / 0
 .dj-status-indicator:focus-visible { outline: 2px solid hsl(var(--ring, 222 47% 51%)); outline-offset: 2px; border-radius: 9999px; }
 .dj-inline-edit__display:focus-visible { outline: 2px solid hsl(var(--ring, 222 47% 51%)); outline-offset: 1px; }
 
-} /* end @layer djust-components */
+/* end djust-components base styles */
