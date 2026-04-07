@@ -36,7 +36,7 @@ See COMPONENT_CLASSES.md for full documentation.
     python manage.py component_gallery --dry-run    # List components and exit
 """
 
-__version__ = "0.4.0rc2"
+__version__ = "0.4.0rc3"
 
 default_app_config = "djust_components.apps.DjustComponentsConfig"
 
