@@ -157,10 +157,10 @@
 .badge-pulse .badge-dot { animation: dj-pulse 2s ease-in-out infinite; }
 
 /* Card (rendered: dj-card, dj-card--default/elevated, dj-card__header/title/subtitle/body/footer) */
-.card, .dj-card { background-color: hsl(var(--card)); color: hsl(var(--card-foreground)); border: var(--border-width, 1px) solid hsl(var(--border)); border-radius: calc(var(--radius, 0.5rem) + 2px); box-shadow: var(--shadow-xs, 0 1px 2px 0 rgba(0, 0, 0, 0.05)); transition: transform var(--duration-normal, 0.2s) var(--ease-out, ease-out), box-shadow var(--duration-normal, 0.2s) var(--ease-out, ease-out); }
+.card, .dj-card { background-color: var(--glass-bg, hsl(var(--card))); color: hsl(var(--card-foreground)); border: var(--border-width, 1px) solid var(--glass-border, hsl(var(--border))); border-radius: calc(var(--radius, 0.5rem) + 2px); box-shadow: var(--shadow-xs, 0 1px 2px 0 rgba(0, 0, 0, 0.05)); backdrop-filter: blur(var(--glass-blur, 0px)); -webkit-backdrop-filter: blur(var(--glass-blur, 0px)); transition: transform var(--duration-normal, 0.2s) var(--ease-out, ease-out), box-shadow var(--duration-normal, 0.2s) var(--ease-out, ease-out); }
 .card:hover, .dj-card:hover { transform: translateY(var(--hover-translate-y, 0)) scale(var(--hover-scale, 1)); }
 .card-default, .dj-card--default { /* inherits base card */ }
-.card-outlined, .dj-card--outlined { border-color: hsl(var(--border) / 0.5); background: transparent; box-shadow: none; }
+.card-outlined, .dj-card--outlined { border-color: hsl(var(--border) / 0.5); background: transparent; box-shadow: none; backdrop-filter: none; }
 .card-elevated, .dj-card--elevated { box-shadow: var(--shadow-md); }
 .card-header, .dj-card__header { display: flex; flex-direction: column; gap: var(--space-1, 0.25rem); padding: var(--space-4, 1rem) var(--space-5, 1.25rem); border-bottom: var(--border-width, 1px) solid hsl(var(--border)); background: hsl(var(--surface-3, var(--muted)) / 0.3); }
 .card-title, .dj-card__title { font-size: 1.125rem; font-weight: 600; line-height: 1.75rem; color: hsl(var(--card-foreground)); margin: 0; }
