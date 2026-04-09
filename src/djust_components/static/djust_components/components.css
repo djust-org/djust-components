@@ -158,7 +158,7 @@
 
 /* Card (rendered: dj-card, dj-card--default/elevated, dj-card__header/title/subtitle/body/footer) */
 .card, .dj-card { background-color: var(--glass-bg, hsl(var(--card))); color: hsl(var(--card-foreground)); border: var(--border-width, 1px) solid var(--glass-border, hsl(var(--border))); border-radius: calc(var(--radius, 0.5rem) + 2px); box-shadow: var(--shadow-xs, 0 1px 2px 0 rgba(0, 0, 0, 0.05)); backdrop-filter: blur(var(--glass-blur, 0px)); -webkit-backdrop-filter: blur(var(--glass-blur, 0px)); transition: transform var(--duration-normal, 0.2s) var(--ease-out, ease-out), box-shadow var(--duration-normal, 0.2s) var(--ease-out, ease-out); }
-.card:hover, .dj-card:hover { transform: translateY(var(--hover-translate-y, 0)) scale(var(--hover-scale, 1)); }
+.card:hover, .dj-card:hover { transform: translateY(var(--hover-translate-y, 0)) scale(var(--hover-scale, 1)); box-shadow: var(--hover-glow, var(--shadow-xs, 0 1px 2px 0 rgba(0, 0, 0, 0.05))); }
 .card-default, .dj-card--default { /* inherits base card */ }
 .card-outlined, .dj-card--outlined { border-color: hsl(var(--border) / 0.5); background: transparent; box-shadow: none; backdrop-filter: none; }
 .card-elevated, .dj-card--elevated { box-shadow: var(--shadow-md); }
@@ -429,9 +429,9 @@
 /* Button */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); padding: var(--space-2) var(--space-4); border-radius: var(--radius-md); font-size: var(--text-sm); font-weight: var(--font-medium); border: 1px solid transparent; color: hsl(var(--foreground)); cursor: pointer; transition: all var(--duration-normal) var(--ease-in-out, ease); text-decoration: none; white-space: nowrap; user-select: none; }
 .btn:focus-visible { outline: none; box-shadow: 0 0 0 3px hsl(var(--ring) / 0.4); }
-.btn:hover:not(:disabled) { transform: translateY(var(--hover-translate-y, 0)) scale(var(--hover-scale, 1)); }
+.btn:hover:not(:disabled) { transform: translateY(var(--hover-translate-y, 0)) scale(var(--hover-scale, 1)); box-shadow: var(--hover-glow, none); }
 .btn-primary { background: hsl(var(--primary)); border-color: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
-.btn-primary:hover:not(:disabled) { background: hsl(var(--primary) / 0.85); border-color: hsl(var(--primary) / 0.85); }
+.btn-primary:hover:not(:disabled) { background: hsl(var(--primary) / 0.85); border-color: hsl(var(--primary) / 0.85); box-shadow: var(--hover-glow, none); }
 .btn-secondary { background: hsl(var(--muted)); border-color: hsl(var(--border)); color: hsl(var(--foreground)); }
 .btn-secondary:hover:not(:disabled) { background: hsl(var(--accent)); border-color: hsl(var(--border)); }
 .btn-outline { background: transparent; border-color: hsl(var(--border)); color: hsl(var(--foreground)); }
