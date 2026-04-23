@@ -4,41 +4,21 @@ build-backend = "hatchling.build"
 
 [project]
 name = "djust-components"
-version = "0.4.0rc5"
-description = "Reusable UI components for djust — the Phoenix LiveView for Django"
+version = "99.0.0"
+description = "DEPRECATED: use `pip install djust` instead."
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
 authors = [
     { name = "djust contributors" },
 ]
-keywords = ["django", "djust", "components", "liveview", "ui"]
-classifiers = [
-    "Development Status :: 4 - Beta",
-    "Framework :: Django",
-    "Framework :: Django :: 4.2",
-    "Framework :: Django :: 5.0",
-    "Framework :: Django :: 5.1",
-    "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3",
-    "Topic :: Internet :: WWW/HTTP",
-    "Topic :: Software Development :: Libraries :: Python Modules",
-]
 dependencies = [
-    "djust>=0.3.0rc5",
-    "markdown>=3.0",
-    "nh3>=0.2",
+    "djust>=0.5.6rc1",
 ]
 
 [project.urls]
 Homepage = "https://djust.org"
 Repository = "https://github.com/djust-org/djust-components"
-Documentation = "https://djust.org/components"
-
-[tool.pytest.ini_options]
-pythonpath = ["src"]
-testpaths = ["tests"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/djust_components"]
